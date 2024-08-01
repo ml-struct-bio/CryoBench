@@ -34,21 +34,31 @@ def sample_small_rotation(n_rotations, concentration=10):
     rotations = R.from_quat(quaternions.numpy()).as_matrix()
     return rotations
 
-def align_rot_median(rotA, rotB, N):
+def align_rot_median(rotA, rotB, N, do_right_mult_R=True):
     best_medse = np.inf
+    best_rotation = None
     for i in range(N):
-        mean_rot = np.dot(rotB[i].T, rotA[i])
-        rotB_hat = np.matmul(rotB, mean_rot)
+        if do_right_mult_R:
+            mean_rot = np.dot(rotB[i].T, rotA[i])
+            rotB_hat = np.matmul(rotB, mean_rot)
+        else:
+            mean_rot = np.dot(rotA[i],rotB[i].T)
+            rotB_hat = np.matmul(mean_rot,rotB)
         medse = np.median(np.sum((rotB_hat - rotA) ** 2, axis=(1, 2)))
         if medse < best_medse:
             best_medse = medse
+            best_rotation = mean_rot
 
     # align B into A's reference frame
-    rotA_hat = np.matmul(rotA, mean_rot.T).astype(rotA.dtype)
-    rotB_hat = np.matmul(rotB, mean_rot).astype(rotB.dtype)
+    if do_right_mult_R:
+        rotA_hat = np.matmul(rotA, mean_rot.T).astype(rotA.dtype)
+        rotB_hat = np.matmul(rotB, mean_rot).astype(rotB.dtype)
+    else:
+        rotA_hat = np.matmul(mean_rot.T,rotA).astype(rotA.dtype)
+        rotB_hat = np.matmul(mean_rot,rotB).astype(rotB.dtype)
     dist2 = np.sum((rotB_hat - rotA) ** 2, axis=(1, 2))
 
-    return rotA_hat, rotB_hat, mean_rot, dist2, best_medse
+    return rotA_hat, rotB_hat, best_rotation, dist2, best_medse
 
 
 def presets():
@@ -169,23 +179,36 @@ def main():
     parser = argparse.ArgumentParser(description='Process pose data.')
     parser.add_argument('--fname', type=str, help='File name of the pose data')
     parser.add_argument('--cryosparc_3cdclass_pose_fname', type=str, help='Optional: File name of the cryosparc 3cdclass pose data', default=None)
-    parser.add_argument('--save_3cdclass_pose', type=bool, help='Save mean cryosparc 3cdabinit pose data', default=False)
+    parser.add_argument('--save_3cdclass_pose', action='store_true', help='Save mean cryosparc 3cdabinit pose data')
+    parser.add_argument('--logyfalse', help='Plot y-axis on log scale', action='store_false')
+    parser.add_argument('--logxtrue', help='Plot x-axis on log scale', action='store_true')
+    parser.add_argument('--random_baseline_method', action='store_true', help="For each method's plot panel, put gray background of shuffled residuals as a random baseline")
+    parser.add_argument('--no_dashed_median', action='store_false', help='Put verical bar of dashed median')
+    parser.add_argument('--update_test', action='store_true', help='Put verical bar of dashed median')
+    parser.add_argument('--no_dashed_mean', action='store_false', help='Put verical bar of dashed mean')
     parser.add_argument('--n_conformation_batch', type=int, help='n_conformation_batch to average over (in order in input)', default=10**3)
+    parser.add_argument('--ticks_fontsize', type=int, help='Ploting label_fontsize', default=15)
+    parser.add_argument('--label_fontsize', type=int, help='Plotting label_fontsize', default=20)
+    parser.add_argument('--minx_auto', action='store_true', help="auto-adjust minimum value on x-axis to minimum on each method's panel")
     parser.add_argument('--alignment_method', type=str, help='Method to align poses', default='median')
     parser.add_argument('--plot_output', type=str, help='Method to align poses', default='pose_residual.pdf')
+    parser.add_argument('--autobins', help='Default bins', action='store_false')
+    parser.add_argument('--do_right_mult_R', help='right (R_gt = R_method R_g) vs left (R_gt = R_g R_method) multiply: ', action='store_true')
+    
+
     
     args = parser.parse_args()
+    print(args)
 
     poses = np.load(args.fname)
+    if not args.minx_auto and args.logxtrue: Warning('minx_auto and logx are incompatible')
 
-    print([(k,len(v)) for (k,v) in poses.items()])
 
     qs = conversions.axis_angle_to_quaternion(torch.from_numpy(poses['cryosparc_3dabinit_poses']))
 
 
     if args.cryosparc_3cdclass_pose_fname is not None:
         cryosparc_3dabinit_mean_poses_q = torch.from_numpy(np.load(args.cryosparc_3cdclass_pose_fname))
-        print(cryosparc_3dabinit_mean_poses_q.shape)
     else:
         n = len(poses['cryosparc_3dabinit_embeddings'])
         cryosparc_3dabinit_mean_poses_q = torch.from_numpy(np.array([weightedAverageQuaternions(qs[idx], poses['cryosparc_3dabinit_embeddings'][idx]) for idx in range(n)]))
@@ -193,40 +216,58 @@ def main():
         np.save(os.path.join(dir,'cryosparc_3dabinit_mean_poses_q.npy'), cryosparc_3dabinit_mean_poses_q)
     
     cryosparc_3d_mean_poses_3x3 = conversions.quaternion_to_rotation_matrix(cryosparc_3dabinit_mean_poses_q).transpose(1,2).numpy().reshape(-1,9)
-    print(cryosparc_3d_mean_poses_3x3.shape)
-    cryosparc_3d_poses_3x3  = np.apply_along_axis(expmap, 1, poses['cryosparc_3d_poses']).reshape(-1,9)
+    if 'cryosparc_3d_poses' in poses.keys():
+        cryosparc_3d_poses_3x3  = np.apply_along_axis(expmap, 1, poses['cryosparc_3d_poses']).reshape(-1,9)
 
     color_map, label_map, _ = presets()
     
     def plot():
+        ticks_fontsize = args.ticks_fontsize
+        label_fontsize = args.label_fontsize
         np.random.seed(0)
 
         abinit_method = {
             'random': poses['gt_poses'][np.random.choice(poses['gt_poses'].shape[0], poses['gt_poses'].shape[0], replace=False)],
-            'drgnai-fixed': poses['drgnai_fixed_poses'],
-            'cryosparc-3d': cryosparc_3d_poses_3x3,
+            # 'drgnai-fixed': poses['drgnai_fixed_poses'],
+            # 'cryosparc-3d': cryosparc_3d_poses_3x3,
             'cryodrgn2': poses['cryodrgn2_poses'],
             'drgnai-abinit': poses['drgnai_abinit_poses'],
             'cryosparc-3dabinit': cryosparc_3d_mean_poses_3x3,
                                     }
+        if args.update_test:
+            test_methods = {'Rjs_right_global': poses['Rjs_right_global'], 'Rjs_left_global': poses['Rjs_left_global']}
+            abinit_method.update(test_methods)
+            color_map.update({'Rjs_right_global': 'red', 'Rjs_left_global': 'blue'})
+            label_map.update({'Rjs_right_global': 'Rjs_right_global', 'Rjs_left_global': 'Rjs_left_global'})
 
 
         fig, axes = plt.subplots(len(abinit_method), 1, figsize=(6, 14))
         # axes = [axes]
-        logy = True
+        logy = args.logyfalse
+        print('logy', logy)
+        logx = args.logxtrue
         n_rotations = len(poses['gt_poses'])
         random_idx = np.random.choice(n_rotations,n_rotations, replace=False)
         n_conformation_batch = args.n_conformation_batch
         for idx, (k,v) in enumerate(abinit_method.items()):
             print(k)
+            if args.update_test and k not in test_methods.keys():
+                continue
             rotations_A, rotations_B = poses['gt_poses'].reshape(-1, 3,3), v.reshape(-1, 3,3)
             
             v_poses_correct_frame =  np.zeros_like(v)
             for conf_idx in range(0,len(poses['gt_poses']), n_conformation_batch):
 
                 if args.alignment_method == 'median':
-                    rotA_hat, rotB_hat, mean_rot, dist2, best_medse = align_rot_median(rotations_A[conf_idx:conf_idx+n_conformation_batch], rotations_B[conf_idx:conf_idx+n_conformation_batch], N=n_conformation_batch)
-                    rotations_B_in_frame_A = np.matmul(rotations_B[conf_idx:conf_idx+n_conformation_batch], mean_rot)
+                    rotA_hat, rotB_hat, mean_rot, dist2, best_medse = align_rot_median(rotations_A[conf_idx:conf_idx+n_conformation_batch], 
+                                                                                       rotations_B[conf_idx:conf_idx+n_conformation_batch], 
+                                                                                       N=n_conformation_batch,
+                                                                                       do_right_mult_R=args.do_right_mult_R)
+                    if args.do_right_mult_R:
+                        rotations_B_in_frame_A = np.matmul(rotations_B[conf_idx:conf_idx+n_conformation_batch], mean_rot)
+                    else:
+                        rotations_B_in_frame_A = np.matmul(mean_rot,rotations_B[conf_idx:conf_idx+n_conformation_batch])
+
                 elif args.alignment_method == 'mean_quaternion':
                     global_rotation = estimate_global_rotation(rotations_A[conf_idx:conf_idx+n_conformation_batch], rotations_B[conf_idx:conf_idx+n_conformation_batch])
                     rotations_B_in_frame_A = global_rotation.T @ rotations_B[conf_idx:conf_idx+n_conformation_batch]
@@ -238,20 +279,34 @@ def main():
             
             resid = (poses['gt_poses'] - v_poses_correct_frame)
             norms = np.linalg.norm(resid, axis=1)
-            # random
-            random_idx = np.random.choice(n_rotations, n_rotations, replace=False)
-            resid_random = (v - v[random_idx])
-            norms_random = np.linalg.norm(resid_random, axis=1)
-
-            bins = np.linspace(0,np.sqrt(8),30)
-            pd.Series(norms).plot.hist(ax=axes[idx], bins=bins, alpha=0.5, label=label_map[k], legend=True, logy=logy, color=color_map[k])
-            if k != 'random': pd.Series(norms_random).plot.hist(ax=axes[idx], bins=bins, alpha=0.25, label='random baseline', legend=True, logy=logy, color='gray')
+            min_x = np.min(norms) if args.minx_auto else 0
+            bins = np.linspace(min_x,np.sqrt(8),30)
+            pd.Series(norms).plot.hist(ax=axes[idx], bins=bins, alpha=0.5, label=label_map[k], legend=True, logy=logy, logx=logx, color=color_map[k])
+            if k != 'random' and args.random_baseline_method: 
+                random_idx = np.random.choice(n_rotations, n_rotations, replace=False)
+                resid_random = (v - v[random_idx])
+                norms_random = np.linalg.norm(resid_random, axis=1)
+                pd.Series(norms_random).plot.hist(ax=axes[idx], bins=bins, alpha=0.25, label='random baseline', legend=True, logy=logy, logx=logx, color='gray')
+            if k=='random' and args.no_dashed_median:
+                solid = '-'
+                axes[idx].axvline(x=np.mean(norms), color='black', linestyle=solid, linewidth=2)
+            if k=='random' and args.no_dashed_median:
+                dashed = '--'
+                axes[idx].axvline(x=np.median(norms), color='black', linestyle=dashed, linewidth=2)
             axes[idx].set_ylim(bottom=1)
-            axes[idx].set_xlim(0,np.sqrt(8))
+            axes[idx].set_xlim(min_x,np.sqrt(8))
             axes[idx].legend(loc='upper right')
-        dir = os.path.dirname(args.fname)
+            if k == 'cryosparc-3dabinit':
+                axes[idx].set_xlabel(r'$||R_{GT} - R_{*}||_F$', fontsize=label_fontsize)
+                axes[idx].set_ylabel('Frequency', fontsize=label_fontsize)
+            else:
+                axes[idx].set_ylabel('')
+
+            
         fig.suptitle(f'Distribution of pose residuals (w.r.t. g.t.) \n fname={args.fname} \n per conf. global pose: n_conformation_batch={n_conformation_batch}', y=0.95)
-        fig.savefig(f'{dir}/{args.plot_output}', dpi=1200, bbox_inches='tight')
+        fig.savefig(args.plot_output, dpi=1200, bbox_inches='tight')
+        plt.xticks(fontsize=ticks_fontsize)
+        plt.yticks(fontsize=ticks_fontsize)
 
     plot()
 

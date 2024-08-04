@@ -1,6 +1,6 @@
 conda activate recovar
-python metrics/per_conf_fsc/gen_reordered_z.py --recovar-result-dir ./recovar_results # recovar working directory should be in the same dir
-python metrics/per_conf_fsc/recovar_gen_vols.py recovar_results -o output/recovar/per_conf_fsc/vols --zdim 10 --num-imgs 1000 --num-vols 100 # recovar working directory should be in the same dir
+python metrics/recovar/gen_reordered_z.py --recovar-result-dir ./recovar_results
+python metrics/recovar/gen_vol_for_per_conf_fsc.py recovar_results -o output/recovar/per_conf_fsc/vols --zdim 10 --num-imgs 1000 --num-vols 100
 conda deactivate recovar
 
 conda activate cryodrgn

@@ -1,0 +1,7 @@
+# In an attempt to keep track of the various constants in the code
+EPSILON = 1e-16
+ROOT_EPSILON = 1e-8
+REG_INIT_MULTIPLIER = 1e-2
+# N_PCS_TO_COMPUTE = 200
+# RANDOMIZED_SKETCH_SIZE = 300
+FSC_ZERO_THRESHOLD = 0.001 # THINGS BELOW THIS ARE CONSIDERED ZERO

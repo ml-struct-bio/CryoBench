@@ -2,13 +2,11 @@
 
 import argparse
 import numpy as np
-import sys, os
-import pickle
+import os
 import glob, re
 import subprocess
 import utils
 log = utils.log 
-from cryodrgnai.cryodrgn import mrc
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -83,7 +81,7 @@ def main(args):
         else:
             out_fsc = '{}/{}/per_conf_fsc/fsc_no_mask/{}.txt'.format(args.o, args.method, ii)
 
-        cmd = 'python /scratch/gpfs/ZHONGE/mj7341/cryodrgn/cryodrgn/analysis_scripts/fsc.py {} {}/{}/{}_class_{:02d}_{}_volume.mrc -o {} --mask {}'.format(
+        cmd = 'python ../cryodrgn/analysis_scripts/fsc.py {} {}/{}/{}_class_{:02d}_{}_volume.mrc -o {} --mask {}'.format(
                 gt_dir[ii], args.cryosparc_dir, cryosparc_job, cryosparc_job, lst[ii][0], cryosparc_num, out_fsc, args.mask)
         print('cmd:',cmd)
         log(cmd)

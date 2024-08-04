@@ -59,7 +59,7 @@ def main(args):
             out_fsc = '{}/{}/per_conf_fsc/fsc/{}.txt'.format(args.o, args.method, ii)
         else:
             out_fsc = '{}/{}/per_conf_fsc/fsc_no_mask/{}.txt'.format(args.o, args.method, ii)
-        cmd = 'python /scratch/gpfs/ZHONGE/mj7341/cryodrgn/cryodrgn/analysis_scripts/fsc.py {} {}/{}/per_conf_fsc/vols/{}_series_000_frame_{:03d}.mrc -o {} --mask {}'.format(
+        cmd = 'python ../cryodrgn/analysis_scripts/fsc.py {} {}/{}/per_conf_fsc/vols/{}_series_000_frame_{:03d}.mrc -o {} --mask {}'.format(
                 gt_dir[ii], args.o, args.method, args.cryosparc_job, ii, out_fsc, args.mask)
         print('cmd:',cmd)
         log(cmd)

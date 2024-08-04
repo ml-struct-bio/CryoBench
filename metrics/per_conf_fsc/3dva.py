@@ -113,7 +113,7 @@ def main(args):
             out_fsc = '{}/{}/per_conf_fsc/fsc_no_mask/{}.txt'.format(args.o, args.method, ii)
         
         vol_name = "vol_{:03d}.mrc".format(ii)
-        cmd = 'python /scratch/gpfs/ZHONGE/mj7341/cryodrgn/cryodrgn/analysis_scripts/fsc.py {} {}/{}/per_conf_fsc/vols/{} -o {} --mask {}'.format(
+        cmd = 'python ../cryodrgn/analysis_scripts/fsc.py {} {}/{}/per_conf_fsc/vols/{} -o {} --mask {}'.format(
                 gt_dir[ii], args.o, args.method, vol_name, out_fsc, args.mask)
         print('cmd:',cmd)
         log(cmd)

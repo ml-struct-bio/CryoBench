@@ -13,7 +13,7 @@ def parse_args():
     parser.add_argument('--num-imgs', default=1000, type=int)
     parser.add_argument("--method", type=str, help="type of methods")
     parser.add_argument("--mask", default=None)
-    parser.add_argument('--gt-dir', help='Directory of gt models')
+    parser.add_argument('--gt-dir', help='Directory of gt volumes')
     parser.add_argument('--cryosparc-job', help='job number of of cryosparc')
     parser.add_argument('--overwrite',action='store_true')
     parser.add_argument('--dry-run',action='store_true')

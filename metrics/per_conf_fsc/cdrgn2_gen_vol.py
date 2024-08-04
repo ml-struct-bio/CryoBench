@@ -4,7 +4,7 @@ import argparse
 import numpy as np
 import os
 import pickle
-import glob, re
+import re
 import subprocess
 import utils
 from cryodrgn import analysis
@@ -19,7 +19,7 @@ def parse_args():
     parser.add_argument('--num-vols', default=100, type=int)
     parser.add_argument('--num-imgs', default=1000, type=int)
     parser.add_argument("--method", type=str, help="type of methods")
-    parser.add_argument('--gt-dir', help='Directory with gt models')
+    parser.add_argument('--gt-dir', help='Directory of gt volumes')
     parser.add_argument('--overwrite',action='store_true')
     parser.add_argument('--dry-run',action='store_true')
     parser.add_argument('--fast',type=int, default=1)

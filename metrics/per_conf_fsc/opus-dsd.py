@@ -23,7 +23,7 @@ def parse_args():
     parser.add_argument('-D', default=128, type=int)
     parser.add_argument("--method", type=str, help="type of methods")
     parser.add_argument("--mask", default=None)
-    parser.add_argument('--gt-dir', help='Directory with gt models')
+    parser.add_argument('--gt-dir', help='Directory of gt volumes')
     parser.add_argument('--overwrite',action='store_true')
     parser.add_argument('--dry-run',action='store_true')
     parser.add_argument('--fast',type=int, default=1)
@@ -85,7 +85,7 @@ def main(args):
     out_zfile = '{}/{}/per_conf_fsc/zfile.txt'.format(args.o, args.method)
     log(out_zfile)
     
-    cmd = 'CUDA_VISIBLE_DEVICES={} python /scratch/gpfs/ZHONGE/mj7341/opusDSD/cryodrgn/commands/eval_vol.py --load {} -c {} --zfile {} -o {}/{}/per_conf_fsc/vols --Apix {}'.format(
+    cmd = 'CUDA_VISIBLE_DEVICES={} python ../opusDSD/cryodrgn/commands/eval_vol.py --load {} -c {} --zfile {} -o {}/{}/per_conf_fsc/vols --Apix {}'.format(
         args.cuda_device, weights, config, out_zfile, args.o, args.method, args.apix)
     
     log(cmd)
@@ -139,7 +139,7 @@ def main(args):
         else:
             out_fsc = '{}/{}/per_conf_fsc/fsc_no_mask/{}.txt'.format(args.o, args.method, ii)
 
-        cmd = 'python /scratch/gpfs/ZHONGE/mj7341/opusDSD/analysis_scripts/fsc.py {} {}/{}/per_conf_fsc/vols/reference{}.mrc -o {} --mask {}'.format(
+        cmd = 'python ../opusDSD/analysis_scripts/fsc.py {} {}/{}/per_conf_fsc/vols/reference{}.mrc -o {} --mask {}'.format(
                 gt_dir[ii], args.o, args.method, ii, out_fsc, args.mask)
         print('cmd:',cmd)
         log(cmd)

@@ -14,7 +14,7 @@ def parse_args():
     parser.add_argument('--ctf-file', type=os.path.abspath, required=True, help='experimental ctf that we will sample from')
     parser.add_argument('-o', type=os.path.abspath, required=True, help='path to save the integrated ctf file')
     parser.add_argument('--N', type=int, default=100, help='Number of models')
-    parser.add_argument('--apix', type=float, default=1.5, help='Number of models')
+    parser.add_argument('--apix', type=float, default=1.5, help='A/PIX')
     parser.add_argument('--img-size', type=int, default=256, help='Size of image')
     parser.add_argument('--num-ctfs', type=int, default=1000, help='Number of CTFs per model (= the number of image)')
     return parser
@@ -41,7 +41,7 @@ def main(args):
     for i in range(args.N):
         sampled_indices = np.random.choice(data.shape[0], size=args.num_ctfs, replace=False)
         new_ctf = data[sampled_indices]
-        new_ctf[:,0] = args.img_size #128.0
+        new_ctf[:,0] = args.img_size
         new_ctf[:,1] = args.apix
         new_ctf[:,5] = 300.0
         save_file_path = os.path.join(args.ctf_dir, 'ctfs_'+str(i)+'.pkl')

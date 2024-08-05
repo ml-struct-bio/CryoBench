@@ -16,12 +16,10 @@ def parse_args():
     parser.add_argument("--num_classes", type=int, default=20, help="number of classes")
     parser.add_argument("--num_vols", type=int, default=100, help="number of classes")
     parser.add_argument("--num_imgs", type=int, default=1000, help="number of images")
-    parser.add_argument('-o', type=os.path.abspath, required=True, help='Output projection stack (.mrcs)')
-    parser.add_argument('--result-path', type=os.path.abspath, required=True, help='umap & latent folder before method name (e.g. /scratch/gpfs/ZHONGE/mj7341/cryosim/results/conf_het_v1/snr01)')
-    parser.add_argument('--cryosparc_path', type=os.path.abspath, default='/scratch/gpfs/ZHONGE/mj7341/cryosparc/CS-new-mask-for-confhet-v1', help='cryosparc folder path')
+    parser.add_argument('-o', type=os.path.abspath, required=True, help='Output folder to save the UMAP plot')
+    parser.add_argument('--result-path', type=os.path.abspath, required=True, help='umap & latent folder before method name (e.g. /scratch/gpfs/ZHONGE/mj7341/CryoBench/results/IgG-1D/snr0.01)')
+    parser.add_argument('--cryosparc_path', type=os.path.abspath, help='cryosparc folder path')
     parser.add_argument("--cryosparc_job_num", type=str, help="cryosparc job number")
-    parser.add_argument("--mix_sort_txt", type=str, help="txt file for the sorted name")
-    parser.add_argument("--mix_current_name", type=str, help="txt file of current file name")
 
     return parser
 
@@ -49,25 +47,10 @@ def plot_methods(args, v, is_umap=True, use_axis=False):
                   671,681,727,732,838,847,864,865,877,881,881,899,921,956,
                   957,1014,1023,1023,1057,1066,1131]
     mass_for_classes = np.repeat(mass_for_class, args.num_imgs)
-    mix_size = np.loadtxt(args.mix_sort_txt, dtype='str')
-    mix_current_name = np.loadtxt(args.mix_current_name, dtype=str)
-
-    lst = []
-    for i, org_name in enumerate(mix_current_name):
-        for j, size_name in enumerate(mix_size):
-            if size_name[1] in org_name:
-                lst.append(size_name[0][:3])
-    new_indices =np.array(lst).astype('int')*args.num_imgs
-    sequence = np.arange(args.num_imgs)
-    reshaped_array = new_indices[:, np.newaxis]
-    expanded_array = reshaped_array + sequence
-    result_array = expanded_array.flatten()
-    new_v = v[result_array]
-
     fig, ax = plt.subplots(figsize=(4,4))
     plot_dim = (0,1)
     
-    plt.scatter(new_v[:,plot_dim[0]], new_v[:,plot_dim[1]], alpha=.1, s=1, c=mass_for_classes, cmap='rainbow', rasterized=True)
+    plt.scatter(v[:,plot_dim[0]], v[:,plot_dim[1]], alpha=.1, s=1, c=mass_for_classes, cmap='rainbow', rasterized=True)
     
     if is_umap:
         if use_axis:
@@ -85,7 +68,6 @@ def plot_methods(args, v, is_umap=True, use_axis=False):
     
 
 def main(args):
-    mix_info = np.arange(0,100)
     if args.is_cryosparc:    
         if args.method == '3dva':
             path = f"{args.cryosparc_path}/{args.cryosparc_job_num}/{args.cryosparc_job_num}_particles.cs"

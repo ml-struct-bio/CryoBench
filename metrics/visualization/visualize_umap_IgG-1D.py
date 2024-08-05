@@ -19,9 +19,9 @@ def parse_args():
     parser.add_argument("--num_imgs", type=int, help="number of images")
     parser.add_argument("--num_classes", type=int, default=20, help="number of classes")
     parser.add_argument("--num_vols", type=int, default=100, help="number of classes")
-    parser.add_argument('-o', type=os.path.abspath, required=True, help='Output projection stack (.mrcs)')
-    parser.add_argument('--result-path', type=os.path.abspath, required=True, help='umap & latent folder before method name (e.g. /scratch/gpfs/ZHONGE/mj7341/cryosim/results/conf_het_v1/snr01)')
-    parser.add_argument('--cryosparc_path', type=os.path.abspath, default='/scratch/gpfs/ZHONGE/mj7341/cryosparc/CS-new-mask-for-confhet-v1', help='cryosparc folder path')
+    parser.add_argument('-o', type=os.path.abspath, required=True, help='Output folder to save the UMAP plot')
+    parser.add_argument('--result-path', type=os.path.abspath, required=True, help='umap & latent folder before method name (e.g. /scratch/gpfs/ZHONGE/mj7341/CryoBench/results/IgG-1D/snr0.01)')
+    parser.add_argument('--cryosparc_path', type=os.path.abspath, help='cryosparc folder path')
     parser.add_argument("--cryosparc_job_num", type=str, help="cryosparc job number")
 
     return parser

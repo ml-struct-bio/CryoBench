@@ -35,16 +35,16 @@ Python files in `metrics/per_conf_fsc/` contain the code for computing the Per-C
     Sample the CTF from the experimental data, and set the apix and image size
 
     arguments:
-      --input-dir INPUT 	 Directory contains weights, config, z for each method
-      --epoch EPOCH			 Number of training epochs 
-      --apix APIX    		 Path to save the integrated ctf file
-	  -o OUTPUT				 Output directory
-	  --method METHOD		 Type of methods (each method folder name)
-	  --gt-dir GT			 Directory of gt volumes
+      --input-dir INPUT  Directory contains weights, config, z for each method
+      --epoch EPOCH		 Number of training epochs 
+      --apix APIX    	 Path to save the integrated ctf file
+	  -o OUTPUT			 Output directory
+	  --method METHOD	 Type of methods (each method folder name)
+	  --gt-dir GT		 Directory of gt volumes
 	  --mask MASK (optional)
-	  						 Use mask to compute the masked metric
-	 --num-imgs N-IMGS	 	 Number of images per model (structure)
-	 --num-vols N-VOLS		 Number of total reconstructed volumes
+	  					 Use mask to compute the masked metric
+	 --num-imgs N-IMGS	 Number of images per model (structure)
+	 --num-vols N-VOLS	 Number of total reconstructed volumes
 
 </details>
 Example usage to compute Per-Conformation FSC for CryoDRGN.
@@ -61,12 +61,12 @@ Example usage to compute Per-Conformation FSC for CryoDRGN.
     usage for CryoDRGN: python metric/visualization/visualize_umap_IgG-1D.py --method METHOD -o OUTPUT --result-path RESULTS --num_imgs N-IMGS --num_vols N-VOLS
 
     arguments:
-      --method METHOD  		 Method name -- folder name that contains UMAP (e.g. cryodrgn)
-      -o O					 Output folder to save the UMAP plot
+      --method METHOD  	 Method name -- folder name that contains UMAP (e.g. cryodrgn)
+      -o O				 Output folder to save the UMAP plot
 	  --result-path RESULTS
-	  						 Path for the folder contains umap and latent before the method name
-	  --num-imgs N-IMGS		 Number of images per model (structure)
-	  --num-vols N-VOLS		 Number of total reconstructed volumes
+	  					 Path for the folder contains umap and latent before the method name
+	  --num-imgs N-IMGS	 Number of images per model (structure)
+	  --num-vols N-VOLS	 Number of total reconstructed volumes
 
 </details>
 Example usage to visualize UMAP colored by G.T for CryoDRGN.
@@ -89,16 +89,16 @@ First sample CTF from the experimental data using the `sampling_ctf` command:
     Sample the CTF from the experimental data, and set the apix and image size
 
     positional arguments:
-      --ctf-dir CTFS   	 	Directory to save the sampled ctfs
+      --ctf-dir CTFS     Directory to save the sampled ctfs
       --ctf-file EXPERIMENTAL_CTF
-                       	    Experimental ctf that we will sample from
-      -o COMBINED_CTF 	    Path to save the integrated ctf file
+                         Experimental ctf that we will sample from
+      -o COMBINED_CTF    Path to save the integrated ctf file
 
     optional arguments:
-      --N N             	Number of models (default: 100)
-      --apix APIX        	A/PIX (default: 1.5)
-      --img-size         	Size of image (default: 256)
-      --num-ctfs         	Number of CTFs per model (= the number of image) (default:1000)
+      --N N              Number of models (default: 100)
+      --apix APIX        A/PIX (default: 1.5)
+      --img-size         Size of image (default: 256)
+      --num-ctfs         Number of CTFs per model (= the number of image) (default:1000)
 
 </details>
 
@@ -113,14 +113,14 @@ To create cryo-EM images, we rotate a volume, project it to 2D plane, and then t
     usage: python img_form/project3d.py --mrc MRC [-N N] -o PARTICLES --out-pose POSES [--t-extent T] [-b B] [--out-png PNGS] [--apix APIX]
 
     positional arguments:
-      --mrc MRC     	 	Directory of input volumes (.mrc)
-      -o PARTICLES		 	Path to save the output projection stacks
-      --out-pose POSES   	Path to save the output poses
+      --mrc MRC     	 Directory of input volumes (.mrc)
+      -o PARTICLES		 Path to save the output projection stacks
+      --out-pose POSES   Path to save the output poses
 
     optional arguments:
-	  -N N				 	Number of random projections
-      --t-extent T		 	Extent of image translation in pixels (default: +/-(default)s)
-      --b B		         	Minibatch size (default: 100)
+	  -N N				 Number of random projections
+      --t-extent T		 Extent of image translation in pixels (default: +/-(default)s)
+      --b B		         Minibatch size (default: 100)
 
 </details>
 
@@ -159,28 +159,28 @@ Resize your particle images using the `cryodrgn downsample` command:
     Downsample an image stack or volume by clipping fourier frequencies
 
     positional arguments:
-      mrcs               	Input images or volume (.mrc, .mrcs, .star, .cs, or .txt)
+      mrcs               Input images or volume (.mrc, .mrcs, .star, .cs, or .txt)
 
     optional arguments:
-      -h, --help         	Show this help message and exit
-      -D D               	New box size in pixels, must be even
-      -o MRCS            	Output image stack (.mrcs) or volume (.mrc)
-      --is-vol           	Flag if input .mrc is a volume
-      --chunk CHUNK      	Chunksize (in # of images) to split particle stack when
-                         	saving
-      --relion31         	Flag for relion3.1 star format
-      --datadir DATADIR  	Optionally provide path to input .mrcs if loading from a
-                         	.star or .cs file
+      -h, --help         Show this help message and exit
+      -D D               New box size in pixels, must be even
+      -o MRCS            Output image stack (.mrcs) or volume (.mrc)
+      --is-vol           Flag if input .mrc is a volume
+      --chunk CHUNK      Chunksize (in # of images) to split particle stack when
+                         saving
+      --relion31         Flag for relion3.1 star format
+      --datadir DATADIR  Optionally provide path to input .mrcs if loading from a
+                         .star or .cs file
       --max-threads MAX_THREADS
-                         	Maximum number of CPU cores for parallelization (default: 16)
-      --ind PKL          	Filter image stack by these indices
+                         Maximum number of CPU cores for parallelization (default: 16)
+      --ind PKL          Filter image stack by these indices
 
 </details>
 
 We recommend first downsampling images to 128x128 since larger images can take much longer to train:
 
     $ cryodrgn downsample [input particle stack] -D 128 -o particles.128.mrcs
-
+	
 ## References:
 
 For a complete description of the method, see:

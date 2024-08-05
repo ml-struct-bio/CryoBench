@@ -2,19 +2,17 @@
 
 import argparse
 import numpy as np
-import sys, os
-import pickle
+import os
 import glob, re
 import subprocess
 import utils
 log = utils.log 
-from cryodrgn import analysis
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('-o', help='Output directory')
     parser.add_argument("--method", type=str, help="type of methods")
     parser.add_argument("--mask", default=None)
-    parser.add_argument('--gt-dir', help='Directory with gt models')
+    parser.add_argument('--gt-dir', help='Directory of gt volumes')
     parser.add_argument('--overwrite',action='store_true')
     parser.add_argument('--dry-run',action='store_true')
     parser.add_argument('--fast',type=int, default=1)
@@ -67,7 +65,7 @@ def main(args):
         else:
             out_fsc = '{}/{}/per_conf_fsc/fsc_no_mask/{}.txt'.format(args.o, args.method, ii)
         
-        cmd = 'python /scratch/gpfs/ZHONGE/mj7341/cryodrgn/cryodrgn/analysis_scripts/fsc.py {} {}/{}/per_conf_fsc/vols/aligned/vol_{:03d}.mrc -o {} --mask {}'.format(
+        cmd = 'python ../cryodrgn/analysis_scripts/fsc.py {} {}/{}/per_conf_fsc/vols/aligned/vol_{:03d}.mrc -o {} --mask {}'.format(
                 gt_dir[ii], args.o, args.method, ii, out_fsc, args.mask)
         print('cmd:',cmd)
         log(cmd)
@@ -82,7 +80,7 @@ def main(args):
         else:
             out_fsc = '{}/{}/per_conf_fsc/fsc_flipped_no_mask/{}.txt'.format(args.o, args.method, ii)
 
-        cmd = 'python /scratch/gpfs/ZHONGE/mj7341/cryodrgn/cryodrgn/analysis_scripts/fsc.py {} {}/{}/per_conf_fsc/vols/flipped_aligned/vol_{:03d}.mrc -o {} --mask {}'.format(
+        cmd = 'python ../cryodrgn/analysis_scripts/fsc.py {} {}/{}/per_conf_fsc/vols/flipped_aligned/vol_{:03d}.mrc -o {} --mask {}'.format(
                 gt_dir[ii], args.o, args.method, ii, out_fsc, args.mask)
         print('cmd:',cmd)
         log(cmd)

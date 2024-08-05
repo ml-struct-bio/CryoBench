@@ -13,7 +13,7 @@ def parse_args():
     parser.add_argument('--num-imgs', default=1000, type=int)
     parser.add_argument("--method", type=str, help="type of methods")
     parser.add_argument("--mask", default=None)
-    parser.add_argument('--gt-dir', help='Directory of gt models')
+    parser.add_argument('--gt-dir', help='Directory of gt volumes')
     parser.add_argument('--cryosparc-job', help='job number of of cryosparc')
     parser.add_argument('--overwrite',action='store_true')
     parser.add_argument('--dry-run',action='store_true')
@@ -59,7 +59,7 @@ def main(args):
             out_fsc = '{}/{}/per_conf_fsc/fsc/{}.txt'.format(args.o, args.method, ii)
         else:
             out_fsc = '{}/{}/per_conf_fsc/fsc_no_mask/{}.txt'.format(args.o, args.method, ii)
-        cmd = 'python /scratch/gpfs/ZHONGE/mj7341/cryodrgn/cryodrgn/analysis_scripts/fsc.py {} {}/{}/per_conf_fsc/vols/{}_series_000_frame_{:03d}.mrc -o {} --mask {}'.format(
+        cmd = 'python ../cryodrgn/analysis_scripts/fsc.py {} {}/{}/per_conf_fsc/vols/{}_series_000_frame_{:03d}.mrc -o {} --mask {}'.format(
                 gt_dir[ii], args.o, args.method, args.cryosparc_job, ii, out_fsc, args.mask)
         print('cmd:',cmd)
         log(cmd)

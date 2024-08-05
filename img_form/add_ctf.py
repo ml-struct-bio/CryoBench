@@ -19,7 +19,7 @@ log = utils.log
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--particles', help='Input MRC stack')
+    parser.add_argument('--mrcs', help='Input MRC stack')
     parser.add_argument('--snr1', default=1.4, type=float, help='SNR for first pre-CTF application of noise (default: %(default)s)')
     parser.add_argument('--snr2', default=0.05, type=float, help='SNR for second post-CTF application of noise (default: %(default)s)')
     parser.add_argument('--s1', type=float, help='Override --snr1 with gaussian noise stdev')
@@ -176,7 +176,7 @@ def main(args):
     warnexists(args.o)
 
     file_pattern = "*.mrcs"
-    mrcs_files = glob.glob(os.path.join(args.particles, file_pattern))
+    mrcs_files = glob.glob(os.path.join(args.mrcs, file_pattern))
     sorted_mrcs_files = sorted(mrcs_files, key=natural_sort_key)
 
     for idx, mrcs_file in enumerate(sorted_mrcs_files):

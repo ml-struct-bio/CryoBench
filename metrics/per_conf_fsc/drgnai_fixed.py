@@ -2,12 +2,11 @@
 
 import argparse
 import numpy as np
-import sys, os
+import os
 import pickle
 import glob, re
 import subprocess
 import utils
-from cryodrgnai.cryodrgn import mrc
 from cryodrgn import analysis
 log = utils.log 
 
@@ -21,7 +20,7 @@ def parse_args():
     parser.add_argument('--num-imgs', default=1000, type=int)
     parser.add_argument("--method", type=str, help="type of methods")
     parser.add_argument("--mask", default=None)
-    parser.add_argument('--gt-dir', help='Directory with gt models')
+    parser.add_argument('--gt-dir', help='Directory of gt volumes')
     parser.add_argument('--cuda-device', default=0, type=int)
     parser.add_argument('--overwrite',action='store_true')
     parser.add_argument('--dry-run',action='store_true')
@@ -52,7 +51,6 @@ def main(args):
     if not os.path.exists(os.path.join(args.o, args.method, "per_conf_fsc")):
         os.makedirs(os.path.join(args.o, args.method, "per_conf_fsc"))
 
-    # gt = pickle.load(open(args.gt_labels,'rb')).astype(int)
     gt = np.repeat(np.arange(0,args.num_vols),args.num_imgs)
     z_path = os.path.join(args.input_dir, "out", f"conf.{args.epoch}.pkl")
     z = pickle.load(open(z_path,'rb'))

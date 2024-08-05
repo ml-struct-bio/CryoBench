@@ -11,13 +11,13 @@ def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--input-dir', help='dir contains weights, config, z')
     parser.add_argument('-o', help='Output directory')
-    parser.add_argument('--epoch', default=19, type=int)
-    parser.add_argument('--num-vols', default=100, type=int)
+    parser.add_argument('--epoch', default=19, type=int, help="Number of training epochs")
+    parser.add_argument('--num-vols', default=100, type=int, help="Number of total reconstructed volumes")
     parser.add_argument('--apix', default=3.0, type=float)
-    parser.add_argument('--num-imgs', default=1000, type=int)
-    parser.add_argument("--method", type=str, help="type of methods")
-    parser.add_argument("--mask", default=None)
-    parser.add_argument('--gt-dir', help='Directory with gt models')
+    parser.add_argument('--num-imgs', default=1000, type=int, help="Number of images per model (structure)")
+    parser.add_argument("--method", type=str, help="type of methods (Each method folder name)")
+    parser.add_argument("--mask", default=None, help="Use mask to compute the masked metric")
+    parser.add_argument('--gt-dir', help='Directory of gt volumes')
     parser.add_argument('--overwrite',action='store_true')
     parser.add_argument('--dry-run',action='store_true')
     parser.add_argument('--fast',type=int, default=1)
@@ -102,7 +102,7 @@ def main(args):
         else:
             out_fsc = '{}/{}/per_conf_fsc/fsc_no_mask/{}.txt'.format(args.o, args.method, ii)
 
-        cmd = 'python /scratch/gpfs/ZHONGE/mj7341/cryodrgn/cryodrgn/analysis_scripts/fsc.py {} {}/{}/per_conf_fsc/vols/vol_{:03d}.mrc -o {} --mask {}'.format(
+        cmd = 'python ../cryodrgn/analysis_scripts/fsc.py {} {}/{}/per_conf_fsc/vols/vol_{:03d}.mrc -o {} --mask {}'.format(
                 gt_dir[ii], args.o, args.method, ii, out_fsc, args.mask)
         print('cmd:',cmd)
         log(cmd)

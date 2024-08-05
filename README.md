@@ -110,7 +110,7 @@ Resize your particle images using the `cryodrgn downsample` command:
       mrcs               Input images or volume (.mrc, .mrcs, .star, .cs, or .txt)
 
     optional arguments:
-      -h, --help         show this help message and exit
+      -h, --help         Show this help message and exit
       -D D               New box size in pixels, must be even
       -o MRCS            Output image stack (.mrcs) or volume (.mrc)
       --is-vol           Flag if input .mrc is a volume

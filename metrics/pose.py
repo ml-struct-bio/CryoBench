@@ -184,7 +184,7 @@ def main():
     parser.add_argument('--logxtrue', help='Plot x-axis on log scale', action='store_true')
     parser.add_argument('--random_baseline_method', action='store_true', help="For each method's plot panel, put gray background of shuffled residuals as a random baseline")
     parser.add_argument('--no_dashed_median', action='store_false', help='Put verical bar of dashed median')
-    parser.add_argument('--update_test', action='store_true', help='Put verical bar of dashed median')
+    parser.add_argument('--perform_test', action='store_true', help='Run on test data')
     parser.add_argument('--no_dashed_mean', action='store_false', help='Put verical bar of dashed mean')
     parser.add_argument('--n_conformation_batch', type=int, help='n_conformation_batch to average over (in order in input)', default=10**3)
     parser.add_argument('--ticks_fontsize', type=int, help='Ploting label_fontsize', default=15)
@@ -194,6 +194,7 @@ def main():
     parser.add_argument('--plot_output', type=str, help='Method to align poses', default='pose_residual.pdf')
     parser.add_argument('--autobins', help='Default bins', action='store_false')
     parser.add_argument('--do_right_mult_R', help='right (R_gt = R_method R_g) vs left (R_gt = R_g R_method) multiply: ', action='store_true')
+    parser.add_argument('--try_flip', action='store_true', help="Compute rotation corresponding to flip and check if residual lower")
     
 
     
@@ -234,11 +235,44 @@ def main():
             'drgnai-abinit': poses['drgnai_abinit_poses'],
             'cryosparc-3dabinit': cryosparc_3d_mean_poses_3x3,
                                     }
-        if args.update_test:
-            test_methods = {'Rjs_right_global': poses['Rjs_right_global'], 'Rjs_left_global': poses['Rjs_left_global']}
+        original_methods = list(abinit_method.keys())
+
+        def rotations_corresponding_to_flip(rotations):
+            '''
+            Constructs the rotation corresponding to the flip of the input rotations.
+            
+            See Eqs. 1-5 in section D.1 Handedness Ambiguity in cryo-EM on p. 5 of the paper: 
+                Levy, A., Poitevin, F., Martel, J., Nashed, Y., Peck, A., Miolane, N., … Wetzstein, G. (2022). 
+                CryoAI: Amortized Inference of Poses for Ab Initio Reconstruction of 3D Molecular Volumes from Real Cryo-EM Images. 
+                http://doi.org/10.48550/arXiv.2203.08138
+            '''
+
+            angles = R.from_matrix(rotations.reshape(len(rotations),3,3)).as_euler('zxz', degrees=False)
+            angles_from_tilde = angles - np.array([np.pi,0,np.pi])
+            rotations_tilde = R.from_euler('zxz', angles_from_tilde, degrees=False).as_matrix()
+            return rotations_tilde
+
+
+        if args.perform_test:
+
+            # angles = R.from_matrix(poses['Rjs_right_global_tilde'].reshape(len(poses['Rjs_right_global_tilde']),3,3)).as_euler('zxz', degrees=False)
+            # angles_from_tilde = angles - np.array([np.pi,0,np.pi])
+            # Rjs_right_global_from_tilde = R.from_euler('zxz', angles_from_tilde, degrees=False).as_matrix()
+            Rjs_right_global_from_tilde = rotations_corresponding_to_flip(poses['Rjs_right_global_tilde'])
+
+            test_methods = {'Rjs_right_global': poses['Rjs_right_global'], 
+                            'Rjs_left_global': poses['Rjs_left_global'],
+                            'Rjs_right_global_tilde': poses['Rjs_right_global_tilde'],
+                            'Rjs_right_global_from_tilde': Rjs_right_global_from_tilde.reshape(-1,9)}
             abinit_method.update(test_methods)
-            color_map.update({'Rjs_right_global': 'red', 'Rjs_left_global': 'blue'})
-            label_map.update({'Rjs_right_global': 'Rjs_right_global', 'Rjs_left_global': 'Rjs_left_global'})
+            color_map.update({'Rjs_right_global': 'red', 
+                              'Rjs_left_global': 'blue',
+                              'Rjs_right_global_tilde': 'green',
+                              'Rjs_right_global_from_tilde': 'purple'})
+            label_map.update({'Rjs_right_global': 'Rjs_right_global', 
+                              'Rjs_left_global': 'Rjs_left_global',
+                              'Rjs_right_global_tilde': 'Rjs_right_global_tilde',
+                              'Rjs_right_global_from_tilde': 'Rjs_right_global_from_tilde'})
 
 
         fig, axes = plt.subplots(len(abinit_method), 1, figsize=(6, 14))
@@ -251,18 +285,34 @@ def main():
         n_conformation_batch = args.n_conformation_batch
         for idx, (k,v) in enumerate(abinit_method.items()):
             print(k)
-            if args.update_test and k not in test_methods.keys():
+            if args.perform_test and k in original_methods:
                 continue
             rotations_A, rotations_B = poses['gt_poses'].reshape(-1, 3,3), v.reshape(-1, 3,3)
             
             v_poses_correct_frame =  np.zeros_like(v)
             for conf_idx in range(0,len(poses['gt_poses']), n_conformation_batch):
 
+
                 if args.alignment_method == 'median':
                     rotA_hat, rotB_hat, mean_rot, dist2, best_medse = align_rot_median(rotations_A[conf_idx:conf_idx+n_conformation_batch], 
                                                                                        rotations_B[conf_idx:conf_idx+n_conformation_batch], 
                                                                                        N=n_conformation_batch,
                                                                                        do_right_mult_R=args.do_right_mult_R)
+                    
+                    
+                    if args.try_flip:
+                        rotations_B_flipped = rotations_corresponding_to_flip(rotations_B[conf_idx:conf_idx+n_conformation_batch])
+                        rotA_hat_flipped, rotB_hat_flipped, mean_rot_flipped, dist2_flipped, best_medse_flipped = align_rot_median(rotations_A[conf_idx:conf_idx+n_conformation_batch], 
+                                                                                        rotations_B_flipped, 
+                                                                                        N=n_conformation_batch,
+                                                                                        do_right_mult_R=args.do_right_mult_R)
+                        if dist2_flipped.mean() < dist2.mean():
+                            mean_rot = mean_rot_flipped
+                            rotations_B_in_frame_A = rotB_hat_flipped
+                            rotations_B[conf_idx:conf_idx+n_conformation_batch] = rotations_B_flipped
+                            mean_rot = mean_rot_flipped
+                            Warning('flipping axis for conf_idx={conf_idx}')
+                    
                     if args.do_right_mult_R:
                         rotations_B_in_frame_A = np.matmul(rotations_B[conf_idx:conf_idx+n_conformation_batch], mean_rot)
                     else:

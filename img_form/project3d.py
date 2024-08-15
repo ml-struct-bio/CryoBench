@@ -249,7 +249,7 @@ def main(args):
 
         save_mrcs_filename = os.path.join(args.o, filename.split('.')[0]+'_particles.mrcs')
         log('Saving {}'.format(save_mrcs_filename))
-        mrc.write(save_mrcs_filename,imgs.astype(np.float32), Apix=args.apix)
+        mrcfile.write_mrc(save_mrcs_filename,imgs.astype(np.float32))
 
         pose_name = "%03d_poses.pkl" % (idx)
         save_pose_filename = os.path.join(args.out_pose, pose_name)

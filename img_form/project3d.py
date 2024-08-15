@@ -14,12 +14,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.data as data
-from cryodrgnai.cryodrgn import utils
-from cryodrgnai.cryodrgn import mrc
+from cryodrgn import utils
+from cryodrgn import mrcfile
 
-from cryodrgnai.cryodrgn import fft
-from cryodrgnai.cryodrgn import lie_tools
-from cryodrgnai.cryodrgn import so3_grid
+from cryodrgn import lie_tools
+from cryodrgn import so3_grid
 
 import matplotlib
 matplotlib.use('Agg')
@@ -186,7 +185,7 @@ def main(args):
     for idx, mrc_file in enumerate(sorted_mrc_files):
         filename = mrc_file.split('/')[-1]
         print('filename:',filename, mrc_file)
-        vol, _ = mrc.parse_mrc(mrc_file)
+        vol, _ = mrcfile.parse_mrc(mrc_file)
         log('Loaded {} volume'.format(vol.shape))
 
         if args.tilt:

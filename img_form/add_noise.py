@@ -2,18 +2,12 @@
 
 import argparse
 import numpy as np
-import sys, os
+import os
 import matplotlib
 import matplotlib.pyplot as plt
 
 import glob, re
-
-from cryodrgnai.cryodrgn import utils
-from cryodrgnai.cryodrgn import mrc
-from cryodrgnai.cryodrgn import dataset
-from cryodrgnai.cryodrgn.lattice import EvenLattice
-
-log = utils.log
+from cryodrgn import mrcfile
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -21,7 +15,6 @@ def parse_args():
     parser.add_argument('--snr', type=float)
     parser.add_argument('--sigma', type=float)
     parser.add_argument('--num-imgs', type=int, default=1000)
-    parser.add_argument('--apix', type=float, default=1.5, help='apix of input mrc')
     parser.add_argument('--invert', action="store_true", help="invert data (mult by -1)")
     parser.add_argument('--mask', choices=('none','strict','circular'), help='Type of mask for computing signal variance')
     parser.add_argument('--mask-r', type=int, help='Radius for circular mask')
@@ -45,7 +38,7 @@ def mkbasedir(out):
 
 def warnexists(out):
     if os.path.exists(out):
-        log('Warning: {} already exists. Overwriting.'.format(out))
+        print('Warning: {} already exists. Overwriting.'.format(out))
 
 def natural_sort_key(s):
     # Convert the string to a list of text and numbers
@@ -71,21 +64,21 @@ def main(args):
     # load particles
     total_particles = []
     for mrcs_file in sorted_mrcs_files:
-        particles = dataset.load_particles(mrcs_file)
+        particles, _ = mrcfile.parse_mrc(mrcs_file)
         total_particles.append(particles)
     total_particle = np.stack(total_particles, axis=0)
     total_particle = np.reshape(total_particle, (len(total_particle)*args.num_imgs, total_particle.shape[-1], total_particle.shape[-1]))
     print('total_particle:',total_particle.shape) # [100000, 128, 128]
 
-    # log(particles.shape)
+    # print(particles.shape)
     Nimg, D, D = total_particle.shape
     std = np.std(total_particle)
     sigma = std/np.sqrt(args.snr)
     # # add noise
     for mrcs_file in sorted_mrcs_files:
-        particles = dataset.load_particles(mrcs_file)
+        particles, _ = mrcfile.parse_mrc(mrcs_file)
 
-        log('Adding noise with std {}'.format(sigma))
+        print('Adding noise with std {}'.format(sigma))
         particles += np.random.normal(0,sigma,particles.shape)
         if args.invert:
             print('invert data!')
@@ -94,13 +87,13 @@ def main(args):
         # save particles
         outfile = os.path.join(args.o, mrcs_file.split('/')[-1])
         print('outfile:',outfile)
-        mrc.write(outfile, particles.astype(np.float32), Apix=args.apix)
+        mrcfile.write_mrc(outfile, particles.astype(np.float32))
 
         if args.out_png:
             png_file = os.path.join(args.out_png, mrcs_file.split('/')[-1].split('.')[0]+'.png')
             plot_projections(png_file, particles[:9])
 
-    # log('Done')
+    # print('Done')
 
 if __name__ == '__main__':
     main(parse_args().parse_args())

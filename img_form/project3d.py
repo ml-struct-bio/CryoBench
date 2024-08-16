@@ -4,14 +4,13 @@ Generate projections of a 3D volume
 
 import argparse
 import numpy as np
-import sys, os
+import os
 import time
 import pickle
 from scipy.ndimage.fourier import fourier_shift
 import glob, re
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.data as data
 from cryodrgn import utils
@@ -24,8 +23,6 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-log = utils.log
-vlog = utils.vlog
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -36,7 +33,6 @@ def parse_args():
     parser.add_argument('--in-pose', type=os.path.abspath, help='Optionally provide input poses instead of random poses (.pkl)')
     parser.add_argument('-N', type=int, help='Number of random projections')
     parser.add_argument('-b', type=int, default=100, help='Minibatch size (default: %(default)s)')
-    parser.add_argument('--apix', type=float, default=1.5, help='apix of input mrc')
     parser.add_argument('--t-extent', type=float, default=5, help='Extent of image translation in pixels (default: +/-%(default)s)')
     parser.add_argument('--grid', type=int, help='Generate projections on a uniform deterministic grid on SO3. Specify resolution level')
     parser.add_argument('--tilt', type=float, help='Right-handed x-axis tilt offset in degrees')
@@ -135,7 +131,7 @@ def mkbasedir(out):
 
 def warnexists(out):
     if os.path.exists(out):
-        log('Warning: {} already exists. Overwriting.'.format(out))
+        print('Warning: {} already exists. Overwriting.'.format(out))
 
 def translate_img(img, t):
     '''
@@ -163,7 +159,7 @@ def main(args):
         warnexists(out)
 
     if args.in_pose is None and args.t_extent == 0.:
-        log('Not shifting images')
+        print('Not shifting images')
     elif args.in_pose is None:
         assert args.t_extent > 0
 
@@ -172,7 +168,7 @@ def main(args):
         torch.manual_seed(args.seed)
 
     use_cuda = torch.cuda.is_available()
-    log('Use cuda {}'.format(use_cuda))
+    print('Use cuda {}'.format(use_cuda))
     if use_cuda:
         torch.set_default_tensor_type(torch.cuda.FloatTensor)
 
@@ -186,7 +182,7 @@ def main(args):
         filename = mrc_file.split('/')[-1]
         print('filename:',filename, mrc_file)
         vol, _ = mrcfile.parse_mrc(mrc_file)
-        log('Loaded {} volume'.format(vol.shape))
+        print('Loaded {} volume'.format(vol.shape))
 
         if args.tilt:
             theta = args.tilt*np.pi/180
@@ -201,33 +197,33 @@ def main(args):
 
         if args.grid is not None:
             rots = GridRot(args.grid)
-            log('Generating {} rotations at resolution level {}'.format(len(rots), args.grid))
+            print('Generating {} rotations at resolution level {}'.format(len(rots), args.grid))
         elif args.in_pose is not None:
             rots = Poses(args.in_pose)
-            log('Generating {} rotations from {}'.format(len(rots), args.grid))
+            print('Generating {} rotations from {}'.format(len(rots), args.grid))
         else:
-            log('Generating {} random rotations'.format(args.N))
+            print('Generating {} random rotations'.format(args.N))
             rots = RandomRot(args.N)
-        log('Projecting...')
+        print('Projecting...')
         imgs = []
         iterator = data.DataLoader(rots, batch_size=args.b)
         print('iterator:',iterator)
         for i, rot in enumerate(iterator):
-            vlog('Projecting {}/{}'.format((i+1)*len(rot), args.N))
+            print('Projecting {}/{}'.format((i+1)*len(rot), args.N))
             projections = projector.project(rot)
             projections = projections.cpu().numpy()
             imgs.append(projections)
 
         td = time.time()-t1
-        log('Projected {} images in {}s ({}s per image)'.format(rots.N, td, td/rots.N ))
+        print('Projected {} images in {}s ({}s per image)'.format(rots.N, td, td/rots.N ))
         imgs = np.vstack(imgs)
         
         print('args.in_pose:', args.in_pose)
         if args.in_pose is None and args.t_extent:
-            log('Shifting images between +/- {} pixels'.format(args.t_extent))
+            print('Shifting images between +/- {} pixels'.format(args.t_extent))
             trans = np.random.rand(args.N,2)*2*args.t_extent - args.t_extent
         elif args.in_pose is not None:
-            log('Shifting images by input poses')
+            print('Shifting images by input poses')
             D = imgs.shape[-1]
             trans = rots.trans*D # convert to pixels
             trans = -trans[:,::-1] # convention for scipy
@@ -248,12 +244,12 @@ def main(args):
             trans /= D
 
         save_mrcs_filename = os.path.join(args.o, filename.split('.')[0]+'_particles.mrcs')
-        log('Saving {}'.format(save_mrcs_filename))
+        print('Saving {}'.format(save_mrcs_filename))
         mrcfile.write_mrc(save_mrcs_filename,imgs.astype(np.float32))
 
         pose_name = "%03d_poses.pkl" % (idx)
         save_pose_filename = os.path.join(args.out_pose, pose_name)
-        log('Saving {}'.format(save_pose_filename))
+        print('Saving {}'.format(save_pose_filename))
         rots = rots.rots.cpu().numpy()
 
         with open(save_pose_filename,'wb') as f:
@@ -264,9 +260,8 @@ def main(args):
         if args.out_png:
             png_name = "%03d.png" % (idx)
             save_png = os.path.join(args.out_png, png_name)
-            log('Saving {}'.format(save_png))
+            print('Saving {}'.format(save_png))
             plot_projections(save_png, imgs[:9])
 if __name__ == '__main__':
     args = parse_args().parse_args()
-    utils._verbose = args.verbose
     main(args)

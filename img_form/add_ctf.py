@@ -11,11 +11,8 @@ from datetime import datetime as dt
 import matplotlib
 import matplotlib.pyplot as plt
 
-from cryodrgnai.cryodrgn.ctf import compute_ctf_np as compute_ctf
-from cryodrgnai.cryodrgn import mrc
-from cryodrgnai.cryodrgn import utils
-
-log = utils.log
+from cryodrgn.ctf import compute_ctf
+from cryodrgn import mrcfile
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -136,8 +133,8 @@ def normalize(particles):
     mu, std = np.mean(particles), np.std(particles)
     particles -= mu
     particles /= std
-    log('Shifting input images by {}'.format(mu))
-    log('Scaling input images by {}'.format(std))
+    print('Shifting input images by {}'.format(mu))
+    print('Scaling input images by {}'.format(std))
     return particles
 
 def plot_projections(out_png, imgs):
@@ -155,7 +152,7 @@ def mkbasedir(out):
 
 def warnexists(out):
     if os.path.exists(out):
-        log('Warning: {} already exists. Overwriting.'.format(out))
+        print('Warning: {} already exists. Overwriting.'.format(out))
 
 def natural_sort_key(s):
     # Convert the string to a list of text and numbers
@@ -168,8 +165,8 @@ def natural_sort_key(s):
 
 def main(args):
     np.random.seed(args.seed)
-    log('RUN CMD:\n'+' '.join(sys.argv))
-    log('Arguments:\n'+str(args))
+    print('RUN CMD:\n'+' '.join(sys.argv))
+    print('Arguments:\n'+str(args))
     
     mkbasedir(args.o)
     mkbasedir(args.out_png)
@@ -181,12 +178,12 @@ def main(args):
 
     for idx, mrcs_file in enumerate(sorted_mrcs_files):
         filename = mrcs_file.split('/')[-1]
-        particles = mrc.parse_mrc(mrcs_file, lazy=False)[0]
+        particles = mrcfile.parse_mrc(mrcs_file, lazy=False)[0]
         Nimg = len(particles)
         D, D2 = particles[0].shape
         assert D == D2, 'Images must be square'
 
-        log('Loaded {} images'.format(Nimg))
+        print('Loaded {} images'.format(Nimg))
         if args.s1 is not None:
             assert args.s2 is not None, "Need to provide both --s1 and --s2"
 
@@ -198,10 +195,10 @@ def main(args):
         else:
             s1 = args.s1
         if s1 > 0:
-            log('Adding noise with stdev {}'.format(s1))
+            print('Adding noise with stdev {}'.format(s1))
             particles = add_noise(particles, D, s1)
         
-        log('Applying the CTF')
+        print('Applying the CTF')
         ctf, defocus_list = compute_full_ctf(D, Nimg, args, idx)
         particles = add_ctf(particles, ctf)
 
@@ -209,35 +206,35 @@ def main(args):
             std = np.std(particles[mask])
             # cascading of noise processes according to Frank and Al-Ali (1975) & Baxter (2009)
             snr2 = (1+1/args.snr1)/(1/args.snr2-1/args.snr1)
-            log('SNR2 target {} for total snr of {}'.format(snr2, args.snr2))
+            print('SNR2 target {} for total snr of {}'.format(snr2, args.snr2))
             s2 = std/np.sqrt(snr2)
         else:
             s2 = args.s2
         if s2 > 0:
-            log('Adding noise with stdev {}'.format(s2))
+            print('Adding noise with stdev {}'.format(s2))
             particles = add_noise(particles, D, s2)
         
         save_mrcs_filename = os.path.join(args.o, filename.split('.')[0]+'.mrcs')
-        log('Writing image stack to {}'.format(save_mrcs_filename))
-        mrc.write(save_mrcs_filename, particles.astype(np.float32), Apix=args.Apix)
+        print('Writing image stack to {}'.format(save_mrcs_filename))
+        mrcfile.write_mrc(save_mrcs_filename, particles.astype(np.float32))
 
         if args.out_png:
             png_name = "%03d.png" % (idx)
             save_png = os.path.join(args.out_png, png_name)
-            log('Writing png sample to {}'.format(save_png))
+            print('Writing png sample to {}'.format(save_png))
             plot_projections(save_png, particles[:9])
 
         if args.out_star is None:
             star_file = os.path.join(args.o, filename.split('.')[0]+'.star')
             # args.out_star = f'{args.o}.star'
-        log(f'Writing associated .star file to {star_file}')
+        print(f'Writing associated .star file to {star_file}')
         write_starfile(star_file, args.o, Nimg, defocus_list, 
             args.ang, args.kv, args.wgh, args.cs, args.ps)
 
         # if not args.ctf_pkl:
         #     if args.out_pkl is None:
         #         args.out_pkl = f'{args.o}.pkl'
-        #     log(f'Writing CTF params pickle to {args.out_pkl}')
+        #     print(f'Writing CTF params pickle to {args.out_pkl}')
         #     params = np.ones((Nimg, 9), dtype=np.float32)
         #     params[:,0] = D
         #     params[:,1] = args.Apix
@@ -247,11 +244,11 @@ def main(args):
         #     params[:,6] = args.cs
         #     params[:,7] = args.wgh
         #     params[:,8] = args.ps
-        #     log(params[0])
+        #     print(params[0])
         #     with open(args.out_pkl,'wb') as f:
         #         pickle.dump(params,f)
 
-    log('Done')
+    print('Done')
 
 if __name__ == '__main__':
     main(parse_args().parse_args())

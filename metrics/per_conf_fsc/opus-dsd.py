@@ -1,17 +1,17 @@
-'''Skeleton script'''
-
 import argparse
 import numpy as np
 import os
 import glob, re
 import subprocess
 import utils
-from cryodrgnai.cryodrgn import mrc
+from cryodrgn import mrcfile
 import torch
 from cryodrgn import utils
-
-log = utils.log 
 from cryodrgn import analysis
+from cryodrgn.commands_utils.fsc import calculate_fsc
+from cryodrgn.source import ImageSource
+log = utils.log 
+
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--input-dir', help='dir contains weights, config, z')
@@ -102,7 +102,7 @@ def main(args):
     sorted_mrc_files = sorted(mrc_files, key=natural_sort_key)
     
     for mrc_file in sorted_mrc_files:
-        v, header = mrc.parse_mrc(mrc_file)
+        v, header = mrcfile.parse_mrc(mrc_file)
         D = args.D
         x,y,z = v.shape
         assert D >= x
@@ -123,7 +123,7 @@ def main(args):
         xorg -= apix*k
         yorg -= apix*j
         zorg -= apix*i
-        mrc.write(mrc_file, new, Apix=apix, xorg=0.0, yorg=0.0, zorg=0.0)
+        mrc.write_mrc(mrc_file, new)
 
     # Compute FSC cdrgn
     if not os.path.exists('{}/{}/per_conf_fsc/fsc'.format(args.o, args.method)):
@@ -139,15 +139,16 @@ def main(args):
         else:
             out_fsc = '{}/{}/per_conf_fsc/fsc_no_mask/{}.txt'.format(args.o, args.method, ii)
 
-        cmd = 'python ../opusDSD/analysis_scripts/fsc.py {} {}/{}/per_conf_fsc/vols/reference{}.mrc -o {} --mask {}'.format(
-                gt_dir[ii], args.o, args.method, ii, out_fsc, args.mask)
-        print('cmd:',cmd)
-        log(cmd)
+
+        vol_file = '{}/{}/per_conf_fsc/vols/reference{}.mrc'.format(args.o, args.method, ii)
+
+        vol1 = ImageSource.from_file(gt_dir[ii])
+        vol2 = ImageSource.from_file(vol_file)
         if os.path.exists(out_fsc) and not args.overwrite:
             log('FSC exists, skipping...')
         else:
-            if not args.dry_run:
-                subprocess.check_call(cmd, shell=True)
+            fsc_vals = calculate_fsc(vol1.images(), vol2.images(), args.mask)
+            np.savetxt(out_fsc, fsc_vals)
 
     # Summary statistics
     if args.mask is not None:

@@ -4,9 +4,13 @@ import os
 import glob, re
 import subprocess
 import utils
-log = utils.log 
-from cryodrgnai.cryodrgn import mrc
+
 from cryodrgn import analysis
+from cryodrgn import mrcfile
+from cryodrgn.commands_utils.fsc import calculate_fsc
+from cryodrgn.source import ImageSource
+
+log = utils.log 
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -57,16 +61,16 @@ def main(args):
     map_mrc_path = os.path.join(work_dir, f"{args.cryosparc_job}_map.mrc")
     # ref
 
-    v_0 = mrc.parse_mrc(map_mrc_path)[0]
+    v_0 = mrcfile.parse_mrc(map_mrc_path)[0]
     x = np.load(cs_path)
     component_mrc_path = os.path.join(work_dir, f"{args.cryosparc_job}_component_0.mrc")
-    v_k1 = mrc.parse_mrc(component_mrc_path)[0] # [128 128 128]
+    v_k1 = mrcfile.parse_mrc(component_mrc_path)[0] # [128 128 128]
 
     component_mrc_path = os.path.join(work_dir, f"{args.cryosparc_job}_component_1.mrc")
-    v_k2 = mrc.parse_mrc(component_mrc_path)[0] # [128 128 128]
+    v_k2 = mrcfile.parse_mrc(component_mrc_path)[0] # [128 128 128]
 
     component_mrc_path = os.path.join(work_dir, f"{args.cryosparc_job}_component_2.mrc")
-    v_k3 = mrc.parse_mrc(component_mrc_path)[0] # [128 128 128]
+    v_k3 = mrcfile.parse_mrc(component_mrc_path)[0] # [128 128 128]
 
     for i in range(args.num_vols):
 
@@ -93,7 +97,7 @@ def main(args):
         vol = v_0 + (nearest_z1*(v_k1) + nearest_z2*(v_k2) + nearest_z3*(v_k3))
 
         vol_name = "vol_{:03d}.mrc".format(i)
-        mrc.write(f'{args.o}/{args.method}/per_conf_fsc/vols/{vol_name}', vol.astype(np.float32), Apix=args.apix)
+        mrcfile.write_mrc(f'{args.o}/{args.method}/per_conf_fsc/vols/{vol_name}', vol.astype(np.float32))
 
     file_pattern = "*.mrc"
     files = glob.glob(os.path.join(args.gt_dir, file_pattern))
@@ -113,15 +117,15 @@ def main(args):
             out_fsc = '{}/{}/per_conf_fsc/fsc_no_mask/{}.txt'.format(args.o, args.method, ii)
         
         vol_name = "vol_{:03d}.mrc".format(ii)
-        cmd = 'python ../cryodrgn/analysis_scripts/fsc.py {} {}/{}/per_conf_fsc/vols/{} -o {} --mask {}'.format(
-                gt_dir[ii], args.o, args.method, vol_name, out_fsc, args.mask)
-        print('cmd:',cmd)
-        log(cmd)
+        vol_file = '{}/{}/per_conf_fsc/vols/{}'.format(args.o, args.method, vol_name)
+
+        vol1 = ImageSource.from_file(gt_dir[ii])
+        vol2 = ImageSource.from_file(vol_file)
         if os.path.exists(out_fsc) and not args.overwrite:
             log('FSC exists, skipping...')
         else:
-            if not args.dry_run:
-                subprocess.check_call(cmd, shell=True)
+            fsc_vals = calculate_fsc(vol1.images(), vol2.images(), args.mask)
+            np.savetxt(out_fsc, fsc_vals)
 
     # Summary statistics
     if args.mask is not None:

@@ -1,5 +1,3 @@
-'''Skeleton script'''
-
 import argparse
 import numpy as np
 import os
@@ -8,6 +6,9 @@ import glob, re
 import subprocess
 import utils
 from cryodrgn import analysis
+from cryodrgn.commands_utils.fsc import calculate_fsc
+from cryodrgn.source import ImageSource
+
 log = utils.log 
 
 def parse_args():
@@ -74,7 +75,7 @@ def main(args):
 
     file_pattern = "*.mrc"
     files = glob.glob(os.path.join(args.gt_dir, file_pattern))
-    gt_dir = sorted(files, key=natural_sort_key)    # Generate cdrgn volumes
+    gt_dir = sorted(files, key=natural_sort_key)    # Generate volumes
     
     if not os.path.exists('{}/{}/per_conf_fsc/vols'.format(args.o, args.method)):
         os.makedirs('{}/{}/per_conf_fsc/vols'.format(args.o, args.method))
@@ -88,6 +89,46 @@ def main(args):
     log(cmd)
     if not args.dry_run:
         subprocess.check_call(cmd, shell=True)
+
+    # Compute FSC cdrgn
+    if not os.path.exists('{}/{}/per_conf_fsc/fsc'.format(args.o, args.method)):
+        os.makedirs('{}/{}/per_conf_fsc/fsc'.format(args.o, args.method))
+    if not os.path.exists('{}/{}/per_conf_fsc/fsc_no_mask'.format(args.o, args.method)):
+        os.makedirs('{}/{}/per_conf_fsc/fsc_no_mask'.format(args.o, args.method))
+
+    for ii in range(len(gt_dir)):
+        if ii % args.fast != 0:
+            continue
+        if args.mask is not None:
+            out_fsc = '{}/{}/per_conf_fsc/fsc/{}.txt'.format(args.o, args.method, ii)
+        else:
+            out_fsc = '{}/{}/per_conf_fsc/fsc_no_mask/{}.txt'.format(args.o, args.method, ii)
+
+        vol_name = "vol_{:03d}.mrc".format(ii)
+        vol_file = '{}/{}/per_conf_fsc/vols/vol_{:03d}.mrc'.format(args.o, args.method, ii)
+
+        vol1 = ImageSource.from_file(gt_dir[ii])
+        vol2 = ImageSource.from_file(vol_file)
+        if os.path.exists(out_fsc) and not args.overwrite:
+            log('FSC exists, skipping...')
+        else:
+            fsc_vals = calculate_fsc(vol1.images(), vol2.images(), args.mask)
+            np.savetxt(out_fsc, fsc_vals)
+
+    # Summary statistics
+    if args.mask is not None:
+        fsc = [np.loadtxt(x) for x in glob.glob('{}/{}/per_conf_fsc/fsc/*txt'.format(args.o, args.method))]
+    else:
+        fsc = [np.loadtxt(x) for x in glob.glob('{}/{}/per_conf_fsc/fsc_no_mask/*txt'.format(args.o, args.method))]
+
+    fsc143 = [get_cutoff(x,0.143) for x in fsc]
+    fsc5 = [get_cutoff(x,.5) for x in fsc]
+    log('cryoDRGN FSC=0.143')
+    log('Mean: {}'.format(np.mean(fsc143)))
+    log('Median: {}'.format(np.median(fsc143)))
+    log('cryoDRGN FSC=0.5')
+    log('Mean: {}'.format(np.mean(fsc5)))
+    log('Median: {}'.format(np.median(fsc5)))
 
 if __name__ == '__main__':
     main(parse_args().parse_args())

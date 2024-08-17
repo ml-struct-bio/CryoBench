@@ -5,7 +5,6 @@ import pickle
 import glob, re
 import subprocess
 import utils
-
 from cryodrgn import analysis
 from cryodrgn.commands_utils.fsc import calculate_fsc
 from cryodrgn.source import ImageSource

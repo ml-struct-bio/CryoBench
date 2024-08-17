@@ -1,5 +1,3 @@
-'''Skeleton script'''
-
 import argparse
 import numpy as np
 import os
@@ -8,6 +6,9 @@ import glob, re
 import subprocess
 import utils
 from cryodrgn import analysis
+from cryodrgn.commands_utils.fsc import calculate_fsc
+from cryodrgn.source import ImageSource
+
 log = utils.log 
 
 def parse_args():
@@ -25,25 +26,6 @@ def parse_args():
     parser.add_argument('--dry-run',action='store_true')
     parser.add_argument('--fast',type=int, default=1)
     return parser
-
-def parse_csparc_dir(workdir):
-    x = glob.glob('{}/*particles.cs'.format(workdir))
-    y = [xx for xx in x if 'class' not in xx]
-    y = sorted(y)
-    cs_info = y[-1].split('_')
-    it = cs_info[-2]
-    cs_job = cs_info[-3]
-    cs_proj = cs_info[-4]
-    log('Found alignments files: {}'.format(y))
-    log('Using {} {} iteration {}'.format(cs_proj, cs_job, it))
-    return y[-1], cs_proj, cs_job, it
-
-def get_csparc_pi(particles_cs,K):
-    p = np.load(particles_cs)
-    post = [p['alignments_class_{}/class_posterior'.format(i)] for i in range(K)]
-    post = np.asarray(post)
-    post = post.T
-    return post
 
 def get_cutoff(fsc, t):
     w = np.where(fsc[:,1] < t)
@@ -101,24 +83,52 @@ def main(args):
     log(out_zfile)
 
     np.savetxt(out_zfile, nearest_z_array)
-    cmd = 'CUDA_VISIBLE_DEVICES={} drgnai analyze {} --per-image-fsc --z-values-txt {} --epoch {} --invert -o {}/{}/per_conf_fsc/vols --Apix {}'.format(
+    cmd = 'CUDA_VISIBLE_DEVICES={} drgnai analyze {} --volume-metrics --z-values-txt {} --epoch {} --invert -o {}/{}/per_conf_fsc/vols --Apix {}'.format(
                 args.cuda_device, args.input_dir, out_zfile, args.epoch, args.o, args.method, args.apix)
     
     log(cmd)
     if not args.dry_run:
         subprocess.check_call(cmd, shell=True)
     
-    # # # pix change
-    # file_pattern = "*.mrc"
-    # mrc_files = glob.glob(os.path.join(args.o, args.method, "per_conf_fsc", "vols", file_pattern))
-    # sorted_mrc_files = sorted(mrc_files, key=natural_sort_key)
-    # for mrc_file in sorted_mrc_files:
-    #     v, header = mrc.parse_mrc(mrc_file)
-    #     base_filename = os.path.splitext(os.path.basename(mrc_file))[0]
-    #     new_filename = base_filename + ".mrc"
-    #     destination_path = os.path.join(args.o, args.method, "per_conf_fsc", "vols", new_filename)
-    #     mrc.write(destination_path, v, Apix=args.apix, xorg=0.0, yorg=0.0, zorg=0.0)
+    # Compute FSC
+    if not os.path.exists('{}/{}/per_conf_fsc/fsc'.format(args.o, args.method)):
+        os.makedirs('{}/{}/per_conf_fsc/fsc'.format(args.o, args.method))
+    if not os.path.exists('{}/{}/per_conf_fsc/fsc_no_mask'.format(args.o, args.method)):
+        os.makedirs('{}/{}/per_conf_fsc/fsc_no_mask'.format(args.o, args.method))
 
+    for ii in range(len(gt_dir)):
+        if ii % args.fast != 0:
+            continue
+        if args.mask is not None:
+            out_fsc = '{}/{}/per_conf_fsc/fsc/{}.txt'.format(args.o, args.method, ii)
+        else:
+            out_fsc = '{}/{}/per_conf_fsc/fsc_no_mask/{}.txt'.format(args.o, args.method, ii)
+        
+        vol_name = "vol_{:03d}.mrc".format(ii)
+        vol_file = '{}/{}/per_conf_fsc/vols/vol_{:03d}.mrc'.format(args.o, args.method, ii)
+
+        vol1 = ImageSource.from_file(gt_dir[ii])
+        vol2 = ImageSource.from_file(vol_file)
+        if os.path.exists(out_fsc) and not args.overwrite:
+            log('FSC exists, skipping...')
+        else:
+            fsc_vals = calculate_fsc(vol1.images(), vol2.images(), args.mask)
+            np.savetxt(out_fsc, fsc_vals)
+            
+    # Summary statistics
+    if args.mask is not None:
+        fsc = [np.loadtxt(x) for x in glob.glob('{}/{}/per_conf_fsc/fsc/*txt'.format(args.o, args.method))]
+    else:
+        fsc = [np.loadtxt(x) for x in glob.glob('{}/{}/per_conf_fsc/fsc_no_mask/*txt'.format(args.o, args.method))]
+
+    fsc143 = [get_cutoff(x,0.143) for x in fsc]
+    fsc5 = [get_cutoff(x,.5) for x in fsc]
+    log('cryoDRGN FSC=0.143')
+    log('Mean: {}'.format(np.mean(fsc143)))
+    log('Median: {}'.format(np.median(fsc143)))
+    log('cryoDRGN FSC=0.5')
+    log('Mean: {}'.format(np.mean(fsc5)))
+    log('Median: {}'.format(np.median(fsc5)))
 
 if __name__ == '__main__':
     main(parse_args().parse_args())

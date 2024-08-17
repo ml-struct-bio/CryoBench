@@ -85,7 +85,7 @@ def main(args):
     out_zfile = '{}/{}/per_conf_fsc/zfile.txt'.format(args.o, args.method)
     log(out_zfile)
     
-    cmd = 'CUDA_VISIBLE_DEVICES={} python ../opusDSD/cryodrgn/commands/eval_vol.py --load {} -c {} --zfile {} -o {}/{}/per_conf_fsc/vols --Apix {}'.format(
+    cmd = 'CUDA_VISIBLE_DEVICES={} python metrics/methods/opusDSD/cryodrgn/commands/eval_vol.py --load {} -c {} --zfile {} -o {}/{}/per_conf_fsc/vols --Apix {}'.format(
         args.cuda_device, weights, config, out_zfile, args.o, args.method, args.apix)
     
     log(cmd)
@@ -125,7 +125,7 @@ def main(args):
         zorg -= apix*i
         mrc.write_mrc(mrc_file, new)
 
-    # Compute FSC cdrgn
+    # Compute FSC
     if not os.path.exists('{}/{}/per_conf_fsc/fsc'.format(args.o, args.method)):
         os.makedirs('{}/{}/per_conf_fsc/fsc'.format(args.o, args.method))
     if not os.path.exists('{}/{}/per_conf_fsc/fsc_no_mask'.format(args.o, args.method)):
@@ -138,7 +138,6 @@ def main(args):
             out_fsc = '{}/{}/per_conf_fsc/fsc/{}.txt'.format(args.o, args.method, ii)
         else:
             out_fsc = '{}/{}/per_conf_fsc/fsc_no_mask/{}.txt'.format(args.o, args.method, ii)
-
 
         vol_file = '{}/{}/per_conf_fsc/vols/reference{}.mrc'.format(args.o, args.method, ii)
 

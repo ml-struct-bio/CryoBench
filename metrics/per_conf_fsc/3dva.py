@@ -4,7 +4,6 @@ import os
 import glob, re
 import subprocess
 import utils
-
 from cryodrgn import analysis
 from cryodrgn import mrcfile
 from cryodrgn.commands_utils.fsc import calculate_fsc

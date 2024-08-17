@@ -1,5 +1,3 @@
-'''Skeleton script'''
-
 import argparse
 import numpy as np
 import os
@@ -8,6 +6,7 @@ import glob, re
 import subprocess
 import utils
 from cryodrgn import analysis
+
 log = utils.log 
 
 def parse_args():

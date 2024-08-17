@@ -5,8 +5,10 @@ import pickle
 import re
 import subprocess
 import utils
-log = utils.log 
 from cryodrgn import analysis
+
+log = utils.log 
+
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--input-dir', help='dir contains weights, config, z')
@@ -76,7 +78,7 @@ def main(args):
     log(out_zfile)
 
     np.savetxt(out_zfile, nearest_z_array)
-    cmd = 'CUDA_VISIBLE_DEVICES={} drgnai analyze {} --per-image-fsc --z-values-txt {} --epoch {} --invert -o {}/{}/per_conf_fsc/vols --Apix {}'.format(
+    cmd = 'CUDA_VISIBLE_DEVICES={} drgnai analyze {} --volume-metrics --z-values-txt {} --epoch {} --invert -o {}/{}/per_conf_fsc/vols --Apix {}'.format(
                 args.cuda_device, args.input_dir, out_zfile, args.epoch, args.o, args.method, args.apix)
     
     log(cmd)

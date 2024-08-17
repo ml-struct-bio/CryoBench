@@ -5,8 +5,11 @@ import pickle
 import glob, re
 import subprocess
 import utils
-log = utils.log 
 from cryodrgn import analysis
+from cryodrgn.commands_utils.fsc import calculate_fsc
+from cryodrgn.source import ImageSource
+
+log = utils.log 
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -108,15 +111,16 @@ def main(args):
             out_fsc = '{}/{}/per_conf_fsc/fsc/{}.txt'.format(args.o, args.method, ii)
         else:
             out_fsc = '{}/{}/per_conf_fsc/fsc_no_mask/{}.txt'.format(args.o, args.method, ii)
-        cmd = 'python ../cryodrgn/analysis_scripts/fsc.py {} {}/{}/per_conf_fsc/vols/vol_{:03d}.mrc -o {} --mask {}'.format(
-                gt_dir[ii], args.o, args.method, ii, out_fsc, args.mask)
-        print('cmd:',cmd)
-        log(cmd)
+        
+        vol_file = '{}/{}/per_conf_fsc/vols/vol_{:03d}.mrc'.format(args.o, args.method, ii)
+
+        vol1 = ImageSource.from_file(gt_dir[ii])
+        vol2 = ImageSource.from_file(vol_file)
         if os.path.exists(out_fsc) and not args.overwrite:
             log('FSC exists, skipping...')
         else:
-            if not args.dry_run:
-                subprocess.check_call(cmd, shell=True)
+            fsc_vals = calculate_fsc(vol1.images(), vol2.images(), args.mask)
+            np.savetxt(out_fsc, fsc_vals)
 
     # Summary statistics
     fsc = [np.loadtxt(x) for x in glob.glob('{}/{}/per_conf_fsc/fsc/*txt'.format(args.o, args.method))]

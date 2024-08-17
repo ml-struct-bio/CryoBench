@@ -6,6 +6,7 @@ import re
 import subprocess
 import utils
 from cryodrgn import analysis
+
 log = utils.log 
 
 def parse_args():

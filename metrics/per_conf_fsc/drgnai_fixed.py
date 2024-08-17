@@ -83,14 +83,14 @@ def main(args):
     log(out_zfile)
 
     np.savetxt(out_zfile, nearest_z_array)
-    cmd = 'CUDA_VISIBLE_DEVICES={} drgnai analyze {} --per-image-fsc --z-values-txt {} --epoch {} --invert -o {}/{}/per_conf_fsc/vols --Apix {}'.format(
+    cmd = 'CUDA_VISIBLE_DEVICES={} drgnai analyze {} --volume-metrics --z-values-txt {} --epoch {} --invert -o {}/{}/per_conf_fsc/vols --Apix {}'.format(
                 args.cuda_device, args.input_dir, out_zfile, args.epoch, args.o, args.method, args.apix)
     
     log(cmd)
     if not args.dry_run:
         subprocess.check_call(cmd, shell=True)
 
-    # Compute FSC cdrgn
+    # Compute FSC
     if not os.path.exists('{}/{}/per_conf_fsc/fsc'.format(args.o, args.method)):
         os.makedirs('{}/{}/per_conf_fsc/fsc'.format(args.o, args.method))
     if not os.path.exists('{}/{}/per_conf_fsc/fsc_no_mask'.format(args.o, args.method)):

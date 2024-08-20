@@ -5,18 +5,19 @@ Corrupt particle images with structural noise, CTF, digital/shot noise
 import argparse
 import numpy as np
 import sys, os
-import re, glob
 import pickle
 from datetime import datetime as dt
-import matplotlib
 import matplotlib.pyplot as plt
 
-from cryodrgn.ctf import compute_ctf
+from cryodrgn.ctf import compute_ctf_np as compute_ctf
 from cryodrgn import mrcfile
+from cryodrgn import utils
+
+log = utils.log
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--mrcs', help='Input MRC stack')
+    parser.add_argument('particles', help='Input MRC stack')
     parser.add_argument('--snr1', default=1.4, type=float, help='SNR for first pre-CTF application of noise (default: %(default)s)')
     parser.add_argument('--snr2', default=0.05, type=float, help='SNR for second post-CTF application of noise (default: %(default)s)')
     parser.add_argument('--s1', type=float, help='Override --snr1 with gaussian noise stdev')
@@ -85,14 +86,12 @@ def add_noise(particles, D, sigma):
     particles += np.random.normal(0,sigma,particles.shape)
     return particles
 
-def compute_full_ctf(D, Nimg, args, idx):
+def compute_full_ctf(D, Nimg, args):
     freqs = np.arange(-D/2,D/2)/(args.Apix*D)
     x0, x1 = np.meshgrid(freqs,freqs)
     freqs = np.stack([x0.ravel(),x1.ravel()],axis=1)
     if args.ctf_pkl: # todo: refator
-        ctf_name = f"ctfs_{idx}.pkl"
-        ctf_filename = os.path.join(args.ctf_pkl, ctf_name)
-        params = pickle.load(open(ctf_filename,'rb'))
+        params = pickle.load(open(args.ctf_pkl,'rb'))
         assert len(params) == Nimg
         params = params[:,2:]
         df = params[:,:2]
@@ -133,122 +132,104 @@ def normalize(particles):
     mu, std = np.mean(particles), np.std(particles)
     particles -= mu
     particles /= std
-    print('Shifting input images by {}'.format(mu))
-    print('Scaling input images by {}'.format(std))
+    log('Shifting input images by {}'.format(mu))
+    log('Scaling input images by {}'.format(std))
     return particles
 
 def plot_projections(out_png, imgs):
-    matplotlib.use('Agg')
     fig, axes = plt.subplots(nrows=3, ncols=3, figsize=(10,10))
     axes = axes.ravel()
     for i in range(min(len(imgs),9)):
         axes[i].imshow(imgs[i])
     plt.savefig(out_png)
-    plt.close()
 
 def mkbasedir(out):
-    if not os.path.exists(out):
-        os.makedirs(out)
+    if not os.path.exists(os.path.dirname(out)):
+        os.makedirs(os.path.dirname(out))
 
 def warnexists(out):
     if os.path.exists(out):
-        print('Warning: {} already exists. Overwriting.'.format(out))
-
-def natural_sort_key(s):
-    # Convert the string to a list of text and numbers
-    parts = re.split('([0-9]+)', s)
-    
-    # Convert numeric parts to integers for proper numeric comparison
-    parts[1::2] = map(int, parts[1::2])
-    
-    return parts
+        log('Warning: {} already exists. Overwriting.'.format(out))
 
 def main(args):
     np.random.seed(args.seed)
-    print('RUN CMD:\n'+' '.join(sys.argv))
-    print('Arguments:\n'+str(args))
-    
+    log('RUN CMD:\n'+' '.join(sys.argv))
+    log('Arguments:\n'+str(args))
+    particles = mrcfile.parse_mrc(args.particles, lazy=False)[0]
+    Nimg = len(particles)
+    D, D2 = particles[0].shape
+    assert D == D2, 'Images must be square'
+
+    log('Loaded {} images'.format(Nimg))
+
     mkbasedir(args.o)
-    mkbasedir(args.out_png)
     warnexists(args.o)
 
-    file_pattern = "*.mrcs"
-    mrcs_files = glob.glob(os.path.join(args.mrcs, file_pattern))
-    sorted_mrcs_files = sorted(mrcs_files, key=natural_sort_key)
+    #if not args.rad: args.rad = D/2
+    #x0, x1 = np.meshgrid(np.arange(-D/2,D/2),np.arange(-D/2,D/2))
+    #mask = np.where((x0**2 + x1**2)**.5 < args.rad)
 
-    for idx, mrcs_file in enumerate(sorted_mrcs_files):
-        filename = mrcs_file.split('/')[-1]
-        particles = mrcfile.parse_mrc(mrcs_file, lazy=False)[0]
-        Nimg = len(particles)
-        D, D2 = particles[0].shape
-        assert D == D2, 'Images must be square'
+    if args.s1 is not None:
+        assert args.s2 is not None, "Need to provide both --s1 and --s2"
 
-        print('Loaded {} images'.format(Nimg))
-        if args.s1 is not None:
-            assert args.s2 is not None, "Need to provide both --s1 and --s2"
+    if args.s1 is None:
+        Nstd = min(1000,Nimg)
+        mask = np.where(particles[:Nstd]>0)
+        std = np.std(particles[mask])
+        s1 = std/np.sqrt(args.snr1)
+    else:
+        s1 = args.s1
+    if s1 > 0:
+        log('Adding noise with stdev {}'.format(s1))
+        particles = add_noise(particles, D, s1)
+    
+    log('Applying the CTF')
+    ctf, defocus_list = compute_full_ctf(D, Nimg, args)
+    particles = add_ctf(particles, ctf)
 
-        if args.s1 is None:
-            Nstd = min(1000,Nimg)
-            mask = np.where(particles[:Nstd]>0)
-            std = np.std(particles[mask])
-            s1 = std/np.sqrt(args.snr1)
-        else:
-            s1 = args.s1
-        if s1 > 0:
-            print('Adding noise with stdev {}'.format(s1))
-            particles = add_noise(particles, D, s1)
-        
-        print('Applying the CTF')
-        ctf, defocus_list = compute_full_ctf(D, Nimg, args, idx)
-        particles = add_ctf(particles, ctf)
+    if args.s2 is None:
+        std = np.std(particles[mask])
+        # cascading of noise processes according to Frank and Al-Ali (1975) & Baxter (2009)
+        snr2 = (1+1/args.snr1)/(1/args.snr2-1/args.snr1)
+        log('SNR2 target {} for total snr of {}'.format(snr2, args.snr2))
+        s2 = std/np.sqrt(snr2)
+    else:
+        s2 = args.s2
+    if s2 > 0:
+        log('Adding noise with stdev {}'.format(s2))
+        particles = add_noise(particles, D, s2)
+    
+    log('Writing image stack to {}'.format(args.o))
+    mrcfile.write_mrc(args.o, particles.astype(np.float32))
 
-        if args.s2 is None:
-            std = np.std(particles[mask])
-            # cascading of noise processes according to Frank and Al-Ali (1975) & Baxter (2009)
-            snr2 = (1+1/args.snr1)/(1/args.snr2-1/args.snr1)
-            print('SNR2 target {} for total snr of {}'.format(snr2, args.snr2))
-            s2 = std/np.sqrt(snr2)
-        else:
-            s2 = args.s2
-        if s2 > 0:
-            print('Adding noise with stdev {}'.format(s2))
-            particles = add_noise(particles, D, s2)
-        
-        save_mrcs_filename = os.path.join(args.o, filename.split('.')[0]+'.mrcs')
-        print('Writing image stack to {}'.format(save_mrcs_filename))
-        mrcfile.write_mrc(save_mrcs_filename, particles.astype(np.float32))
+    log('Writing png sample to {}'.format(args.out_png))
+    if args.out_png:
+        plot_projections(args.out_png, particles[:9])
 
-        if args.out_png:
-            png_name = "%03d.png" % (idx)
-            save_png = os.path.join(args.out_png, png_name)
-            print('Writing png sample to {}'.format(save_png))
-            plot_projections(save_png, particles[:9])
+    if args.out_star is None:
+        args.out_star = f'{args.o}.star'
+    log(f'Writing associated .star file to {args.out_star}')
+    write_starfile(args.out_star, args.o, Nimg, defocus_list, 
+        args.ang, args.kv, args.wgh, args.cs, args.ps)
 
-        if args.out_star is None:
-            star_file = os.path.join(args.o, filename.split('.')[0]+'.star')
-            # args.out_star = f'{args.o}.star'
-        print(f'Writing associated .star file to {star_file}')
-        write_starfile(star_file, args.o, Nimg, defocus_list, 
-            args.ang, args.kv, args.wgh, args.cs, args.ps)
+    if not args.ctf_pkl:
+        if args.out_pkl is None:
+            args.out_pkl = f'{args.o}.pkl'
+        log(f'Writing CTF params pickle to {args.out_pkl}')
+        params = np.ones((Nimg, 9), dtype=np.float32)
+        params[:,0] = D
+        params[:,1] = args.Apix
+        params[:,2:4] = defocus_list
+        params[:,4] = args.ang
+        params[:,5] = args.kv
+        params[:,6] = args.cs
+        params[:,7] = args.wgh
+        params[:,8] = args.ps
+        log(params[0])
+        with open(args.out_pkl,'wb') as f:
+            pickle.dump(params,f)
 
-        # if not args.ctf_pkl:
-        #     if args.out_pkl is None:
-        #         args.out_pkl = f'{args.o}.pkl'
-        #     print(f'Writing CTF params pickle to {args.out_pkl}')
-        #     params = np.ones((Nimg, 9), dtype=np.float32)
-        #     params[:,0] = D
-        #     params[:,1] = args.Apix
-        #     params[:,2:4] = defocus_list
-        #     params[:,4] = args.ang
-        #     params[:,5] = args.kv
-        #     params[:,6] = args.cs
-        #     params[:,7] = args.wgh
-        #     params[:,8] = args.ps
-        #     print(params[0])
-        #     with open(args.out_pkl,'wb') as f:
-        #         pickle.dump(params,f)
-
-    print('Done')
+    log('Done')
 
 if __name__ == '__main__':
     main(parse_args().parse_args())

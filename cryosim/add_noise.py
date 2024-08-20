@@ -13,7 +13,7 @@ log = utils.log
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('mrcs', help='Input particles (.mrcs, .star, or .txt)')
+    parser.add_argument('mrcs', nargs='+', help='Input particles (.mrcs, .star, or .txt)')
     parser.add_argument('--snr', type=float)
     parser.add_argument('--sigma', type=float)
     parser.add_argument('--invert', action="store_true", help="invert data (mult by -1)")

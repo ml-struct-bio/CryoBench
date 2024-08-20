@@ -28,7 +28,7 @@ vlog = utils.vlog
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('mrc', help='Input volume')
+    parser.add_argument('mrc', nargs='+', help='Input volume')
     parser.add_argument('-o', type=os.path.abspath, required=True, help='Output projection stack (.mrcs)')
     parser.add_argument('--out-pose', type=os.path.abspath, required=True, help='Output poses (.pkl)')
     parser.add_argument('--out-png', type=os.path.abspath, help='Montage of first 9 projections')

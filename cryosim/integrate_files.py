@@ -7,7 +7,7 @@ import argparse
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('input', type=os.path.abspath, required=True, help='input files (list) to be combined')
+    parser.add_argument('input', nargs='+', type=os.path.abspath, help='input files (list) to be combined')
     parser.add_argument('-o', type=os.path.abspath, required=True, help='path to save integrated file')
     return parser
 

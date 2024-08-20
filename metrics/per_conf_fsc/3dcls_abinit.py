@@ -11,16 +11,14 @@ log = utils.log
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--input-dir', help='dir contains 3D Class abinit output volumes')
+    parser.add_argument('input-dir', help='dir contains 3D Class abinit output volumes')
     parser.add_argument('-o', help='Output directory')
-    parser.add_argument('--num-vols', default=100, type=int)
     parser.add_argument('--num-imgs', default=1000, type=int)
     parser.add_argument('--num-classes', default=20, type=int)
     parser.add_argument("--method", type=str, help="type of methods")
     parser.add_argument("--mask", default=None)
     parser.add_argument('--gt-dir', help='Directory of gt volumes')
     parser.add_argument('--cryosparc-dir', help='Directory of cryosparc')
-    parser.add_argument('--cryosparc-job', help='job number of of cryosparc')
     parser.add_argument('--overwrite',action='store_true')
     parser.add_argument('--dry-run',action='store_true')
     parser.add_argument('--fast',type=int, default=1)
@@ -49,9 +47,18 @@ def main(args):
     if not os.path.exists(os.path.join(args.o, args.method, "per_conf_fsc")):
         os.makedirs(os.path.join(args.o, args.method, "per_conf_fsc"))
     
+    file_pattern = "*.mrc"
+    files = glob.glob(os.path.join(args.input_dir, 'cls_'+ str(args.num_classes) ,file_pattern))
+    pred_dir = sorted(files, key=natural_sort_key)
+    print('pred_dir[0]:',pred_dir[0])
+    cryosparc_num = pred_dir[0].split('/')[-1].split('.')[0].split('_')[3]
+    cryosparc_job = pred_dir[0].split('/')[-1].split('.')[0].split('_')[0]
+    print('cryosparc_num:',cryosparc_num)
+    print('cryosparc_job:',cryosparc_job)
+
     lst = []
     for cls in range(args.num_classes):
-        cs = np.load('{}/{}/{}_class_{:02d}_final_particles.cs'.format(args.cryosparc_dir, args.cryosparc_job, args.cryosparc_job, cls))
+        cs = np.load('{}/{}/{}_class_{:02d}_final_particles.cs'.format(args.cryosparc_dir, cryosparc_job, cryosparc_job, cls))
         cs_new = cs[::args.num_imgs]
         print(f"class {cls}: {len(cs_new)}")
         for i in range(len(cs_new)):
@@ -81,7 +88,7 @@ def main(args):
         else:
             out_fsc = '{}/{}/per_conf_fsc/fsc_no_mask/{}.txt'.format(args.o, args.method, ii)
 
-        vol_file = '{}/cls_{}/aligned/{}_class_{:02d}_final_volume.mrc'.format(args.input_dir, args.num_classes, args.cryosparc_job, lst[ii][0])
+        vol_file = '{}/cls_{}/aligned/{}_class_{:02d}_final_volume.mrc'.format(args.input_dir, args.num_classes, cryosparc_job, lst[ii][0])
 
         vol1 = mrcfile.parse_mrc(gt_dir[ii])[0]
         vol2 = mrcfile.parse_mrc(vol_file)[0]
@@ -98,7 +105,7 @@ def main(args):
         else:
             out_fsc = '{}/{}/per_conf_fsc/fsc_flipped_no_mask/{}.txt'.format(args.o, args.method, ii)
 
-        vol_file = '{}/cls_{}/flipped_aligned/{}_class_{:02d}_final_volume.mrc'.format(args.input_dir, args.num_classes, args.cryosparc_job, lst[ii][0])
+        vol_file = '{}/cls_{}/flipped_aligned/{}_class_{:02d}_final_volume.mrc'.format(args.input_dir, args.num_classes, cryosparc_job, lst[ii][0])
 
         vol1 = mrcfile.parse_mrc(gt_dir[ii])[0]
         vol2 = mrcfile.parse_mrc(vol_file)[0]

@@ -11,9 +11,8 @@ log = utils.log
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--input-dir', help='dir contains 3D Class output volumes')
+    parser.add_argument('input-dir', help='dir contains 3D Class output volumes')
     parser.add_argument('-o', help='Output directory')
-    parser.add_argument('--num_vols', default=100, type=int)
     parser.add_argument('--num-classes', default=10, type=int)
     parser.add_argument('--num-imgs', default=1000, type=int)
     parser.add_argument("--method", type=str, help="type of methods")
@@ -49,7 +48,7 @@ def main(args):
         os.makedirs(os.path.join(args.o, args.method, "per_conf_fsc"))
 
     file_pattern = "*.mrc"
-    files = glob.glob(os.path.join(args.input_dir, 'cls_'+ str(args.num_classes) ,file_pattern))
+    files = glob.glob(os.path.join(args.input_dir, file_pattern))
     pred_dir = sorted(files, key=natural_sort_key)
     print('pred_dir[0]:',pred_dir[0])
     cryosparc_num = pred_dir[0].split('/')[-1].split('.')[0].split('_')[3]

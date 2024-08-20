@@ -13,9 +13,9 @@ log = utils.log
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--input-dir', help='dir contains weights, config, z')
+    parser.add_argument('input-dir', help='dir contains weights, config, z')
     parser.add_argument('-o', help='Output directory')
-    parser.add_argument('--apix', default=3.0)
+    parser.add_argument('--Apix', default=3.0)
     parser.add_argument('--epoch', default=100, type=int)
     parser.add_argument('--num-vols', default=100, type=int)
     parser.add_argument('--num-imgs', default=1000, type=int)
@@ -84,7 +84,7 @@ def main(args):
 
     np.savetxt(out_zfile, nearest_z_array)
     cmd = 'CUDA_VISIBLE_DEVICES={} drgnai analyze {} --volume-metrics --z-values-txt {} --epoch {} --invert -o {}/{}/per_conf_fsc/vols --Apix {}'.format(
-                args.cuda_device, args.input_dir, out_zfile, args.epoch, args.o, args.method, args.apix)
+                args.cuda_device, args.input_dir, out_zfile, args.epoch, args.o, args.method, args.Apix)
     
     log(cmd)
     if not args.dry_run:

@@ -10,7 +10,7 @@ def parse_args():
     parser.add_argument("--method", help="Input")
     parser.add_argument("--flip", default="False", help="Input")
     parser.add_argument("--mask", default="True", help="Input")
-    parser.add_argument("--apix", type=float, default=3.0, help="pixel size")
+    parser.add_argument("--Apix", type=float, default=3.0, help="pixel size")
     return parser
 
 def natural_sort_key(s):
@@ -37,7 +37,7 @@ def main(args):
 
     fsc_files = sorted(fsc_files, key=natural_sort_key)
     freq = np.arange(1, 6) * 0.1
-    res = ["1/{:.1f}".format(val) for val in ((1 / freq) * args.apix)]
+    res = ["1/{:.1f}".format(val) for val in ((1 / freq) * args.Apix)]
     res_text = res
     for i, fsc_file in enumerate(fsc_files):
         fsc = np.loadtxt(fsc_file)

@@ -12,8 +12,6 @@ log = utils.log
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('-o', help='Output directory')
-    parser.add_argument('--num-vols', default=100, type=int)
-    parser.add_argument('--num-imgs', default=1000, type=int)
     parser.add_argument("--method", type=str, help="type of methods")
     parser.add_argument("--mask", default=None)
     parser.add_argument('--gt-dir', help='Directory of gt volumes')

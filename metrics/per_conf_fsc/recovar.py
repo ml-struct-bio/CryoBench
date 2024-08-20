@@ -11,7 +11,7 @@ log = utils.log
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--input-dir', help='dir contains vols')
+    parser.add_argument('input-dir', help='dir contains vols')
     parser.add_argument('-o', help='Output directory')
     parser.add_argument("--method", type=str, help="type of methods")
     parser.add_argument("--mask", default=None)

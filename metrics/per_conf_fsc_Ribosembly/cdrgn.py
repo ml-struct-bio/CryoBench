@@ -13,11 +13,11 @@ log = utils.log
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--input-dir', help='dir contains weights, config, z')
+    parser.add_argument('input-dir', help='dir contains weights, config, z')
     parser.add_argument('-o', help='Output directory')
     parser.add_argument('--epoch', default=19, type=int)
     parser.add_argument('--num-vols', default=16, type=int)
-    parser.add_argument('--apix', default=3.0, type=float)
+    parser.add_argument('--Apix', default=3.0, type=float)
     parser.add_argument("--method", type=str, help="type of methods")
     parser.add_argument("--mask", default=None)
     parser.add_argument('--gt-dir', help='Directory of gt volumes')
@@ -89,7 +89,7 @@ def main(args):
     out_zfile = '{}/{}/per_conf_fsc/zfile.txt'.format(args.o, args.method)
     log(out_zfile)
     cmd = 'CUDA_VISIBLE_DEVICES={} cryodrgn eval_vol {} -c {} --zfile {} -o {}/{}/per_conf_fsc/vols --Apix {}'.format(
-        args.cuda_device, weights, config, out_zfile, args.o, args.method, args.apix)
+        args.cuda_device, weights, config, out_zfile, args.o, args.method, args.Apix)
     
     log(cmd)
     if os.path.exists(out_zfile) and not args.overwrite:

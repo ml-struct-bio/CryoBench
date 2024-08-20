@@ -13,11 +13,11 @@ log = utils.log
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--input-dir', help='dir contains weights, config, z')
+    parser.add_argument('input-dir', help='dir contains weights, config, z')
     parser.add_argument('-o', help='Output directory')
     parser.add_argument('--epoch', default=19, type=int, help="Number of training epochs")
     parser.add_argument('--num-vols', default=100, type=int, help="Number of total reconstructed volumes")
-    parser.add_argument('--apix', default=3.0, type=float)
+    parser.add_argument('--Apix', default=3.0, type=float)
     parser.add_argument('--num-imgs', default=1000, type=int, help="Number of images per model (structure)")
     parser.add_argument("--method", type=str, help="type of methods (Each method folder name)")
     parser.add_argument("--mask", default=None, help="Use mask to compute the masked metric")
@@ -83,7 +83,7 @@ def main(args):
     out_zfile = '{}/{}/per_conf_fsc/zfile.txt'.format(args.o, args.method)
     log(out_zfile)
     cmd = 'CUDA_VISIBLE_DEVICES={} cryodrgn eval_vol {} -c {} --zfile {} -o {}/{}/per_conf_fsc/vols --Apix {}'.format(
-        args.cuda_device, weights, config, out_zfile, args.o, args.method, args.apix)
+        args.cuda_device, weights, config, out_zfile, args.o, args.method, args.Apix)
     
     log(cmd)
     if os.path.exists(out_zfile) and not args.overwrite:

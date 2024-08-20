@@ -141,8 +141,8 @@ def main(args):
 
         vol_file = '{}/{}/per_conf_fsc/vols/reference{}.mrc'.format(args.o, args.method, ii)
 
-        vol1 = ImageSource.from_file(gt_dir[ii])
-        vol2 = ImageSource.from_file(vol_file)
+        vol1 = mrcfile.parse_mrc(gt_dir[ii])[0]
+        vol2 = mrcfile.parse_mrc(vol_file)[0]
         if os.path.exists(out_fsc) and not args.overwrite:
             log('FSC exists, skipping...')
         else:

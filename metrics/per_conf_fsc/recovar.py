@@ -5,7 +5,7 @@ import glob, re
 import subprocess
 import utils
 from cryodrgn.commands_utils.fsc import calculate_fsc
-from cryodrgn.source import ImageSource
+from cryodrgn import mrcfile
 
 log = utils.log 
 
@@ -62,8 +62,8 @@ def main(args):
             out_fsc = '{}/{}/per_conf_fsc/fsc_no_mask/{}.txt'.format(args.o, args.method, ii)
         vol_file = "{}/vol{:03d}/ml_optimized_locres_filtered.mrc".format(args.input_dir, ii)
 
-        vol1 = ImageSource.from_file(gt_dir[ii])
-        vol2 = ImageSource.from_file(vol_file)
+        vol1 = mrcfile.parse_mrc(gt_dir[ii])[0]
+        vol2 = mrcfile.parse_mrc(vol_file)[0]
         if os.path.exists(out_fsc) and not args.overwrite:
             log('FSC exists, skipping...')
         else:

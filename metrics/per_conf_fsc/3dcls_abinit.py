@@ -5,7 +5,7 @@ import glob, re
 import subprocess
 import utils
 from cryodrgn.commands_utils.fsc import calculate_fsc
-from cryodrgn.source import ImageSource
+from cryodrgn import mrcfile
 
 log = utils.log 
 
@@ -83,8 +83,9 @@ def main(args):
 
         vol_file = '{}/cls_{}/aligned/{}_class_{:02d}_final_volume.mrc'.format(args.input_dir, args.num_classes, args.cryosparc_job, lst[ii][0])
 
-        vol1 = ImageSource.from_file(gt_dir[ii])
-        vol2 = ImageSource.from_file(vol_file)
+        vol1 = mrcfile.parse_mrc(gt_dir[ii])[0]
+        vol2 = mrcfile.parse_mrc(vol_file)[0]
+
         if os.path.exists(out_fsc) and not args.overwrite:
             log('FSC exists, skipping...')
         else:
@@ -99,8 +100,8 @@ def main(args):
 
         vol_file = '{}/cls_{}/flipped_aligned/{}_class_{:02d}_final_volume.mrc'.format(args.input_dir, args.num_classes, args.cryosparc_job, lst[ii][0])
 
-        vol1 = ImageSource.from_file(gt_dir[ii])
-        vol2 = ImageSource.from_file(vol_file)
+        vol1 = mrcfile.parse_mrc(gt_dir[ii])[0]
+        vol2 = mrcfile.parse_mrc(vol_file)[0]
         if os.path.exists(out_fsc) and not args.overwrite:
             log('FSC exists, skipping...')
         else:

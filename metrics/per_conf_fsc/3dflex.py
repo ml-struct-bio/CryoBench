@@ -5,7 +5,7 @@ import glob, re
 import subprocess
 import utils
 from cryodrgn.commands_utils.fsc import calculate_fsc
-from cryodrgn.source import ImageSource
+from cryodrgn import mrcfile
 
 log = utils.log 
 
@@ -65,8 +65,8 @@ def main(args):
 
         vol_file = '{}/{}/per_conf_fsc/vols/{}_series_000_frame_{:03d}.mrc'.format(args.o, args.method, args.cryosparc_job, ii)
 
-        vol1 = ImageSource.from_file(gt_dir[ii])
-        vol2 = ImageSource.from_file(vol_file)
+        vol1 = mrcfile.parse_mrc(gt_dir[ii])[0]
+        vol2 = mrcfile.parse_mrc(vol_file)[0]
         if os.path.exists(out_fsc) and not args.overwrite:
             log('FSC exists, skipping...')
         else:

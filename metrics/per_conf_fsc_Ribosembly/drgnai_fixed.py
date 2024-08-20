@@ -7,7 +7,7 @@ import subprocess
 import utils
 from cryodrgn import analysis
 from cryodrgn.commands_utils.fsc import calculate_fsc
-from cryodrgn.source import ImageSource
+from cryodrgn import mrcfile
 
 log = utils.log 
 
@@ -51,6 +51,10 @@ def main(args):
     if not os.path.exists(os.path.join(args.o, args.method, "per_conf_fsc")):
         os.makedirs(os.path.join(args.o, args.method, "per_conf_fsc"))
     
+    file_pattern = "*.mrc"
+    files = glob.glob(os.path.join(args.gt_dir, file_pattern))
+    gt_dir = sorted(files, key=natural_sort_key)
+
     z_path = os.path.join(args.input_dir, "out", f"conf.{args.epoch}.pkl")    
     
     # Ribosembly number of images per structure (total 16 structures)
@@ -104,11 +108,10 @@ def main(args):
         else:
             out_fsc = '{}/{}/per_conf_fsc/fsc_no_mask/{}.txt'.format(args.o, args.method, ii)
         
-        vol_name = "vol_{:03d}.mrc".format(ii)
         vol_file = '{}/{}/per_conf_fsc/vols/vol_{:03d}.mrc'.format(args.o, args.method, ii)
 
-        vol1 = ImageSource.from_file(gt_dir[ii])
-        vol2 = ImageSource.from_file(vol_file)
+        vol1 = mrcfile.parse_mrc(gt_dir[ii])[0]
+        vol2 = mrcfile.parse_mrc(vol_file)[0]
         if os.path.exists(out_fsc) and not args.overwrite:
             log('FSC exists, skipping...')
         else:

@@ -36,9 +36,8 @@
 ```
 
 ### Example usage (3DFlex):
+* Get 3DFlex reconstructed volumes by using `3dflex_per-conf-fsc.ipynb` before computing FSC, then move the generated volumes to `output/3dflex/per_conf_fsc/vols/`.
 ```
-  * Get 3DFlex reconstructed volumes by using `3dflex_per-conf-fsc.ipynb` before computing FSC, then move the generated volumes to `output/3dflex/per_conf_fsc/vols/`
-
   $ conda activate cryodrgn
   
   # Compute per conformation FSC
@@ -77,8 +76,8 @@
 ```
 
 ### Example usage (3D Class):
+* Move each class volume to `results/3dcls` before computing metric.
 ```
-  * Move each class volume to `results/3dcls`
   $ conda activate cryodrgn
   
   # Compute per conformation FSC

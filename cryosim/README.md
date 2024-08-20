@@ -6,7 +6,7 @@ This repository is built upon https://github.com/ml-struct-bio/cryosim/tree/main
 ### Example usage:
 ```
   # Sample CTF from experimental dataset without replacement
-  $ python sampling_ctf.py --ctf-dir ./dataset/IgG-1D/ctfs --ctf-file experimental_ctf.pkl -o ./dataset/IgG-1D/combined_ctfs.pkl --apix 1.5 --img-size 256
+  $ python subsample_ctf.py experimental_ctf.pkl -o ctf.1k.pkl -N 1000 --Apix 1.5 -D 256 --seed 0
   
   # Generate 1k projection images of a volume
   $ python project3d.py --mrc ./dataset/IgG-1D/vols/256 -N 1000 -o ./dataset/IgG-1D/3d_projected/mrcs --out-pose ./dataset/IgG-1D/3d_projected/poses --t-extent 20 -b 50 --out-png ./dataset/IgG-1D/3d_projected/pngs

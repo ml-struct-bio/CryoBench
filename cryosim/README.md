@@ -10,7 +10,7 @@ This repository is built upon https://github.com/ml-struct-bio/cryosim/tree/main
   
   # Or create 100 separate files for each GT conformation and combine
   $ for i in {0..99}; do python subsample_ctf.py experimental_ctf.pkl -N 1000 -D 256 --Apix 1.5 --seed $i -o ctf.${i}.pkl; done 
-  $ python integrate_files.py $(for i in {0..99}; do echo ctf.${i}.pkl; done) -o ctf.combined.pkl 
+  $ cryodrgn_utils concat_pkls $(for i in {0..99}; do echo ctf.${i}.pkl; done) -o ctf.combined.pkl 
 ```
 
 ### Generate projection images of a volume
@@ -23,7 +23,7 @@ This repository is built upon https://github.com/ml-struct-bio/cryosim/tree/main
   $ python integrate_files.py $(for i in {0..99}; do echo output_projections.${i}.mrcs; done) -o projection_particles.txt
 
   # Integrate all poses to make one pkl file
-  $ python integrate_files.py $(for i in {0..99}; do echo pose.${i}.pkl; done) -o pose.combined.pkl 
+  $ cryodrgn_utils concat_pkls $(for i in {0..99}; do echo pose.${i}.pkl; done) -o pose.combined.pkl 
 ```
 
 ### No noise addition, CTF values added

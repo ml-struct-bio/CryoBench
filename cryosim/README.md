@@ -20,20 +20,20 @@ This repository is built upon https://github.com/ml-struct-bio/cryosim/tree/main
 
   # Or generate 1k projection images for 100 volumes (Total 100k images)
   $ for i in {0..99}; do python project3d.py input.${i}.mrc -N 1000 -o output_projections.${i}.mrcs --out-pose poses.${i}.pkl --t-extent 20; done 
-  $ python integrate_files.py $(for i in {0..99}; do echo output_projections.${i}.mrcs; done) -o projection_particles.txt
+  $ for i in {0..99}; echo output_projections.${i}.mrcs >> projection_combined.txt; done
 
   # Integrate all poses to make one pkl file
   $ cryodrgn_utils concat_pkls $(for i in {0..99}; do echo pose.${i}.pkl; done) -o pose.combined.pkl 
 ```
 
-### No noise addition, CTF values added
+### Add CTF
 ```
-  # Apply CTF to one mrcs
+  # Add CTF to one mrcs
   $ python add_ctf.py input_particles.mrcs --Apix 1.5 --ctf-pkl ctf.pkl --s1 0 --s2 0 -o output_particles_w_ctf.mrcs
 
   # Or generate 100 CTF added mrcs files
   $ for i in {0..99}; do python add_ctf.py input_particles.${i}.mrcs --Apix 1.5 --ctf-pkl ctf.${i}.pkl; done 
-  $ python integrate_files.py $(for i in {0..99}; do echo output_particles_w_ctf.${i}.mrcs; done) -o CTF_added_particles.txt
+  $ for i in {0..99}; echo output_particles_w_ctf.${i}.mrcs >> CTF_added_combined.txt; done
 ```
 
 ### Add gaussian noise to SNR of 0.01
@@ -43,7 +43,7 @@ This repository is built upon https://github.com/ml-struct-bio/cryosim/tree/main
 
   # Or generate 100 noise added mrcs files
   $ for i in {0..99}; do python add_noise.py input_noiseless_particles.${i}.mrcs -o output_noisy_particles.mrcs --snr 0.01; done 
-  $ python integrate_files.py $(for i in {0..99}; do echo output_noisy_particles.${i}.mrcs; done) -o noise_added_particles.txt
+  $ for i in {0..99}; echo output_noisy_particles.${i}.mrcs >> noise_added_combined.txt; done
 ```
 
 ### Downsample particles

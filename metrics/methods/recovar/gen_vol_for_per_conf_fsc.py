@@ -2,7 +2,6 @@ import logging
 import numpy as np
 from recovar import output as o
 from recovar import dataset, embedding
-from scipy.spatial import distance_matrix
 import os, argparse
 logger = logging.getLogger(__name__)
 from cryodrgn import analysis

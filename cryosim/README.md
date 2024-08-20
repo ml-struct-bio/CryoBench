@@ -5,9 +5,6 @@ This repository is built upon https://github.com/ml-struct-bio/cryosim/tree/main
 
 ### Example usage:
 ```
-  # Sample CTF from experimental dataset without replacement
-  $ python subsample_ctf.py experimental_ctf.pkl -o ctf.1k.pkl -N 1000 --Apix 1.5 -D 256 --seed 0
-  
   # Generate 1k projection images of a volume
   $ python project3d.py --mrc ./dataset/IgG-1D/vols/256 -N 1000 -o ./dataset/IgG-1D/3d_projected/mrcs --out-pose ./dataset/IgG-1D/3d_projected/poses --t-extent 20 -b 50 --out-png ./dataset/IgG-1D/3d_projected/pngs
 
@@ -26,4 +23,14 @@ This repository is built upon https://github.com/ml-struct-bio/cryosim/tree/main
   
   # Integrate pickle files
   $ python integrate_files.py --poses-dir ./dataset/IgG-1D/3d_projected/poses/ --integrated-pose ./dataset/IgG-1D/combined_poses.pkl --mrcs ./dataset/IgG-1D/add_noise/128/snr0.01/mrcs/
+```
+
+### Generating CTF parameters
+```
+  # Subsample 100k CTF parameters from an experimental dataset without replacement
+  $ python subsample_ctf.py experimental_ctf.pkl -o ctf.pkl -N 100000 --Apix 1.5 -D 256 --seed 0
+  
+  # Or create 100 separate files for each GT conformation and combine
+  $ for i in {0..99}; do python subsample_ctf.py experimental_ctf.pkl -N 1000 -D 256 --Apix 1.5 --seed $i -o ctf.${i}.pkl; done 
+  $ python integrate_files.py $(for i in {0..99}; do echo ctf.${i}.pkl; done) -o ctf.combined.pkl 
 ```

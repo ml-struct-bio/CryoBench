@@ -23,12 +23,11 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-log = utils.log
-vlog = utils.vlog
+log = print
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('mrc', nargs='+', help='Input volume')
+    parser.add_argument('mrc', help='Input volume')
     parser.add_argument('-o', type=os.path.abspath, required=True, help='Output projection stack (.mrcs)')
     parser.add_argument('--out-pose', type=os.path.abspath, required=True, help='Output poses (.pkl)')
     parser.add_argument('--out-png', type=os.path.abspath, help='Montage of first 9 projections')
@@ -194,7 +193,7 @@ def main(args):
     imgs = []
     iterator = data.DataLoader(rots, batch_size=args.b)
     for i, rot in enumerate(iterator):
-        vlog('Projecting {}/{}'.format((i+1)*len(rot), args.N))
+        log('Projecting {}/{}'.format((i+1)*len(rot), args.N))
         projections = projector.project(rot)
         projections = projections.cpu().numpy()
         imgs.append(projections)

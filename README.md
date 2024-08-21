@@ -32,6 +32,8 @@ More installation instructions are found in the [documentation](https://ez-lab.g
 
 	
 ## References:
+* Jeon, Minkyu, et al. "CryoBench: Diverse and challenging datasets for the heterogeneity problem in cryo-EM." arXiv preprint arXiv:2408.05526 (2024).[paper](https://arxiv.org/abs/2408.05526)
+* 
 * Zhong, Ellen D., et al. "CryoDRGN: reconstruction of heterogeneous cryo-EM structures using neural networks." Nature methods 18.2 (2021): 176-185. [github](https://github.com/ml-struct-bio/cryodrgn)
 
 * Levy, Axel, et al. "Revealing biomolecular structure and motion with neural ab initio cryo-EM reconstruction." bioRxiv (2024): 2024-05. [github](https://github.com/ml-struct-bio/drgnai)

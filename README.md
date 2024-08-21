@@ -32,7 +32,8 @@ More installation instructions are found in the [documentation](https://ez-lab.g
 
 	
 ## References:
-* Jeon, Minkyu, et al. "CryoBench: Diverse and challenging datasets for the heterogeneity problem in cryo-EM." arXiv preprint arXiv:2408.05526 (2024).[paper](https://arxiv.org/abs/2408.05526)
+
+Jeon, Minkyu, et al. "CryoBench: Diverse and challenging datasets for the heterogeneity problem in cryo-EM." arXiv preprint arXiv:2408.05526 (2024) [paper](https://arxiv.org/abs/2408.05526).
 
 ## Contact
 

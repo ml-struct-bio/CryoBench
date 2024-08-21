@@ -10,7 +10,7 @@ log = utils.log
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('input-dir', help='dir contains weights, config, z')
+    parser.add_argument('input_dir', help='dir contains weights, config, z')
     parser.add_argument('-o', help='Output directory')
     parser.add_argument('--Apix', default=3.0, help='Output directory')
     parser.add_argument('--epoch', default=100, type=int)

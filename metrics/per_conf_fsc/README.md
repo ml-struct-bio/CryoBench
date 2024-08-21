@@ -7,7 +7,7 @@
   $ conda activate cryodrgn
   
   # Compute per conformation FSC
-  $ python metrics/per_conf_fsc/cdrgn.py results/cryodrgn --epoch 19 --Apix 3.0 -o  output --method cryodrgn --gt-dir ./gt_vols --mask ./mask.mrc --num-imgs 1000 --num-vols 100
+  $ python metrics/per_conf_fsc/cdrgn.py results/cryodrgn --epoch 19 --Apix 3.0 -o output --method cryodrgn --gt-dir ./gt_vols --mask ./mask.mrc --num-imgs 1000 --num-vols 100
   
   # Plot FSCs
   $ python metrics/per_conf_fsc/per_conf_plot.py output --method cryodrgn

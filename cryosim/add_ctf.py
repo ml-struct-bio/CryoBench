@@ -9,15 +9,15 @@ import pickle
 from datetime import datetime as dt
 import matplotlib.pyplot as plt
 
-from cryodrgn.ctf import compute_ctf_np as compute_ctf
+from cryodrgn.ctf import compute_ctf
 from cryodrgn import mrcfile
-from cryodrgn import utils
+import torch
 
-log = utils.log
+log = print
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('particles', nargs='+', help='Input MRC stack')
+    parser.add_argument('particles', help='Input MRC stack')
     parser.add_argument('--snr1', default=1.4, type=float, help='SNR for first pre-CTF application of noise (default: %(default)s)')
     parser.add_argument('--snr2', default=0.05, type=float, help='SNR for second post-CTF application of noise (default: %(default)s)')
     parser.add_argument('--s1', type=float, help='Override --snr1 with gaussian noise stdev')
@@ -89,13 +89,14 @@ def add_noise(particles, D, sigma):
 def compute_full_ctf(D, Nimg, args):
     freqs = np.arange(-D/2,D/2)/(args.Apix*D)
     x0, x1 = np.meshgrid(freqs,freqs)
-    freqs = np.stack([x0.ravel(),x1.ravel()],axis=1)
+    freqs = torch.tensor(np.stack([x0.ravel(),x1.ravel()],axis=1)).cuda()
     if args.ctf_pkl: # todo: refator
-        params = pickle.load(open(args.ctf_pkl,'rb'))
+        params = torch.tensor(pickle.load(open(args.ctf_pkl,'rb'))).cuda()
         assert len(params) == Nimg
         params = params[:,2:]
         df = params[:,:2]
-        ctf = np.array([compute_ctf(freqs, *x, args.b) for x in params])
+        ctf = torch.stack([compute_ctf(freqs, *x, args.b) for x in params])
+        print('ctf:',ctf.shape)
         ctf = ctf.reshape((Nimg, D, D))
     elif args.df_file:
         df = pickle.load(open(args.df_file,'rb'))
@@ -123,7 +124,7 @@ def compute_full_ctf(D, Nimg, args):
 
 def add_ctf(particles, ctf):
     particles = np.array([np.fft.fftshift(np.fft.fft2(np.fft.fftshift(x))) for x in particles])
-    particles *= ctf
+    particles *= np.array(ctf.cpu())
     del ctf
     particles = np.array([np.fft.ifftshift(np.fft.ifft2(np.fft.ifftshift(x))).astype(np.float32) for x in particles])
     return particles
@@ -155,7 +156,7 @@ def main(args):
     np.random.seed(args.seed)
     log('RUN CMD:\n'+' '.join(sys.argv))
     log('Arguments:\n'+str(args))
-    particles = mrcfile.parse_mrc(args.particles, lazy=False)[0]
+    particles = mrcfile.parse_mrc(args.particles)[0]
     Nimg = len(particles)
     D, D2 = particles[0].shape
     assert D == D2, 'Images must be square'

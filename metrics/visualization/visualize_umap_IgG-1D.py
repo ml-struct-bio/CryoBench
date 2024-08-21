@@ -6,7 +6,6 @@ import os
 import re
 import argparse
 import matplotlib.pyplot as plt
-import torch
 log = print
 
 from matplotlib import colors
@@ -141,8 +140,13 @@ def main(args):
             plot_3dcls(args, dihedral_angles, labels_3dcls, jitter=0.04)
 
         elif args.method == '3dcls_abinit':
-            path_for_label = f"{args.cryosparc_path}/{args.cryosparc_job_num}/{args.cryosparc_job_num}_final_particles.cs"
-            path_for_model = f"{args.cryosparc_path}/{args.cryosparc_job_num}/"
+            file_pattern = "*.mrc"
+            files = glob.glob(os.path.join(args.result_path, args.method, 'cls_'+ str(args.num_classes) ,file_pattern))
+            pred_dir = sorted(files, key=natural_sort_key)
+            cryosparc_job = pred_dir[0].split('/')[-1].split('.')[0].split('_')[0]
+            print('cryosparc_job:',cryosparc_job)
+            path_for_label = f"{args.cryosparc_path}/{cryosparc_job}/{cryosparc_job}_final_particles.cs"
+            path_for_model = f"{args.cryosparc_path}/{cryosparc_job}/"
             labels_3dcls, models_3dcls = parse_class_abinit_assignments(path_for_label, path_for_model, args.num_classes)
             plot_3dcls(args, dihedral_angles, labels_3dcls, jitter=0.04)
             

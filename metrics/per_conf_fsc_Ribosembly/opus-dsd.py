@@ -10,12 +10,12 @@ from cryodrgn import utils
 from cryodrgn import analysis
 from cryodrgn.commands_utils.fsc import calculate_fsc
 from cryodrgn import mrcfile
-
+import torch
 log = utils.log 
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('input-dir', help='dir contains weights, config, z')
+    parser.add_argument('input_dir', help='dir contains weights, config, z')
     parser.add_argument('-o', help='Output directory')
     parser.add_argument('--epoch', default=19, type=int)
     parser.add_argument('--num-vols', default=100, type=int)
@@ -149,7 +149,7 @@ def main(args):
         if os.path.exists(out_fsc) and not args.overwrite:
             log('FSC exists, skipping...')
         else:
-            fsc_vals = calculate_fsc(vol1.images(), vol2.images(), args.mask)
+            fsc_vals = calculate_fsc(torch.tensor(vol1), torch.tensor(vol2), args.mask)
             np.savetxt(out_fsc, fsc_vals)
 
     # Summary statistics

@@ -6,7 +6,7 @@ import subprocess
 import utils
 from cryodrgn.commands_utils.fsc import calculate_fsc
 from cryodrgn import mrcfile
-
+import torch
 log = utils.log 
 
 def parse_args():
@@ -74,7 +74,7 @@ def main(args):
         if os.path.exists(out_fsc) and not args.overwrite:
             log('FSC exists, skipping...')
         else:
-            fsc_vals = calculate_fsc(vol1.images(), vol2.images(), args.mask)
+            fsc_vals = calculate_fsc(torch.tensor(vol1), torch.tensor(vol2), args.mask)
             np.savetxt(out_fsc, fsc_vals)
                 
         if args.mask is not None:
@@ -89,7 +89,7 @@ def main(args):
         if os.path.exists(out_fsc) and not args.overwrite:
             log('FSC exists, skipping...')
         else:
-            fsc_vals = calculate_fsc(vol1.images(), vol2.images(), args.mask)
+            fsc_vals = calculate_fsc(torch.tensor(vol1), torch.tensor(vol2), args.mask)
             np.savetxt(out_fsc, fsc_vals)
 
     # Summary statistics

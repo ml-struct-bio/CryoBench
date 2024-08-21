@@ -33,21 +33,6 @@ More installation instructions are found in the [documentation](https://ez-lab.g
 	
 ## References:
 * Jeon, Minkyu, et al. "CryoBench: Diverse and challenging datasets for the heterogeneity problem in cryo-EM." arXiv preprint arXiv:2408.05526 (2024).[paper](https://arxiv.org/abs/2408.05526)
-* 
-* Zhong, Ellen D., et al. "CryoDRGN: reconstruction of heterogeneous cryo-EM structures using neural networks." Nature methods 18.2 (2021): 176-185. [github](https://github.com/ml-struct-bio/cryodrgn)
-
-* Levy, Axel, et al. "Revealing biomolecular structure and motion with neural ab initio cryo-EM reconstruction." bioRxiv (2024): 2024-05. [github](https://github.com/ml-struct-bio/drgnai)
-
-* Luo, Zhenwei, et al. "OPUS-DSD: deep structural disentanglement for cryo-EM single-particle analysis." Nature Methods 20.11 (2023): 1729-1738. [github](https://github.com/alncat/opusDSD)
-
-* Punjani, Ali, and David J. Fleet. "3DFlex: determining structure and motion of flexible proteins from cryo-EM." Nature Methods 20.6 (2023): 860-870. [cryosparc](https://guide.cryosparc.com/processing-data/tutorials-and-case-studies/tutorial-3d-flexible-refinement)
-
-* Punjani, Ali, and David J. Fleet. "3D variability analysis: Resolving continuous flexibility and discrete heterogeneity from single particle cryo-EM." Journal of structural biology 213.2 (2021): 107702. [cryosparc](https://guide.cryosparc.com/processing-data/tutorials-and-case-studies/tutorial-3d-variability-analysis-part-one)
-
-* Gilles, Marc Aurele, and Amit Singer. "A Bayesian framework for cryo-EM heterogeneity analysis using regularized covariance estimation." bioRxiv (2023). [github](https://github.com/ma-gilles/recovar)
-
-* Punjani, Ali, et al. "cryoSPARC: algorithms for rapid unsupervised cryo-EM structure determination." Nature methods 14.3 (2017): 290-296.
-
 
 ## Contact
 

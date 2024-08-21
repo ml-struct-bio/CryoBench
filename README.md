@@ -32,18 +32,19 @@ More installation instructions are found in the [documentation](https://ez-lab.g
 
 	
 ## References:
+* Zhong, Ellen D., et al. "CryoDRGN: reconstruction of heterogeneous cryo-EM structures using neural networks." Nature methods 18.2 (2021): 176-185. [github](https://github.com/ml-struct-bio/cryodrgn)
 
-For a complete description of the method, see:
+* Levy, Axel, et al. "Revealing biomolecular structure and motion with neural ab initio cryo-EM reconstruction." bioRxiv (2024): 2024-05. [github](https://github.com/ml-struct-bio/drgnai)
 
-* CryoDRGN: reconstruction of heterogeneous cryo-EM structures using neural networks
-Ellen D. Zhong, Tristan Bepler, Bonnie Berger*, Joseph H Davis*
-Nature Methods 2021, https://doi.org/10.1038/s41592-020-01049-4 [pdf](https://ezlab.princeton.edu/assets/pdf/2021_cryodrgn_nature_methods.pdf)
+* Luo, Zhenwei, et al. "OPUS-DSD: deep structural disentanglement for cryo-EM single-particle analysis." Nature Methods 20.11 (2023): 1729-1738. [github](https://github.com/alncat/opusDSD)
 
-An earlier version of this work appeared at ICLR 2020:
+* Punjani, Ali, and David J. Fleet. "3DFlex: determining structure and motion of flexible proteins from cryo-EM." Nature Methods 20.6 (2023): 860-870. [cryosparc](https://guide.cryosparc.com/processing-data/tutorials-and-case-studies/tutorial-3d-flexible-refinement)
 
-* Reconstructing continuous distributions of protein structure from cryo-EM images
-Ellen D. Zhong, Tristan Bepler, Joseph H. Davis*, Bonnie Berger*
-ICLR 2020, Spotlight, https://arxiv.org/abs/1909.05215
+* Punjani, Ali, and David J. Fleet. "3D variability analysis: Resolving continuous flexibility and discrete heterogeneity from single particle cryo-EM." Journal of structural biology 213.2 (2021): 107702. [cryosparc](https://guide.cryosparc.com/processing-data/tutorials-and-case-studies/tutorial-3d-variability-analysis-part-one)
+
+* Gilles, Marc Aurele, and Amit Singer. "A Bayesian framework for cryo-EM heterogeneity analysis using regularized covariance estimation." bioRxiv (2023). [github](https://github.com/ma-gilles/recovar)
+
+* Punjani, Ali, et al. "cryoSPARC: algorithms for rapid unsupervised cryo-EM structure determination." Nature methods 14.3 (2017): 290-296.
 
 
 ## Contact

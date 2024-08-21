@@ -20,15 +20,15 @@ To run the metrics, you have to install `cryodrgn`.
 More installation instructions are found in the [documentation](https://ez-lab.gitbook.io/cryodrgn/installation).
 
 ## Image Formation
-**Note** Look at the repo [cryosim](https://github.com/ml-struct-bio/CryoBench/tree/main/cryosim).
+Look at the repo [cryosim](https://github.com/ml-struct-bio/CryoBench/tree/main/cryosim).
 
 ## Metrics
 
 ### 1. Per-Conformation FSC
-**Note** Look at the repo [metrics/per_conf_fsc](https://github.com/ml-struct-bio/CryoBench/tree/main/metrics/per_conf_fsc) and [metrics/per_conf_fsc/Ribosembly](https://github.com/ml-struct-bio/CryoBench/tree/main/metrics/per_conf_fsc_Ribosembly).
+Look at the repo [metrics/per_conf_fsc](https://github.com/ml-struct-bio/CryoBench/tree/main/metrics/per_conf_fsc) and [metrics/per_conf_fsc/Ribosembly](https://github.com/ml-struct-bio/CryoBench/tree/main/metrics/per_conf_fsc_Ribosembly).
 
 ### 2. UMAP visualization
-**Note** Look at the repo [metrics/visualization](https://github.com/ml-struct-bio/CryoBench/tree/main/metrics/visualization)
+Look at the repo [metrics/visualization](https://github.com/ml-struct-bio/CryoBench/tree/main/metrics/visualization)
 
 	
 ## References:

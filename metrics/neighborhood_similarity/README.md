@@ -8,7 +8,7 @@ For any feedback, questions, or bugs, please file a Github issue, start a Github
 
 ## Installation:
 
-To run the script that calculates the neighborhood similarity, please first install JAX [homepage](https://jax.readthedocs.io/en/latest/installation.html).
+To run the script that calculates the neighborhood similarity, please first install [JAX](https://jax.readthedocs.io/en/latest/installation.html).
 
     # install jax
     $ pip install -U jax

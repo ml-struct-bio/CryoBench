@@ -111,7 +111,7 @@ def cluster_kmeans(
     Returns cluster labels, cluster centers
     If reorder=True, reorders clusters according to agglomerative clustering of cluster centers
     """
-    kmeans = KMeans(n_clusters=K, n_init='auto', random_state=0, max_iter=10)
+    kmeans = KMeans(n_clusters=K, n_init="auto", random_state=0, max_iter=10)
     labels = kmeans.fit_predict(z)
     centers = kmeans.cluster_centers_
 
@@ -352,7 +352,7 @@ def plot_by_cluster(
     colors=None,
     cmap=None,
     figsize=None,
-    dpi=None
+    dpi=None,
 ):
     if dpi is not None:
         fig, ax = plt.subplots(figsize=figsize, dpi=dpi)

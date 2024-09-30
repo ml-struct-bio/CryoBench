@@ -18,12 +18,12 @@ To run the script that calculates the neighborhood similarity, please first inst
 The neighborhood similarity quantifies the percentage of matching neighbors with respect to the ground truth that are found within a neighborhood radius `k`.
 
 
-### Example 
+### Example
 In the repo [metrics/neighborhood_similarity](https://github.com/ml-struct-bio/CryoBench/tree/main/metrics/neighborhood_similarity) , you can find `cal_neighb_hit_werror.py` that calculates the neighborhood similarity between ground truth embeddings and several sets of embeddings from reconstruction algorithms found in  `conf-het-1_wrangled_latents.npz`:
 
 	$ python cal_neighb_hit_werror.py
 
-The output files are the neighborhood similarity as a function of the neighborhood radius for each reconstruction algorithm. 
+The output files are the neighborhood similarity as a function of the neighborhood radius for each reconstruction algorithm.
 
 ## References:
 

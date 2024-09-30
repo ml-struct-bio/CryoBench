@@ -19,17 +19,18 @@ class Lattice:
 
         x0, x1 = np.meshgrid(
             np.linspace(-extent, extent, resolution, endpoint=True),
-            np.linspace(-extent, extent, resolution, endpoint=True)
-            )
-        coords = np.stack([x0.ravel(), x1.ravel(), np.zeros(resolution ** 2)],
-                          1).astype(np.float32)
+            np.linspace(-extent, extent, resolution, endpoint=True),
+        )
+        coords = np.stack(
+            [x0.ravel(), x1.ravel(), np.zeros(resolution**2)], 1
+        ).astype(np.float32)
 
         self.coords = torch.tensor(coords, device=device)
         self.extent = extent
         self.D = resolution
         self.D2 = int(resolution / 2)
 
-        self.center = torch.tensor([0., 0.], device=device)
+        self.center = torch.tensor([0.0, 0.0], device=device)
 
         self.square_mask = {}
         self.circle_mask = {}
@@ -43,17 +44,21 @@ class Lattice:
         assert d % 2 == 1, f"downsample dimension {d=} must be odd!"
 
         extent = self.extent * (d - 1) / (self.D - 1)
-        x0, x1 = np.meshgrid(np.linspace(-extent, extent, d, endpoint=True),
-                             np.linspace(-extent, extent, d, endpoint=True))
-        coords = np.stack(
-            [x0.ravel(), x1.ravel(), np.zeros(d ** 2)], 1).astype(np.float32)
+        x0, x1 = np.meshgrid(
+            np.linspace(-extent, extent, d, endpoint=True),
+            np.linspace(-extent, extent, d, endpoint=True),
+        )
+        coords = np.stack([x0.ravel(), x1.ravel(), np.zeros(d**2)], 1).astype(
+            np.float32
+        )
 
         return torch.tensor(coords, device=self.device)
 
     def get_square_lattice(self, side_length):
         b, e = self.D2 - side_length, self.D2 + side_length + 1
-        center_lattice = self.coords.view(
-            self.D, self.D, 3)[b:e, b:e, :].contiguous().view(-1, 3)
+        center_lattice = (
+            self.coords.view(self.D, self.D, 3)[b:e, b:e, :].contiguous().view(-1, 3)
+        )
 
         return center_lattice
 
@@ -64,8 +69,10 @@ class Lattice:
 
         mask_len = 2 * side_length + 1
         if mask_len <= self.D:
-            raise ValueError(f"Mask with size {side_length} too large for "
-                             f"lattice with size {self.D=}")
+            raise ValueError(
+                f"Mask with size {side_length} too large for "
+                f"lattice with size {self.D=}"
+            )
 
         logger.info(f"Using square lattice of size {mask_len}x{mask_len}")
         b, e = self.D2 - side_length, self.D2 + side_length
@@ -125,9 +132,8 @@ class Lattice:
         s = torch.sin(phase)
 
         translated_ft = torch.stack(
-            [img[..., 0] * c - img[..., 1] * s, img[..., 0] * s + img[..., 1]
-             * c], -1
-            )
+            [img[..., 0] * c - img[..., 1] * s, img[..., 0] * s + img[..., 1] * c], -1
+        )
 
         return translated_ft
 

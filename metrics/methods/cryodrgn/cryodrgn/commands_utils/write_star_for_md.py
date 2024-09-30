@@ -13,8 +13,9 @@ from cryodrgn.source import ImageSource, StarfileSource
 from cryodrgn.starfile import Starfile
 import pickle
 import re
+
 # file="/scratch/gpfs/ZHONGE/mj7341/research/00_moml/antibody/dataset/conformational"
-# python cryodrgn/commands_utils/write_star.py $file/add_noise/128_chimera_resample/snr01/mrcs/sorted_particles.128.txt --ctf $file/integrated_ctf.pkl --poses $file/integrated_poses_chimera.pkl -o $file/add_noise/128_chimera_resample/snr01/snr01_star_newver3.star --datadir $file/add_noise/128_chimera_resample/snr01/mrcs 
+# python cryodrgn/commands_utils/write_star.py $file/add_noise/128_chimera_resample/snr01/mrcs/sorted_particles.128.txt --ctf $file/integrated_ctf.pkl --poses $file/integrated_poses_chimera.pkl -o $file/add_noise/128_chimera_resample/snr01/snr01_star_newver3.star --datadir $file/add_noise/128_chimera_resample/snr01/mrcs
 log = print
 logger = logging.getLogger(__name__)
 
@@ -37,11 +38,27 @@ POSE_HDRS = [
     "_rlnOriginY",
 ]
 
-RELION_HEADERS = ["_rlnOpticsGroupName","_rlnOpticsGroup", "_rlnMicrographOriginalPixelSize", "_rlnVoltage",
-            "_rlnSphericalAberration", "_rlnAmplitudeContrast", "_rlnImagePixelSize", "_rlnImageSize", "_rlnImageDimensionality",
-            "_rlnCtfDataAreCtfPremultiplied"]
+RELION_HEADERS = [
+    "_rlnOpticsGroupName",
+    "_rlnOpticsGroup",
+    "_rlnMicrographOriginalPixelSize",
+    "_rlnVoltage",
+    "_rlnSphericalAberration",
+    "_rlnAmplitudeContrast",
+    "_rlnImagePixelSize",
+    "_rlnImageSize",
+    "_rlnImageDimensionality",
+    "_rlnCtfDataAreCtfPremultiplied",
+]
 
-CRYOSPARC_HEADERS = ['_rlnImagePixelSize', '_rlnImageSize', '_rlnImageDimensionality', '_rlnOpticsGroup', '_rlnRandomSubset']
+CRYOSPARC_HEADERS = [
+    "_rlnImagePixelSize",
+    "_rlnImageSize",
+    "_rlnImageDimensionality",
+    "_rlnOpticsGroup",
+    "_rlnRandomSubset",
+]
+
 
 def add_args(parser):
     parser.add_argument("particles_open", help="Input particles (.mrcs, .txt, .star)")
@@ -64,17 +81,19 @@ def add_args(parser):
     parser.add_argument(
         "-o", type=os.path.abspath, required=True, help="Output .star file"
     )
-    
+
     return parser
+
 
 def natural_sort_key(s):
     # Convert the string to a list of text and numbers
-    parts = re.split('([0-9]+)', s)
-    
+    parts = re.split("([0-9]+)", s)
+
     # Convert numeric parts to integers for proper numeric comparison
     parts[1::2] = map(int, parts[1::2])
-    
+
     return parts
+
 
 def print_ctf_params(params: np.ndarray) -> None:
     assert len(params) == 9
@@ -88,9 +107,11 @@ def print_ctf_params(params: np.ndarray) -> None:
     logger.info("w                 : {}".format(params[7]))
     logger.info("Phase shift (deg) : {}".format(params[8]))
 
+
 def files_in_directory(directory, extension):
-    files = [file for file in os.listdir(directory) if file.endswith(f'.{extension}')]
+    files = [file for file in os.listdir(directory) if file.endswith(f".{extension}")]
     return files
+
 
 def main(args):
     assert args.o.endswith(".star"), "Output file must be .star file"
@@ -117,12 +138,12 @@ def main(args):
     if args.ctf:
         ctf = utils.load_pkl(args.ctf)
         assert ctf.shape[1] == 9, "Incorrect CTF pkl format"
-        assert len(particles_open)+len(particles_close) == len(
+        assert len(particles_open) + len(particles_close) == len(
             ctf
         ), f"{len(particles_open)+len(particles_close)} != {len(ctf)}, Number of particles != number of CTF parameters"
     if args.poses:
         poses = utils.load_pkl(args.poses)
-        assert len(particles_open)+len(particles_close) == len(
+        assert len(particles_open) + len(particles_close) == len(
             poses[0]
         ), f"{len(particles_open)+len(particles_close)} != {len(poses)}, Number of particles != number of poses"
     logger.info(f"{len(particles_open)} particles in {args.particles_open}")
@@ -136,7 +157,6 @@ def main(args):
         if poses is not None:
             poses = (poses[0][ind], poses[1][ind])
 
-    
     # file_names_lst = files_in_directory(args.datadir, extension='mrcs')
     # print('particles.n:',particles.n) # 100000
     # num_data_per_particle = particles.n #//len(file_names_lst)
@@ -145,47 +165,46 @@ def main(args):
     # if args.full_path:
     #     image_names = [os.path.abspath(image_name) for image_name in image_names]
     names = []
-    j=1
+    j = 1
     ind_conf = np.arange(particles_open.n)
     image_names = particles_open.filenames[ind_conf]
     # print('image_names:',image_names)
     for i in range(particles_open.n):
         # if j % num_data_per_particle ==1:
         #     j=1
-        names.append(f"{j}@"+image_names[i])
-        j = j+1
+        names.append(f"{j}@" + image_names[i])
+        j = j + 1
     image_names = particles_close.filenames[ind_conf]
     for i in range(particles_close.n):
         # if j % num_data_per_particle ==1:
         #     j=1
-        names.append(f"{j}@"+image_names[i])
-        j = j+1
+        names.append(f"{j}@" + image_names[i])
+        j = j + 1
 
     # convert poses
     if poses is not None:
         eulers = utils.R_to_relion_scipy(poses[0])
         D = particles_open[0].shape[-1]
         trans = poses[1] * D  # convert from fraction to pixels
-    
+
     # Create a new dataframe with required star file headers
     data = {"_rlnImageName": names}
     if ctf is not None:
         for i in range(7):
-            data[CTF_HEADERS[i]] = ctf[:, i+2]
+            data[CTF_HEADERS[i]] = ctf[:, i + 2]
 
     if eulers is not None and trans is not None:
         for i in range(3):
             data[POSE_HDRS[i]] = eulers[:, i]  # type: ignore
         for i in range(2):
             data[POSE_HDRS[3 + i]] = trans[:, i]
-            
-    
+
     df = pd.DataFrame(data=data)
     #### CryoSPARC ####
     column_values = [ctf[0][1], ctf[0][0], 2, 1, 1]
     df[CRYOSPARC_HEADERS] = column_values
     # Half set
-    df[CRYOSPARC_HEADERS[-1]] = df.index%2+1
+    df[CRYOSPARC_HEADERS[-1]] = df.index % 2 + 1
 
     s = Starfile(headers=None, df=df)
 
@@ -196,8 +215,18 @@ def main(args):
     # s.df[CRYOSPARC_HEADERS[-1]] = s.df.index%2+1
 
     #### Relion ####
-    relion_values = ["opticsGroup1", 1, ctf[0][1], ctf[0][5], ctf[0][6],
-                    ctf[0][7], ctf[0][1], ctf[0][0], 2, 0]
+    relion_values = [
+        "opticsGroup1",
+        1,
+        ctf[0][1],
+        ctf[0][5],
+        ctf[0][6],
+        ctf[0][7],
+        ctf[0][1],
+        ctf[0][0],
+        2,
+        0,
+    ]
     s.write(args.o, RELION_HEADERS, relion_values)
 
 

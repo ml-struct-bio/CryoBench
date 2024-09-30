@@ -9,10 +9,12 @@ from cryodrgn import lie_tools, utils
 
 logger = logging.getLogger(__name__)
 
+
 def load_pkl(pkl: str):
     with open(pkl, "rb") as f:
         x = pickle.load(f)
     return x
+
 
 class PoseTracker(nn.Module):
     def __init__(

@@ -34,7 +34,7 @@ from scipy.spatial.transform import Rotation as RR
 py.init_notebook_mode()
 from IPython.display import FileLink, FileLinks
 
-import recovar.config 
+import recovar.config
 import logging
 import numpy as np
 from recovar import output as o
@@ -121,7 +121,7 @@ def add_args(parser: argparse.ArgumentParser):
 def pick_pairs(centers, n_pairs):
     # We try to pick some pairs that cover the latent space in some way.
     # This probably could be improved
-    #     
+    #
     # Pick some pairs that are far away from each other.
     pairs = []
     X = distance_matrix(centers[:,:], centers[:,:])
@@ -129,10 +129,10 @@ def pick_pairs(centers, n_pairs):
     for _ in range(n_pairs//2):
 
         i_idx,j_idx = np.unravel_index(np.argmax(X), X.shape)
-        X[i_idx, :] = 0 
-        X[:, i_idx] = 0 
-        X[j_idx, :] = 0 
-        X[:, j_idx] = 0 
+        X[i_idx, :] = 0
+        X[:, i_idx] = 0
+        X[j_idx, :] = 0
+        X[:, j_idx] = 0
         pairs.append([i_idx, j_idx])
 
     # Pick some pairs that are far in the first few principal components.

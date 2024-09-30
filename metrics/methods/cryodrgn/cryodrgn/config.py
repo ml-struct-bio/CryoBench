@@ -6,16 +6,19 @@ import warnings
 import cryodrgn
 from cryodrgn import utils
 import yaml
-import pickle 
+import pickle
+
 
 def load_yaml(yamlfile: str):
     with open(yamlfile, "r") as f:
         return yaml.safe_load(f)
 
+
 def load_pkl(pkl: str):
     with open(pkl, "rb") as f:
         x = pickle.load(f)
     return x
+
 
 def load(config):
     if isinstance(config, str):

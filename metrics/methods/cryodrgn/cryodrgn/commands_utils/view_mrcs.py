@@ -41,7 +41,7 @@ def main(args):
     stack = [src.images(x).squeeze(dim=0) for x in range(25)]
     if args.invert:
         stack = [-1 * x for x in stack]
-    print('view_mrcs?')
+    print("view_mrcs?")
     analysis.plot_projections(stack)
     if args.o:
         plt.savefig(args.o)

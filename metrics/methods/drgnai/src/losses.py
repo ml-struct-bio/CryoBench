@@ -88,18 +88,17 @@ def l2_frequency_bias(y, freqs2d, mask, resolution, alpha=1):
     alpha: int
     """
     loss = torch.mean(
-        torch.sum(
-            (resolution * freqs2d[mask].norm(p=2, dim=-1)) ** alpha * y ** 2,
-            -1
-        )
+        torch.sum((resolution * freqs2d[mask].norm(p=2, dim=-1)) ** alpha * y**2, -1)
     )
     return loss
 
 
 def kl_divergence_conf(latent_variables_dict):
-    z_mu = latent_variables_dict['z']
-    z_logvar = latent_variables_dict['z_logvar']
-    kld = torch.mean(torch.sum((1.0 + z_logvar - z_mu.pow(2) - z_logvar.exp()) / 2.0, dim=1), dim=0)
+    z_mu = latent_variables_dict["z"]
+    z_logvar = latent_variables_dict["z_logvar"]
+    kld = torch.mean(
+        torch.sum((1.0 + z_logvar - z_mu.pow(2) - z_logvar.exp()) / 2.0, dim=1), dim=0
+    )
     return kld
 
 

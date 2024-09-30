@@ -1,4 +1,3 @@
-
 import multiprocessing as mp
 import numpy as np
 import logging
@@ -10,19 +9,21 @@ from scipy.spatial.transform import Rotation
 import torch
 from torch.utils import data
 
-from . import fft
-from . import starfile
-from . import utils
-from .source import ImageSource
+from metrics.methods.drgnai.src import fft
+from metrics.methods.drgnai.src import starfile
+from metrics.methods.drgnai.src import utils
+from metrics.methods.drgnai.src.source import ImageSource
 
 logger = logging.getLogger(__name__)
 
 
 def window_mask(resolution, in_rad, out_rad):
     assert resolution % 2 == 0
-    x0, x1 = np.meshgrid(np.linspace(-1, 1, resolution, endpoint=False, dtype=np.float32),
-                         np.linspace(-1, 1, resolution, endpoint=False, dtype=np.float32))
-    r = (x0 ** 2 + x1 ** 2) ** .5
+    x0, x1 = np.meshgrid(
+        np.linspace(-1, 1, resolution, endpoint=False, dtype=np.float32),
+        np.linspace(-1, 1, resolution, endpoint=False, dtype=np.float32),
+    )
+    r = (x0**2 + x1**2) ** 0.5
     mask = np.minimum(1.0, np.maximum(0.0, 1 - (r - in_rad) / (out_rad - in_rad)))
     return mask
 
@@ -90,7 +91,7 @@ class ImageDataset(data.Dataset):
         device: Union[str, torch.device] = "cpu",
         resolution_input=None,
         poses_gt_pkl=None,
-        no_trans=False
+        no_trans=False,
     ):
         assert not keepreal, "Not implemented yet"
         datadir = datadir or ""
@@ -116,7 +117,9 @@ class ImageDataset(data.Dataset):
         self.Nt = self.N  # number of tilts
         self.D = ny + 1  # after symmetrization
         self.invert_data = invert_data
-        self.window = window_mask_tensor(ny, window_r, 0.99).to(device) if window else None
+        self.window = (
+            window_mask_tensor(ny, window_r, 0.99).to(device) if window else None
+        )
         norm = norm or self.estimate_normalization()
         self.norm = [float(x) for x in norm]
         norm_real = self.estimate_normalization_real()
@@ -162,7 +165,7 @@ class ImageDataset(data.Dataset):
         indices = range(0, self.N, self.N // n)  # FIXME: what if the data is not IID??
         imgs = self.src.images(indices)
         norm = (torch.mean(imgs), torch.std(imgs))
-        logger.info('Normalized real space images by {} +/- {}'.format(*norm))
+        logger.info("Normalized real space images by {} +/- {}".format(*norm))
 
         return norm
 
@@ -210,7 +213,10 @@ class ImageDataset(data.Dataset):
 
     def get_slice(self, start: int, stop: int):
         assert self.tilt_src is None
-        return self.src.images(slice(start, stop), require_contiguous=True).numpy(), None
+        return (
+            self.src.images(slice(start, stop), require_contiguous=True).numpy(),
+            None,
+        )
 
 
 class TiltSeriesData(ImageDataset):
@@ -219,17 +225,17 @@ class TiltSeriesData(ImageDataset):
     """
 
     def __init__(
-            self,
-            tiltstar,
-            ntilts,
-            angle_per_tilt,
-            random_tilts=False,
-            ind=None,
-            voltage=None,
-            expected_res=None,
-            dose_per_tilt=None,
-            tilt_axis_angle=0.,
-            **kwargs
+        self,
+        tiltstar,
+        ntilts,
+        angle_per_tilt,
+        random_tilts=False,
+        ind=None,
+        voltage=None,
+        expected_res=None,
+        dose_per_tilt=None,
+        tilt_axis_angle=0.0,
+        **kwargs,
     ):
         # Note: ind is the indices of the *tilts*, not the particles
         super().__init__(tiltstar, ind=ind, **kwargs)
@@ -280,8 +286,17 @@ class TiltSeriesData(ImageDataset):
         # see pose_consistency.ipynb
         tilt_scheme = []
         for i in range(ntilts):
-            tilt_scheme.append(angle_per_tilt * np.ceil(i / 2.) * (((np.floor(i / 2.) + 1) % 2) * 2. - 1.))
-        tilts = [Rotation.from_euler('zyz', [tilt_axis_angle * np.pi / 180., t * np.pi / 180., 0.]) for t in tilt_scheme]
+            tilt_scheme.append(
+                angle_per_tilt
+                * np.ceil(i / 2.0)
+                * (((np.floor(i / 2.0) + 1) % 2) * 2.0 - 1.0)
+            )
+        tilts = [
+            Rotation.from_euler(
+                "zyz", [tilt_axis_angle * np.pi / 180.0, t * np.pi / 180.0, 0.0]
+            )
+            for t in tilt_scheme
+        ]
         tilt_rots = [Rotation.as_matrix(t) for t in tilts]
         self.tilt_rots = torch.tensor(tilt_rots).float()
 
@@ -301,10 +316,12 @@ class TiltSeriesData(ImageDataset):
                 )
             else:
                 # take the first ntilts
-                tilt_index = self.particles[ii][0: self.ntilts]
+                tilt_index = self.particles[ii][0 : self.ntilts]
             tilt_indices.append(tilt_index)
         tilt_indices = np.concatenate(tilt_indices)
-        r_particles, particles = self._process(self.src.images(tilt_indices).to(self.device))
+        r_particles, particles = self._process(
+            self.src.images(tilt_indices).to(self.device)
+        )
 
         in_dict = {}
 
@@ -323,17 +340,17 @@ class TiltSeriesData(ImageDataset):
                     trans = self.trans_gt[tilt_indices]
                 trans = torch.from_numpy(trans).float().reshape(-1, self.ntilts, 2)
 
-            in_dict['R'] = rots  # batch_size, n_tilts, 3, 3
-            in_dict['t'] = trans  # batch_size, n_tilts, 2
+            in_dict["R"] = rots  # batch_size, n_tilts, 3, 3
+            in_dict["t"] = trans  # batch_size, n_tilts, 2
 
         particles = particles.reshape(-1, self.ntilts, *particles.shape[-2:])
         tilt_indices = tilt_indices.reshape(-1)
         r_particles = r_particles.reshape(-1, self.ntilts, *r_particles.shape[-2:])
 
-        in_dict['y'] = particles  # batch_size, n_tilts, D, D
-        in_dict['index'] = index  # batch_size
-        in_dict['tilt_index'] = tilt_indices  # batch_size * n_tilts
-        in_dict['y_real'] = r_particles  # batch_size, n_tilts, D - 1, D - 1
+        in_dict["y"] = particles  # batch_size, n_tilts, D, D
+        in_dict["index"] = index  # batch_size
+        in_dict["tilt_index"] = tilt_indices  # batch_size * n_tilts
+        in_dict["y_real"] = r_particles  # batch_size, n_tilts, D - 1, D - 1
 
         return in_dict
 
@@ -357,7 +374,7 @@ class TiltSeriesData(ImageDataset):
             else:
                 # i = (len(tilt_idx) - self.ntilts) // 2
                 i = 0
-                tilt_mask[i: i + self.ntilts] = True
+                tilt_mask[i : i + self.ntilts] = True
             tilt_masks.append(tilt_mask)
         tilt_masks = np.concatenate(tilt_masks)
         selected_images = images[tilt_masks]
@@ -366,11 +383,13 @@ class TiltSeriesData(ImageDataset):
         return selected_images.numpy(), selected_tilt_indices
 
     def critical_exposure(self, freq):
-        assert self.voltage is not None, \
-            "Critical exposure calculation requires voltage"
+        assert (
+            self.voltage is not None
+        ), "Critical exposure calculation requires voltage"
 
-        assert self.voltage == 300 or self.voltage == 200, \
-            "Critical exposure calculation requires 200kV or 300kV imaging"
+        assert (
+            self.voltage == 300 or self.voltage == 200
+        ), "Critical exposure calculation requires 200kV or 300kV imaging"
 
         # From Grant and Grigorieff, 2015
         scale_factor = 1
@@ -387,7 +406,7 @@ class TiltSeriesData(ImageDataset):
         freqs = lattice.freqs2d / Apix  # D/A
         x = freqs[..., 0]
         y = freqs[..., 1]
-        s2 = x ** 2 + y ** 2
+        s2 = x**2 + y**2
         s = torch.sqrt(s2)
 
         cumulative_dose = self.tilt_numbers[tilt_index] * self.dose_per_tilt
@@ -455,7 +474,8 @@ class _DataShufflerIterator:
         self.ntilts = shuffler.ntilts
 
         self.buffer = np.empty(
-            (self.buffer_size, self.ntilts, self.dataset.D - 1, self.dataset.D - 1), dtype=self.dtype
+            (self.buffer_size, self.ntilts, self.dataset.D - 1, self.dataset.D - 1),
+            dtype=self.dtype,
         )
         self.tilt_index_buffer = np.full(
             (self.buffer_size, self.ntilts), -1, dtype=np.int64
@@ -468,9 +488,7 @@ class _DataShufflerIterator:
             self.trans_buffer = np.empty(
                 (self.buffer_size, self.ntilts, 2), dtype=np.float32
             )
-        self.num_batches = int(np.ceil(
-            self.dataset.N / self.batch_size
-        ))
+        self.num_batches = int(np.ceil(self.dataset.N / self.batch_size))
         self.chunk_order = torch.randperm(self.num_batches)
         self.count = 0
         self.flush_remaining = -1  # at the end of the epoch, got to flush the buffer
@@ -478,21 +496,33 @@ class _DataShufflerIterator:
         # pre-fill
         logger.info("Pre-filling data shuffler buffer...")
         for i in range(self.batch_capacity):
-            chunk, maybe_tilt_indices, chunk_indices, chunk_rots, chunk_trans = self._get_next_chunk()
+            (
+                chunk,
+                maybe_tilt_indices,
+                chunk_indices,
+                chunk_rots,
+                chunk_trans,
+            ) = self._get_next_chunk()
             self.buffer[i * self.batch_size : (i + 1) * self.batch_size] = chunk
             if maybe_tilt_indices is not None:
                 self.tilt_index_buffer[
-                i * self.batch_size: (i + 1) * self.batch_size
+                    i * self.batch_size : (i + 1) * self.batch_size
                 ] = maybe_tilt_indices
             self.index_buffer[
                 i * self.batch_size : (i + 1) * self.batch_size
             ] = chunk_indices
-            self.rot_buffer[i * self.batch_size : (i + 1) * self.batch_size] = chunk_rots
+            self.rot_buffer[
+                i * self.batch_size : (i + 1) * self.batch_size
+            ] = chunk_rots
             if self.dataset.has_trans:
-                self.trans_buffer[i * self.batch_size : (i + 1) * self.batch_size] = chunk_trans
+                self.trans_buffer[
+                    i * self.batch_size : (i + 1) * self.batch_size
+                ] = chunk_trans
 
-        logger.info(f"Filled buffer with {self.buffer_size} images "
-                    f"({self.batch_capacity} contiguous chunks).")
+        logger.info(
+            f"Filled buffer with {self.buffer_size} images "
+            f"({self.batch_capacity} contiguous chunks)."
+        )
 
     def _get_next_chunk(self):
         chunk_idx = int(self.chunk_order[self.count])
@@ -500,38 +530,35 @@ class _DataShufflerIterator:
         start = chunk_idx * self.batch_size
         stop = (chunk_idx + 1) * self.batch_size
         if stop <= self.dataset.N:
-            particles, maybe_tilt_indices = self.dataset.get_slice(
-                start, stop
-            )
+            particles, maybe_tilt_indices = self.dataset.get_slice(start, stop)
             particles = particles.reshape(
                 self.batch_size, self.ntilts, *particles.shape[1:]
             )
-            particle_indices = np.arange(
-                start, stop
+            particle_indices = np.arange(start, stop)
+            tilt_indices = (
+                maybe_tilt_indices.reshape(self.batch_size, self.ntilts)
+                if maybe_tilt_indices is not None
+                else particle_indices
             )
-            tilt_indices = maybe_tilt_indices.reshape(
-                    self.batch_size, self.ntilts
-                ) if maybe_tilt_indices is not None else particle_indices
         else:
             stop_1 = self.dataset.N
             stop_2 = stop - self.dataset.N
-            particles_1, maybe_tilt_indices_1 = self.dataset.get_slice(
-                start, stop_1
-            )
-            particles_2, maybe_tilt_indices_2 = self.dataset.get_slice(
-                0, stop_2
-            )
+            particles_1, maybe_tilt_indices_1 = self.dataset.get_slice(start, stop_1)
+            particles_2, maybe_tilt_indices_2 = self.dataset.get_slice(0, stop_2)
             particles = np.concatenate((particles_1, particles_2), axis=0)
             particles = particles.reshape(
                 self.batch_size, self.ntilts, *particles.shape[1:]
             )
             particle_indices = np.concatenate(
-                (np.arange(start, stop_1), np.arange(0, stop_2)),
-                axis=0
+                (np.arange(start, stop_1), np.arange(0, stop_2)), axis=0
             )
-            tilt_indices = np.concatenate((maybe_tilt_indices_1, maybe_tilt_indices_2), axis=0).reshape(
-                self.batch_size, self.ntilts
-            ) if maybe_tilt_indices_1 is not None else particle_indices
+            tilt_indices = (
+                np.concatenate(
+                    (maybe_tilt_indices_1, maybe_tilt_indices_2), axis=0
+                ).reshape(self.batch_size, self.ntilts)
+                if maybe_tilt_indices_1 is not None
+                else particle_indices
+            )
         rots = self.dataset.rot_gt[tilt_indices]
         trans = self.dataset.trans_gt[tilt_indices] if self.dataset.has_trans else None
         return particles, tilt_indices, particle_indices, rots, trans
@@ -568,17 +595,21 @@ class _DataShufflerIterator:
                 self.flush_remaining - self.batch_size : self.flush_remaining
             ]
             tilt_indices = self.tilt_index_buffer[
-                           self.flush_remaining - self.batch_size: self.flush_remaining
-                           ]
+                self.flush_remaining - self.batch_size : self.flush_remaining
+            ]
             particle_indices = self.index_buffer[
                 self.flush_remaining - self.batch_size : self.flush_remaining
             ]
             rots = self.rot_buffer[
-                   self.flush_remaining - self.batch_size: self.flush_remaining
+                self.flush_remaining - self.batch_size : self.flush_remaining
             ]
-            trans = self.trans_buffer[
-                    self.flush_remaining - self.batch_size: self.flush_remaining
-            ] if self.dataset.has_trans else None
+            trans = (
+                self.trans_buffer[
+                    self.flush_remaining - self.batch_size : self.flush_remaining
+                ]
+                if self.dataset.has_trans
+                else None
+            )
             self.flush_remaining -= self.batch_size
         else:
             indices = np.random.choice(
@@ -590,7 +621,13 @@ class _DataShufflerIterator:
             rots = self.rot_buffer[indices]
             trans = self.trans_buffer[indices] if self.dataset.has_trans else None
             # start_loading = time.time()
-            chunk, maybe_tilt_indices, chunk_indices, chunk_rots, chunk_trans = self._get_next_chunk()
+            (
+                chunk,
+                maybe_tilt_indices,
+                chunk_indices,
+                chunk_rots,
+                chunk_trans,
+            ) = self._get_next_chunk()
             # log(f'Loading: {time.time() - start_loading}')
             self.buffer[indices] = chunk
             if maybe_tilt_indices is not None:
@@ -623,17 +660,21 @@ class _DataShufflerIterator:
             rots = rots.reshape(-1, 3, 3)
 
         in_dict = {
-            'y': particles,  # batch_size(, n_tilts), D, D
-            'index': particle_indices,  # batch_size
-            'tilt_index': tilt_indices.reshape(-1),  # batch_size * n_tilts
-            'y_real': r_particles,  # batch_size(, n_tilts), D - 1, D - 1
-            'R': rots  # batch_size(, n_tilts), 3, 3
+            "y": particles,  # batch_size(, n_tilts), D, D
+            "index": particle_indices,  # batch_size
+            "tilt_index": tilt_indices.reshape(-1),  # batch_size * n_tilts
+            "y_real": r_particles,  # batch_size(, n_tilts), D - 1, D - 1
+            "R": rots,  # batch_size(, n_tilts), 3, 3
         }
 
         if self.dataset.has_trans:
             if self.dataset.subtomogram_averaging:
-                in_dict['t'] = torch.from_numpy(trans).float().reshape(-1, self.ntilts, 2)  # batch_size, n_tilts, 2
+                in_dict["t"] = (
+                    torch.from_numpy(trans).float().reshape(-1, self.ntilts, 2)
+                )  # batch_size, n_tilts, 2
             else:
-                in_dict['t'] = torch.from_numpy(trans).float().reshape(-1, 2)  # batch_size, 2
+                in_dict["t"] = (
+                    torch.from_numpy(trans).float().reshape(-1, 2)
+                )  # batch_size, 2
 
         return in_dict

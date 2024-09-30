@@ -17,19 +17,19 @@ from torch.utils.data import DataLoader
 from torch.utils.data.sampler import BatchSampler, RandomSampler, SequentialSampler
 from torch.utils.tensorboard import SummaryWriter
 
-from . import mrc
-from . import utils
-from . import dataset_fast
-from . import dataset
-from . import ctf
-from . import summary
+from metrics.methods.drgnai.src import mrc
+from metrics.methods.drgnai.src import utils
+from metrics.methods.drgnai.src import dataset_fast
+from metrics.methods.drgnai.src import dataset
+from metrics.methods.drgnai.src import ctf
+from metrics.methods.drgnai.src import summary
 
-from .configuration import TrainingConfigurations
-from .analyze import ModelAnalyzer
-from .lattice import Lattice
-from .losses import kl_divergence_conf,  l1_regularizer, l2_frequency_bias
-from .models import DrgnAI, MyDataParallel
-from .mask import CircularMask, FrequencyMarchingMask
+from metrics.methods.drgnai.src.configuration import TrainingConfigurations
+from metrics.methods.drgnai.src.analyze import ModelAnalyzer
+from metrics.methods.drgnai.src.lattice import Lattice
+from metrics.methods.drgnai.src.losses import kl_divergence_conf, l1_regularizer, l2_frequency_bias
+from metrics.methods.drgnai.src.models import DrgnAI, MyDataParallel
+from metrics.methods.drgnai.src.mask import CircularMask, FrequencyMarchingMask
 
 
 class ModelTrainer:
@@ -49,21 +49,21 @@ class ModelTrainer:
     """
 
     # options for optimizers to use
-    optim_types = {'adam': torch.optim.Adam, 'lbfgs': torch.optim.LBFGS}
+    optim_types = {"adam": torch.optim.Adam, "lbfgs": torch.optim.LBFGS}
 
     # placeholders for runtimes
     run_phases = [
-        'dataloading',
-        'to_gpu',
-        'ctf',
-        'encoder',
-        'decoder',
-        'decoder_coords',
-        'decoder_query',
-        'loss',
-        'backward',
-        'to_cpu'
-        ]
+        "dataloading",
+        "to_gpu",
+        "ctf",
+        "encoder",
+        "decoder",
+        "decoder_coords",
+        "decoder_query",
+        "loss",
+        "backward",
+        "to_cpu",
+    ]
 
     def make_dataloader(self, batch_size: int) -> DataLoader:
         if self.configs.shuffle:
@@ -75,31 +75,39 @@ class ModelTrainer:
 
         if self.configs.fast_dataloading:
             if self.configs.shuffler_size > 0 and self.configs.shuffle:
-                assert self.data.lazy, (
-                    "Fast data shuffler is only enabled for lazy loading!")
+                assert (
+                    self.data.lazy
+                ), "Fast data shuffler is only enabled for lazy loading!"
 
                 data_loader = dataset_fast.DataShuffler(
-                    self.data, batch_size=batch_size,
-                    buffer_size=self.configs.shuffler_size
+                    self.data,
+                    batch_size=batch_size,
+                    buffer_size=self.configs.shuffler_size,
                 )
 
             else:
                 # see https://github.com/zhonge/cryodrgn/pull/221#discussion_r1120711123
                 # for discussion of why we use BatchSampler, etc.
                 data_loader = DataLoader(
-                    self.data, batch_size=None,
+                    self.data,
+                    batch_size=None,
                     sampler=BatchSampler(
-                        sampler, batch_size=batch_size, drop_last=False),
+                        sampler, batch_size=batch_size, drop_last=False
+                    ),
                     num_workers=self.configs.num_workers,
-                    multiprocessing_context=("spawn" if self.configs.num_workers > 0
-                                             else None),
+                    multiprocessing_context=(
+                        "spawn" if self.configs.num_workers > 0 else None
+                    ),
                 )
         else:
             data_loader = DataLoader(
-                self.data, batch_size=batch_size, sampler=sampler,
+                self.data,
+                batch_size=batch_size,
+                sampler=sampler,
                 num_workers=self.configs.num_workers,
-                multiprocessing_context=("spawn" if self.configs.num_workers > 0
-                                         else None),
+                multiprocessing_context=(
+                    "spawn" if self.configs.num_workers > 0 else None
+                ),
             )
 
         return data_loader
@@ -112,25 +120,28 @@ class ModelTrainer:
         if not os.path.isdir(outdir):
             raise ValueError(f"Output folder {outdir} does not exist!")
 
-        if os.path.exists(os.path.join(outdir, 'drgnai-configs.yaml')):
-            with open(os.path.join(outdir, 'drgnai-configs.yaml'), 'r') as f:
+        if os.path.exists(os.path.join(outdir, "drgnai-configs.yaml")):
+            with open(os.path.join(outdir, "drgnai-configs.yaml"), "r") as f:
                 train_configs = yaml.safe_load(f)
 
-        elif os.path.exists(os.path.join(outdir, 'train-configs.yaml')):
-            with open(os.path.join(outdir, 'train-configs.yaml'), 'r') as f:
-                train_configs = {'training': yaml.safe_load(f)}
+        elif os.path.exists(os.path.join(outdir, "train-configs.yaml")):
+            with open(os.path.join(outdir, "train-configs.yaml"), "r") as f:
+                train_configs = {"training": yaml.safe_load(f)}
 
         return train_configs
 
-    def __init__(self,
-                 outdir: str, config_vals: dict[str, Any], load: bool = False) -> None:
+    def __init__(
+        self, outdir: str, config_vals: dict[str, Any], load: bool = False
+    ) -> None:
         self.logger = logging.getLogger(__name__)
 
-        self.outdir = os.path.join(outdir, 'out')
+        self.outdir = os.path.join(outdir, "out")
         if load:
             if not os.path.isdir(self.outdir):
-                raise ValueError(f"Cannot use --load with directory `{outdir}` which "
-                                 f"has no default output folder `{self.outdir}`!")
+                raise ValueError(
+                    f"Cannot use --load with directory `{outdir}` which "
+                    f"has no default output folder `{self.outdir}`!"
+                )
 
             last_epoch = ModelAnalyzer.get_last_cached_epoch(self.outdir)
             if last_epoch == -2:
@@ -139,40 +150,49 @@ class ModelTrainer:
                     f"which does not contain any saved drngai training checkpoints!"
                 )
 
-            config_vals['load'] = os.path.join(self.outdir, f"weights.{last_epoch}.pkl")
+            config_vals["load"] = os.path.join(self.outdir, f"weights.{last_epoch}.pkl")
 
         self.configs = TrainingConfigurations(**config_vals)
 
         # take care of existing output directories
         if os.path.exists(self.outdir):
-            if ('load' in config_vals
-                    and os.path.dirname(config_vals['load']) == self.outdir):
-                self.logger.info("Reusing existing output directory "
-                                 "containing loaded checkpoint.")
+            if (
+                "load" in config_vals
+                and os.path.dirname(config_vals["load"]) == self.outdir
+            ):
+                self.logger.info(
+                    "Reusing existing output directory " "containing loaded checkpoint."
+                )
 
             else:
                 old_cfgs = self.load_configs(self.outdir)
                 if old_cfgs:
-                    old_cfgs = TrainingConfigurations(**old_cfgs['training'])
+                    old_cfgs = TrainingConfigurations(**old_cfgs["training"])
 
-                    outdirs = [p for p in os.listdir(outdir)
-                               if os.path.isdir(os.path.join(outdir, p))
-                               and re.match("^old-out_[0-9]+_", p)]
+                    outdirs = [
+                        p
+                        for p in os.listdir(outdir)
+                        if os.path.isdir(os.path.join(outdir, p))
+                        and re.match("^old-out_[0-9]+_", p)
+                    ]
 
                     if not outdirs:
-                        new_id = '000'
+                        new_id = "000"
                     else:
-                        new_id = str(max(int(os.path.basename(d).split('_')[1])
-                                         for d in outdirs) + 1).rjust(3, '0')
+                        new_id = str(
+                            max(int(os.path.basename(d).split("_")[1]) for d in outdirs)
+                            + 1
+                        ).rjust(3, "0")
 
                     train_lbl = (
-                        'refine' if old_cfgs.refine_gt_poses
-                        else 'fixed' if old_cfgs.use_gt_poses
-                        else 'abinit'
-                        )
+                        "refine"
+                        if old_cfgs.refine_gt_poses
+                        else "fixed"
+                        if old_cfgs.use_gt_poses
+                        else "abinit"
+                    )
                     train_lbl += (
-                        '-homo' if old_cfgs.z_dim == 0
-                        else f'-het{old_cfgs.z_dim}'
+                        "-homo" if old_cfgs.z_dim == 0 else f"-het{old_cfgs.z_dim}"
                     )
 
                     newdir = os.path.join(outdir, f"old-out_{new_id}_{train_lbl}")
@@ -183,19 +203,21 @@ class ModelTrainer:
                     )
 
                 elif os.listdir(self.outdir):
-                    self.logger.info("Using existing output directory which does "
-                                     "not yet contain any drgnai output!.")
+                    self.logger.info(
+                        "Using existing output directory which does "
+                        "not yet contain any drgnai output!."
+                    )
 
         os.makedirs(self.outdir, exist_ok=True)
-        self.logger.addHandler(logging.FileHandler(
-            os.path.join(self.outdir, "training.log")))
+        self.logger.addHandler(
+            logging.FileHandler(os.path.join(self.outdir, "training.log"))
+        )
 
         n_gpus = torch.cuda.device_count()
         self.logger.info(f"Number of available gpus: {n_gpus}")
         self.n_prcs = max(n_gpus, 1)
 
-        self.batch_size_known_poses = (
-                self.configs.batch_size_known_poses * self.n_prcs)
+        self.batch_size_known_poses = self.configs.batch_size_known_poses * self.n_prcs
         self.batch_size_hps = self.configs.batch_size_hps * self.n_prcs
         self.batch_size_sgd = self.configs.batch_size_sgd * self.n_prcs
 
@@ -204,15 +226,14 @@ class ModelTrainer:
 
         # set the device
         self.use_cuda = torch.cuda.is_available()
-        self.device = torch.device('cuda:0' if self.use_cuda else 'cpu')
+        self.device = torch.device("cuda:0" if self.use_cuda else "cpu")
         self.logger.info(f"Use cuda {self.use_cuda}")
 
         # tensorboard writer
-        self.summaries_dir = os.path.join(self.outdir, 'summaries')
+        self.summaries_dir = os.path.join(self.outdir, "summaries")
         os.makedirs(self.summaries_dir, exist_ok=True)
         self.writer = SummaryWriter(self.summaries_dir)
-        self.logger.info("Will write tensorboard summaries "
-                         f"in {self.summaries_dir}")
+        self.logger.info("Will write tensorboard summaries " f"in {self.summaries_dir}")
 
         # load the optional index used to filter particles
         if self.configs.ind is not None:
@@ -222,12 +243,13 @@ class ModelTrainer:
 
             elif isinstance(self.configs.ind, str):
                 if not os.path.exists(self.configs.ind):
-                    raise ValueError("Given subset index file "
-                                     f"`{self.configs.ind}` does not exist!")
+                    raise ValueError(
+                        "Given subset index file "
+                        f"`{self.configs.ind}` does not exist!"
+                    )
 
-                self.logger.info(
-                    f"Filtering dataset with {self.configs.ind}")
-                self.index = pickle.load(open(self.configs.ind, 'rb'))
+                self.logger.info(f"Filtering dataset with {self.configs.ind}")
+                self.index = pickle.load(open(self.configs.ind, "rb"))
 
         else:
             self.index = None
@@ -237,19 +259,22 @@ class ModelTrainer:
         if self.configs.fast_dataloading:
             if not self.configs.subtomogram_averaging:
                 self.data = dataset_fast.ImageDataset(
-                    self.configs.particles, ind=self.index,
+                    self.configs.particles,
+                    ind=self.index,
                     max_threads=self.configs.max_threads,
-                    lazy=True, poses_gt_pkl=self.configs.pose,
+                    lazy=True,
+                    poses_gt_pkl=self.configs.pose,
                     resolution_input=self.configs.resolution_encoder,
                     window_r=self.configs.window_radius_gt_real,
                     datadir=self.configs.datadir,
-                    no_trans=self.configs.no_trans
-                    )
+                    no_trans=self.configs.no_trans,
+                )
 
             else:
                 self.data = dataset_fast.TiltSeriesData(
                     self.configs.particles,
-                    self.configs.n_tilts, self.configs.angle_per_tilt,
+                    self.configs.n_tilts,
+                    self.configs.angle_per_tilt,
                     window_r=self.configs.window_radius_gt_real,
                     datadir=self.configs.datadir,
                     max_threads=self.configs.max_threads,
@@ -257,31 +282,37 @@ class ModelTrainer:
                     device=self.device,
                     poses_gt_pkl=self.configs.pose,
                     tilt_axis_angle=self.configs.tilt_axis_angle,
-                    ind=self.index, no_trans=self.configs.no_trans
-                    )
+                    ind=self.index,
+                    no_trans=self.configs.no_trans,
+                )
 
         else:
             self.data = dataset.MRCData(
-                self.configs.particles, max_threads=self.configs.max_threads,
-                ind=self.index, lazy=self.configs.lazy,
-                relion31=self.configs.relion31, poses_gt_pkl=self.configs.pose,
+                self.configs.particles,
+                max_threads=self.configs.max_threads,
+                ind=self.index,
+                lazy=self.configs.lazy,
+                relion31=self.configs.relion31,
+                poses_gt_pkl=self.configs.pose,
                 resolution_input=self.configs.resolution_encoder,
                 window_r=self.configs.window_radius_gt_real,
-                datadir=self.configs.datadir, no_trans=self.configs.no_trans
-                )
+                datadir=self.configs.datadir,
+                no_trans=self.configs.no_trans,
+            )
 
         self.n_particles_dataset = self.data.N
-        self.n_tilts_dataset = (self.data.Nt
-                                if self.configs.subtomogram_averaging
-                                else self.data.N)
+        self.n_tilts_dataset = (
+            self.data.Nt if self.configs.subtomogram_averaging else self.data.N
+        )
         self.resolution = self.data.D
 
         # load ctf
         if self.configs.ctf is not None:
             self.logger.info(f"Loading ctf params from {self.configs.ctf}")
 
-            ctf_params = ctf.load_ctf_for_training(self.resolution - 1,
-                                                   self.configs.ctf)
+            ctf_params = ctf.load_ctf_for_training(
+                self.resolution - 1, self.configs.ctf
+            )
 
             if self.index is not None:
                 self.logger.info("Filtering dataset")
@@ -291,8 +322,8 @@ class ModelTrainer:
             if self.configs.subtomogram_averaging:
                 ctf_params = np.concatenate(
                     (ctf_params, self.data.ctfscalefactor.reshape(-1, 1)),
-                    axis=1  # type: ignore
-                    )
+                    axis=1,  # type: ignore
+                )
                 self.data.voltage = float(ctf_params[0, 4])
 
             self.ctf_params = torch.tensor(ctf_params)
@@ -309,17 +340,21 @@ class ModelTrainer:
         self.lattice = Lattice(self.resolution, extent=0.5, device=self.device)
 
         # output mask
-        if self.configs.output_mask == 'circ':
-            radius = (self.lattice.D // 2 if self.configs.max_freq is None
-                      else self.configs.max_freq)
+        if self.configs.output_mask == "circ":
+            radius = (
+                self.lattice.D // 2
+                if self.configs.max_freq is None
+                else self.configs.max_freq
+            )
             self.output_mask = CircularMask(self.lattice, radius)
 
-        elif self.configs.output_mask == 'frequency_marching':
+        elif self.configs.output_mask == "frequency_marching":
             self.output_mask = FrequencyMarchingMask(
-                self.lattice, self.lattice.D // 2,
+                self.lattice,
+                self.lattice.D // 2,
                 radius=self.configs.l_start_fm,
-                add_one_every=self.configs.add_one_frequency_every
-                )
+                add_one_every=self.configs.add_one_frequency_every,
+            )
 
         else:
             raise NotImplementedError
@@ -329,63 +364,65 @@ class ModelTrainer:
         self.epochs_pose_search = 0
 
         if self.configs.n_imgs_pose_search > 0:
-            self.epochs_pose_search = max(2,
-                                          self.configs.n_imgs_pose_search
-                                          // self.n_particles_dataset + 1)
+            self.epochs_pose_search = max(
+                2, self.configs.n_imgs_pose_search // self.n_particles_dataset + 1
+            )
 
         if self.epochs_pose_search > 0:
             ps_params = {
-                'l_min': self.configs.l_start,
-                'l_max': self.configs.l_end,
-                't_extent': self.configs.t_extent,
-                't_n_grid': self.configs.t_n_grid,
-                'niter': self.configs.n_iter,
-                'nkeptposes': self.configs.n_kept_poses,
-                'base_healpy': self.configs.base_healpy,
-                't_xshift': self.configs.t_x_shift,
-                't_yshift': self.configs.t_y_shift,
-                'no_trans_search_at_pose_search': self\
-                    .configs.no_trans_search_at_pose_search,
-                'n_tilts_pose_search': self.configs.n_tilts_pose_search,
-                'tilting_func': (self.data.get_tilting_func()
-                                 if self.configs.subtomogram_averaging
-                                 else None),
-                'average_over_tilts': self.configs.average_over_tilts
-                }
+                "l_min": self.configs.l_start,
+                "l_max": self.configs.l_end,
+                "t_extent": self.configs.t_extent,
+                "t_n_grid": self.configs.t_n_grid,
+                "niter": self.configs.n_iter,
+                "nkeptposes": self.configs.n_kept_poses,
+                "base_healpy": self.configs.base_healpy,
+                "t_xshift": self.configs.t_x_shift,
+                "t_yshift": self.configs.t_y_shift,
+                "no_trans_search_at_pose_search": self.configs.no_trans_search_at_pose_search,
+                "n_tilts_pose_search": self.configs.n_tilts_pose_search,
+                "tilting_func": (
+                    self.data.get_tilting_func()
+                    if self.configs.subtomogram_averaging
+                    else None
+                ),
+                "average_over_tilts": self.configs.average_over_tilts,
+            }
 
         # cnn
         cnn_params = {
-            'conf': self.configs.use_conf_encoder,
-            'depth_cnn': self.configs.depth_cnn,
-            'channels_cnn': self.configs.channels_cnn,
-            'kernel_size_cnn': self.configs.kernel_size_cnn
-            }
+            "conf": self.configs.use_conf_encoder,
+            "depth_cnn": self.configs.depth_cnn,
+            "channels_cnn": self.configs.channels_cnn,
+            "kernel_size_cnn": self.configs.kernel_size_cnn,
+        }
 
         # conformational encoder
         if self.configs.z_dim > 0:
-            self.logger.info("Heterogeneous reconstruction with "
-                             f"z_dim = {self.configs.z_dim}")
+            self.logger.info(
+                "Heterogeneous reconstruction with " f"z_dim = {self.configs.z_dim}"
+            )
         else:
             self.logger.info("Homogeneous reconstruction")
 
         conf_regressor_params = {
-            'z_dim': self.configs.z_dim,
-            'std_z_init': self.configs.std_z_init,
-            'variational': self.configs.variational_het
-            }
+            "z_dim": self.configs.z_dim,
+            "std_z_init": self.configs.std_z_init,
+            "variational": self.configs.variational_het,
+        }
 
         # hypervolume
         hyper_volume_params = {
-            'explicit_volume': self.configs.explicit_volume,
-            'n_layers': self.configs.hypervolume_layers,
-            'hidden_dim': self.configs.hypervolume_dim,
-            'pe_type': self.configs.pe_type,
-            'pe_dim': self.configs.pe_dim,
-            'feat_sigma': self.configs.feat_sigma,
-            'domain': self.configs.hypervolume_domain,
-            'extent': self.lattice.extent,
-            'pe_type_conf': self.configs.pe_type_conf
-            }
+            "explicit_volume": self.configs.explicit_volume,
+            "n_layers": self.configs.hypervolume_layers,
+            "hidden_dim": self.configs.hypervolume_dim,
+            "pe_type": self.configs.pe_type,
+            "pe_dim": self.configs.pe_dim,
+            "feat_sigma": self.configs.feat_sigma,
+            "domain": self.configs.hypervolume_domain,
+            "extent": self.lattice.extent,
+            "pe_type_conf": self.configs.pe_type_conf,
+        }
 
         will_use_point_estimates = self.configs.epochs_sgd >= 1
         self.logger.info("Initializing model...")
@@ -406,33 +443,32 @@ class ModelTrainer:
             ps_params=ps_params,
             verbose_time=self.configs.verbose_time,
             pretrain_with_gt_poses=self.configs.pretrain_with_gt_poses,
-            n_tilts_pose_search=self.configs.n_tilts_pose_search
-            )
+            n_tilts_pose_search=self.configs.n_tilts_pose_search,
+        )
 
         # initialization from a previous checkpoint
         if self.configs.load:
             self.logger.info(f"Loading checkpoint from {self.configs.load}")
             checkpoint = torch.load(self.configs.load)
-            state_dict = checkpoint['model_state_dict']
+            state_dict = checkpoint["model_state_dict"]
 
-            if 'base_shifts' in state_dict:
-                state_dict.pop('base_shifts')
+            if "base_shifts" in state_dict:
+                state_dict.pop("base_shifts")
 
-            self.logger.info(
-                self.model.load_state_dict(state_dict, strict=False))
-            self.start_epoch = checkpoint['epoch'] + 1
+            self.logger.info(self.model.load_state_dict(state_dict, strict=False))
+            self.start_epoch = checkpoint["epoch"] + 1
 
-            if 'output_mask_radius' in checkpoint:
-                self.output_mask.update_radius(
-                    checkpoint['output_mask_radius'])
+            if "output_mask_radius" in checkpoint:
+                self.output_mask.update_radius(checkpoint["output_mask_radius"])
 
         else:
             self.start_epoch = -1
 
         # move to gpu and parallelize
         self.logger.info(self.model)
-        parameter_count = sum(p.numel() for p in self.model.parameters()
-                              if p.requires_grad)
+        parameter_count = sum(
+            p.numel() for p in self.model.parameters() if p.requires_grad
+        )
         self.logger.info(f"{parameter_count} parameters in model")
 
         # TODO: Replace with DistributedDataParallel
@@ -441,60 +477,68 @@ class ModelTrainer:
 
         self.logger.info("Model initialized. Moving to GPU...")
         self.model.to(self.device)
-        self.model.output_mask\
-            .binary_mask = self.model.output_mask.binary_mask.cpu()
+        self.model.output_mask.binary_mask = self.model.output_mask.binary_mask.cpu()
 
         self.optimizers = dict()
         self.optimizer_types = dict()
 
         # hypervolume
-        hyper_volume_params = [{
-            'params': list(self.model.hypervolume.parameters())}]
+        hyper_volume_params = [{"params": list(self.model.hypervolume.parameters())}]
 
-        self.optimizers['hypervolume'] = self.optim_types[
-            self.configs.hypervolume_optimizer_type](hyper_volume_params,
-                                                     lr=self.configs.lr)
-        self.optimizer_types[
-            'hypervolume'] = self.configs.hypervolume_optimizer_type
+        self.optimizers["hypervolume"] = self.optim_types[
+            self.configs.hypervolume_optimizer_type
+        ](hyper_volume_params, lr=self.configs.lr)
+        self.optimizer_types["hypervolume"] = self.configs.hypervolume_optimizer_type
 
         # pose table
         if not self.configs.use_gt_poses:
             if self.configs.epochs_sgd > 0:
-                pose_table_params = [{
-                    'params': list(self.model.pose_table.parameters())}]
+                pose_table_params = [
+                    {"params": list(self.model.pose_table.parameters())}
+                ]
 
-                self.optimizers['pose_table'] = self.optim_types[
-                    self.configs.pose_table_optimizer_type](
-                        pose_table_params, lr=self.configs.lr_pose_table)
+                self.optimizers["pose_table"] = self.optim_types[
+                    self.configs.pose_table_optimizer_type
+                ](pose_table_params, lr=self.configs.lr_pose_table)
                 self.optimizer_types[
-                    'pose_table'] = self.configs.pose_table_optimizer_type
+                    "pose_table"
+                ] = self.configs.pose_table_optimizer_type
 
         # conformations
         if self.configs.z_dim > 0:
             if self.configs.use_conf_encoder:
-                conf_encoder_params = [{
-                    'params': (list(self.model.conf_cnn.parameters())
-                               + list(self.model.conf_regressor.parameters()))
-                    }]
-
-                self.optimizers['conf_encoder'] = self.optim_types[
-                    self.configs.conf_encoder_optimizer_type](
-                        conf_encoder_params, lr=self.configs.lr_conf_encoder,
-                        weight_decay=self.configs.wd
+                conf_encoder_params = [
+                    {
+                        "params": (
+                            list(self.model.conf_cnn.parameters())
+                            + list(self.model.conf_regressor.parameters())
                         )
+                    }
+                ]
+
+                self.optimizers["conf_encoder"] = self.optim_types[
+                    self.configs.conf_encoder_optimizer_type
+                ](
+                    conf_encoder_params,
+                    lr=self.configs.lr_conf_encoder,
+                    weight_decay=self.configs.wd,
+                )
                 self.optimizer_types[
-                    'conf_encoder'] = self.configs.conf_encoder_optimizer_type
+                    "conf_encoder"
+                ] = self.configs.conf_encoder_optimizer_type
 
             else:
-                conf_table_params = [{
-                    'params': list(self.model.conf_table.parameters())}]
+                conf_table_params = [
+                    {"params": list(self.model.conf_table.parameters())}
+                ]
 
-                self.optimizers['conf_table'] = self.optim_types[
-                    self.configs.conf_table_optimizer_type](
-                        conf_table_params, lr=self.configs.lr_conf_table)
+                self.optimizers["conf_table"] = self.optim_types[
+                    self.configs.conf_table_optimizer_type
+                ](conf_table_params, lr=self.configs.lr_conf_table)
 
                 self.optimizer_types[
-                    'conf_table'] = self.configs.conf_table_optimizer_type
+                    "conf_table"
+                ] = self.configs.conf_table_optimizer_type
 
         self.optimized_modules = []
 
@@ -504,20 +548,26 @@ class ModelTrainer:
 
             for key in self.optimizers:
                 self.optimizers[key].load_state_dict(
-                    checkpoint['optimizers_state_dict'][key])
+                    checkpoint["optimizers_state_dict"][key]
+                )
 
         # dataloaders
         self.data_generator_pose_search = self.make_dataloader(
-            batch_size=self.batch_size_hps)
+            batch_size=self.batch_size_hps
+        )
         self.data_generator = self.make_dataloader(
-            batch_size=self.batch_size_known_poses)
+            batch_size=self.batch_size_known_poses
+        )
         self.data_generator_latent_optimization = self.make_dataloader(
-            batch_size=self.batch_size_sgd)
+            batch_size=self.batch_size_sgd
+        )
 
         # save configurations
-        self.configs.write(os.path.join(self.outdir, 'drgnai-configs.yaml'),
-                           data_norm_mean=float(self.data.norm[0]),
-                           data_norm_std=float(self.data.norm[1]))
+        self.configs.write(
+            os.path.join(self.outdir, "drgnai-configs.yaml"),
+            data_norm_mean=float(self.data.norm[0]),
+            data_norm_std=float(self.data.norm[1]),
+        )
 
         epsilon = 1e-8
         # booleans
@@ -534,15 +584,19 @@ class ModelTrainer:
                 self.first_switch_to_point_estimates = False
             self.first_switch_to_point_estimates_conf = False
 
-        self.use_kl_divergence = (not self.configs.z_dim == 0
-                                  and self.configs.variational_het
-                                  and self.configs.beta_conf >= epsilon)
+        self.use_kl_divergence = (
+            not self.configs.z_dim == 0
+            and self.configs.variational_het
+            and self.configs.beta_conf >= epsilon
+        )
         self.use_trans_l1_regularizer = (
-                self.configs.trans_l1_regularizer >= epsilon
-                and not self.configs.use_gt_trans and not self.configs.no_trans
-                )
+            self.configs.trans_l1_regularizer >= epsilon
+            and not self.configs.use_gt_trans
+            and not self.configs.no_trans
+        )
         self.use_l2_smoothness_regularizer = (
-                self.configs.l2_smoothness_regularizer >= epsilon)
+            self.configs.l2_smoothness_regularizer >= epsilon
+        )
 
         if self.configs.load:
             self.num_epochs = self.start_epoch + self.configs.epochs_sgd
@@ -550,9 +604,11 @@ class ModelTrainer:
         else:
             self.num_epochs = self.epochs_pose_search + self.configs.epochs_sgd
 
-        self.n_particles_pretrain = (self.configs.n_imgs_pretrain
-                                     if self.configs.n_imgs_pretrain >= 0
-                                     else self.n_particles_dataset)
+        self.n_particles_pretrain = (
+            self.configs.n_imgs_pretrain
+            if self.configs.n_imgs_pretrain >= 0
+            else self.n_particles_dataset
+        )
 
         # placeholders for predicted latent variables,
         # last input/output batch, losses
@@ -560,20 +616,22 @@ class ModelTrainer:
         self.y_pred_last = None
 
         self.predicted_rots = np.empty((self.n_tilts_dataset, 3, 3))
-        self.predicted_trans = (np.empty((self.n_tilts_dataset, 2))
-                                if not self.configs.no_trans else None)
-        self.predicted_conf = (np.empty((self.n_particles_dataset,
-                                         self.configs.z_dim))
-                               if self.configs.z_dim > 0 else None)
+        self.predicted_trans = (
+            np.empty((self.n_tilts_dataset, 2)) if not self.configs.no_trans else None
+        )
+        self.predicted_conf = (
+            np.empty((self.n_particles_dataset, self.configs.z_dim))
+            if self.configs.z_dim > 0
+            else None
+        )
 
         self.predicted_logvar = (
             np.empty((self.n_particles_dataset, self.configs.z_dim))
             if self.configs.z_dim > 0 and self.configs.variational_het
             else None
-            )
+        )
 
-        self.mask_particles_seen_at_last_epoch = np.zeros(
-            self.n_particles_dataset)
+        self.mask_particles_seen_at_last_epoch = np.zeros(self.n_particles_dataset)
         self.mask_tilts_seen_at_last_epoch = np.zeros(self.n_tilts_dataset)
 
         # counters
@@ -589,13 +647,17 @@ class ModelTrainer:
         self.logger.info("--- Training Starts Now ---")
         t_0 = dt.now()
 
-        self.predicted_rots = np.eye(3).reshape(1, 3, 3).repeat(
-            self.n_tilts_dataset, axis=0)
-        self.predicted_trans = (np.zeros((self.n_tilts_dataset, 2))
-                                if not self.configs.no_trans else None)
-        self.predicted_conf = (np.zeros((self.n_particles_dataset,
-                                         self.configs.z_dim))
-                               if self.configs.z_dim > 0 else None)
+        self.predicted_rots = (
+            np.eye(3).reshape(1, 3, 3).repeat(self.n_tilts_dataset, axis=0)
+        )
+        self.predicted_trans = (
+            np.zeros((self.n_tilts_dataset, 2)) if not self.configs.no_trans else None
+        )
+        self.predicted_conf = (
+            np.zeros((self.n_particles_dataset, self.configs.z_dim))
+            if self.configs.z_dim > 0
+            else None
+        )
 
         self.total_batch_count = 0
         self.total_particles_count = 0
@@ -604,24 +666,23 @@ class ModelTrainer:
         for epoch in range(self.start_epoch, self.num_epochs):
             te = dt.now()
 
-            self.mask_particles_seen_at_last_epoch = np.zeros(
-                self.n_particles_dataset)
+            self.mask_particles_seen_at_last_epoch = np.zeros(self.n_particles_dataset)
             self.mask_tilts_seen_at_last_epoch = np.zeros(self.n_tilts_dataset)
 
             self.epoch += 1
             self.current_epoch_particles_count = 0
-            self.optimized_modules = ['hypervolume']
+            self.optimized_modules = ["hypervolume"]
 
-            self.pose_only = (self.total_particles_count
-                              < self.configs.pose_only_phase
-                              or self.configs.z_dim == 0 or epoch < 0)
+            self.pose_only = (
+                self.total_particles_count < self.configs.pose_only_phase
+                or self.configs.z_dim == 0
+                or epoch < 0
+            )
             self.pretraining = self.epoch < 0
 
             if not self.configs.use_gt_poses:
-                self.is_in_pose_search_step = (
-                        0 <= epoch < self.epochs_pose_search)
-                self.use_point_estimates = (
-                        epoch >= max(0, self.epochs_pose_search))
+                self.is_in_pose_search_step = 0 <= epoch < self.epochs_pose_search
+                self.use_point_estimates = epoch >= max(0, self.epochs_pose_search)
 
             n_max_particles = self.n_particles_dataset
             data_generator = self.data_generator
@@ -629,14 +690,12 @@ class ModelTrainer:
             # pre-training
             if self.pretraining:
                 n_max_particles = self.n_particles_pretrain
-                self.logger.info(
-                    f"Will pretrain on {n_max_particles} particles")
+                self.logger.info(f"Will pretrain on {n_max_particles} particles")
 
             # HPS
             elif self.is_in_pose_search_step:
                 n_max_particles = self.n_particles_dataset
-                self.logger.info(
-                    f"Will use pose search on {n_max_particles} particles")
+                self.logger.info(f"Will use pose search on {n_max_particles} particles")
                 data_generator = self.data_generator_pose_search
 
             # SGD
@@ -646,8 +705,7 @@ class ModelTrainer:
                     self.logger.info("Switched to autodecoding poses")
 
                     if self.configs.refine_gt_poses:
-                        self.logger.info(
-                            "Initializing pose table from ground truth")
+                        self.logger.info("Initializing pose table from ground truth")
 
                         poses_gt = utils.load_pkl(self.configs.pose)
                         if poses_gt[0].ndim == 3:
@@ -670,18 +728,22 @@ class ModelTrainer:
                         self.model.pose_table.initialize(rotmat_gt, trans_gt)
 
                     else:
-                        self.logger.info("Initializing pose table from "
-                                         "hierarchical pose search")
-                        self.model.pose_table.initialize(self.predicted_rots,
-                                                         self.predicted_trans)
+                        self.logger.info(
+                            "Initializing pose table from " "hierarchical pose search"
+                        )
+                        self.model.pose_table.initialize(
+                            self.predicted_rots, self.predicted_trans
+                        )
 
                     self.model.to(self.device)
 
-                self.logger.info("Will use latent optimization on "
-                                 f"{self.n_particles_dataset} particles")
+                self.logger.info(
+                    "Will use latent optimization on "
+                    f"{self.n_particles_dataset} particles"
+                )
 
                 data_generator = self.data_generator_latent_optimization
-                self.optimized_modules.append('pose_table')
+                self.optimized_modules.append("pose_table")
 
             # GT poses
             else:
@@ -690,33 +752,37 @@ class ModelTrainer:
             # conformations
             if not self.pose_only:
                 if self.configs.use_conf_encoder:
-                    self.optimized_modules.append('conf_encoder')
+                    self.optimized_modules.append("conf_encoder")
 
                 else:
                     if self.first_switch_to_point_estimates_conf:
                         self.first_switch_to_point_estimates_conf = False
 
                         if self.configs.initial_conf is not None:
-                            self.logger.info("Initializing conformation table "
-                                             "from given z's")
-                            self.model.conf_table.initialize(utils.load_pkl(
-                                self.configs.initial_conf))
+                            self.logger.info(
+                                "Initializing conformation table " "from given z's"
+                            )
+                            self.model.conf_table.initialize(
+                                utils.load_pkl(self.configs.initial_conf)
+                            )
 
                         self.model.to(self.device)
 
-                    self.optimized_modules.append('conf_table')
+                    self.optimized_modules.append("conf_table")
 
             will_make_summary = (
-                    (self.configs.log_heavy_interval
-                     and epoch % self.configs.log_heavy_interval == 0)
-                    or self.is_in_pose_search_step or self.pretraining
-                    or epoch == self.num_epochs - 1
-                    )
+                (
+                    self.configs.log_heavy_interval
+                    and epoch % self.configs.log_heavy_interval == 0
+                )
+                or self.is_in_pose_search_step
+                or self.pretraining
+                or epoch == self.num_epochs - 1
+            )
             self.log_latents = will_make_summary
 
             if will_make_summary:
-                self.logger.info(
-                    "Will make a full summary at the end of this epoch")
+                self.logger.info("Will make a full summary at the end of this epoch")
 
             for key in self.run_times.keys():
                 self.run_times[key] = []
@@ -739,9 +805,11 @@ class ModelTrainer:
                     break
 
             total_loss = self.cur_loss / n_max_particles
-            self.logger.info(f"# =====> SGD Epoch: {self.epoch} "
-                             f"finished in {dt.now() - te}; "
-                             f"total loss = {format(total_loss, '.6f')}")
+            self.logger.info(
+                f"# =====> SGD Epoch: {self.epoch} "
+                f"finished in {dt.now() - te}; "
+                f"total loss = {format(total_loss, '.6f')}"
+            )
 
             # image and pose summary
             if will_make_summary:
@@ -751,27 +819,28 @@ class ModelTrainer:
                 self.save_model()
 
             # update output mask -- epoch-based scaling
-            if (hasattr(self.output_mask, 'update_epoch')
-                    and self.use_point_estimates):
-                self.output_mask.update_epoch(
-                    self.configs.n_frequencies_per_epoch)
+            if hasattr(self.output_mask, "update_epoch") and self.use_point_estimates:
+                self.output_mask.update_epoch(self.configs.n_frequencies_per_epoch)
 
         t_total = dt.now() - t_0
         self.logger.info(
-            f"Finished in {t_total} ({t_total / self.num_epochs} per epoch)")
+            f"Finished in {t_total} ({t_total / self.num_epochs} per epoch)"
+        )
 
     def get_ctfs_at(self, index):
         batch_size = len(index)
-        ctf_params_local = (self.ctf_params[index]
-                            if self.ctf_params is not None else None)
+        ctf_params_local = (
+            self.ctf_params[index] if self.ctf_params is not None else None
+        )
 
         if ctf_params_local is not None:
             freqs = self.lattice.freqs2d.unsqueeze(0).expand(
-                batch_size, *self.lattice.freqs2d.shape) / ctf_params_local[:, 0].view(batch_size, 1, 1)
+                batch_size, *self.lattice.freqs2d.shape
+            ) / ctf_params_local[:, 0].view(batch_size, 1, 1)
 
             ctf_local = ctf.compute_ctf(
-                freqs, *torch.split(ctf_params_local[:, 1:], 1, 1)).view(
-                    batch_size, self.resolution, self.resolution)
+                freqs, *torch.split(ctf_params_local[:, 1:], 1, 1)
+            ).view(batch_size, self.resolution, self.resolution)
 
         else:
             ctf_local = None
@@ -781,30 +850,31 @@ class ModelTrainer:
     def train_step(self, in_dict, end_time):
         if self.configs.verbose_time:
             torch.cuda.synchronize()
-            self.run_times['dataloading'].append(time.time() - end_time)
+            self.run_times["dataloading"].append(time.time() - end_time)
 
         # update output mask -- image-based scaling
-        if hasattr(self.output_mask, 'update') and self.is_in_pose_search_step:
+        if hasattr(self.output_mask, "update") and self.is_in_pose_search_step:
             self.output_mask.update(self.total_particles_count)
 
         if self.is_in_pose_search_step:
-            self.model.ps_params['l_min'] = self.configs.l_start
+            self.model.ps_params["l_min"] = self.configs.l_start
 
-            if self.configs.output_mask == 'circ':
-                self.model.ps_params['l_max'] = self.configs.l_end
+            if self.configs.output_mask == "circ":
+                self.model.ps_params["l_max"] = self.configs.l_end
             else:
-                self.model.ps_params['l_max'] = min(
-                    self.output_mask.current_radius, self.configs.l_end)
+                self.model.ps_params["l_max"] = min(
+                    self.output_mask.current_radius, self.configs.l_end
+                )
 
-        y_gt = in_dict['y']
-        ind = in_dict['index']
+        y_gt = in_dict["y"]
+        ind = in_dict["index"]
 
-        if not 'tilt_index' in in_dict:
-            in_dict['tilt_index'] = in_dict['index']
+        if not "tilt_index" in in_dict:
+            in_dict["tilt_index"] = in_dict["index"]
         else:
-            in_dict['tilt_index'] = in_dict['tilt_index'].reshape(-1)
+            in_dict["tilt_index"] = in_dict["tilt_index"].reshape(-1)
 
-        ind_tilt = in_dict['tilt_index']
+        ind_tilt = in_dict["tilt_index"]
         self.total_batch_count += 1
         batch_size = len(y_gt)
         self.total_particles_count += batch_size
@@ -819,15 +889,14 @@ class ModelTrainer:
             in_dict[key] = in_dict[key].to(self.device)
         if self.configs.verbose_time:
             torch.cuda.synchronize()
-            self.run_times['to_gpu'].append(time.time() - start_time_gpu)
+            self.run_times["to_gpu"].append(time.time() - start_time_gpu)
 
         # zero grad
         for key in self.optimized_modules:
             self.optimizers[key].zero_grad()
 
         # forward pass
-        latent_variables_dict, y_pred, y_gt_processed = self.forward_pass(
-            in_dict)
+        latent_variables_dict, y_pred, y_gt_processed = self.forward_pass(in_dict)
 
         if self.n_prcs > 1:
             self.model.module.is_in_pose_search_step = False
@@ -839,12 +908,13 @@ class ModelTrainer:
             torch.cuda.synchronize()
 
         start_time_loss = time.time()
-        total_loss, all_losses = self.loss(y_pred, y_gt_processed,
-                                           latent_variables_dict)
+        total_loss, all_losses = self.loss(
+            y_pred, y_gt_processed, latent_variables_dict
+        )
 
         if self.configs.verbose_time:
             torch.cuda.synchronize()
-            self.run_times['loss'].append(time.time() - start_time_loss)
+            self.run_times["loss"].append(time.time() - start_time_loss)
 
         # backward pass
         if self.configs.verbose_time:
@@ -854,18 +924,24 @@ class ModelTrainer:
         self.cur_loss += total_loss.item() * len(ind)
 
         for key in self.optimized_modules:
-            if self.optimizer_types[key] == 'adam':
+            if self.optimizer_types[key] == "adam":
                 self.optimizers[key].step()
 
-            elif self.optimizer_types[key] == 'lbfgs':
+            elif self.optimizer_types[key] == "lbfgs":
+
                 def closure():
                     self.optimizers[key].zero_grad()
-                    _latent_variables_dict, _y_pred, _y_gt_processed = self.forward_pass(in_dict)
+                    (
+                        _latent_variables_dict,
+                        _y_pred,
+                        _y_gt_processed,
+                    ) = self.forward_pass(in_dict)
                     _loss, _ = self.loss(
                         _y_pred, _y_gt_processed, _latent_variables_dict
                     )
                     _loss.backward()
                     return _loss.item()
+
                 self.optimizers[key].step(closure)
 
             else:
@@ -874,8 +950,7 @@ class ModelTrainer:
         if self.configs.verbose_time:
             torch.cuda.synchronize()
 
-            self.run_times['backward'].append(
-                time.time() - start_time_backward)
+            self.run_times["backward"].append(time.time() - start_time_backward)
 
         # detach
         if self.log_latents:
@@ -886,11 +961,13 @@ class ModelTrainer:
                 torch.cuda.synchronize()
 
             start_time_cpu = time.time()
-            rot_pred, trans_pred, conf_pred, logvar_pred = self.detach_latent_variables(latent_variables_dict)
+            rot_pred, trans_pred, conf_pred, logvar_pred = self.detach_latent_variables(
+                latent_variables_dict
+            )
 
             if self.configs.verbose_time:
                 torch.cuda.synchronize()
-                self.run_times['to_cpu'].append(time.time() - start_time_cpu)
+                self.run_times["to_cpu"].append(time.time() - start_time_cpu)
 
             # log
             if self.use_cuda:
@@ -911,25 +988,31 @@ class ModelTrainer:
                     self.predicted_logvar[ind] = logvar_pred
 
         else:
-            self.run_times['to_cpu'].append(0.0)
+            self.run_times["to_cpu"].append(0.0)
 
         # scalar summary
         if self.total_particles_count % self.configs.log_interval < batch_size:
             self.make_light_summary(all_losses)
 
     def detach_latent_variables(self, latent_variables_dict):
-        rot_pred = latent_variables_dict['R'].detach().cpu().numpy()
-        trans_pred = (latent_variables_dict['t'].detach().cpu().numpy()
-                      if not self.configs.no_trans else None)
+        rot_pred = latent_variables_dict["R"].detach().cpu().numpy()
+        trans_pred = (
+            latent_variables_dict["t"].detach().cpu().numpy()
+            if not self.configs.no_trans
+            else None
+        )
 
-        conf_pred = (latent_variables_dict['z'].detach().cpu().numpy()
-                     if self.configs.z_dim > 0 and 'z' in latent_variables_dict
-                     else None)
+        conf_pred = (
+            latent_variables_dict["z"].detach().cpu().numpy()
+            if self.configs.z_dim > 0 and "z" in latent_variables_dict
+            else None
+        )
 
-        logvar_pred = (latent_variables_dict['z_logvar'].detach().cpu().numpy()
-                       if self.configs.z_dim > 0
-                          and 'z_logvar' in latent_variables_dict
-                       else None)
+        logvar_pred = (
+            latent_variables_dict["z_logvar"].detach().cpu().numpy()
+            if self.configs.z_dim > 0 and "z_logvar" in latent_variables_dict
+            else None
+        )
 
         return rot_pred, trans_pred, conf_pred, logvar_pred
 
@@ -938,39 +1021,40 @@ class ModelTrainer:
             torch.cuda.synchronize()
 
         start_time_ctf = time.time()
-        ctf_local = self.get_ctfs_at(in_dict['tilt_index'])
+        ctf_local = self.get_ctfs_at(in_dict["tilt_index"])
 
         if self.configs.subtomogram_averaging:
             ctf_local = ctf_local.reshape(
-                -1, self.configs.n_tilts, *ctf_local.shape[1:])
+                -1, self.configs.n_tilts, *ctf_local.shape[1:]
+            )
 
         if self.configs.verbose_time:
             torch.cuda.synchronize()
-            self.run_times['ctf'].append(time.time() - start_time_ctf)
+            self.run_times["ctf"].append(time.time() - start_time_ctf)
 
         # forward pass
-        if 'hypervolume' in self.optimized_modules:
+        if "hypervolume" in self.optimized_modules:
             self.model.hypervolume.train()
         else:
             self.model.hypervolume.eval()
 
-        if hasattr(self.model, 'conf_cnn'):
-            if hasattr(self.model, 'conf_regressor'):
-                if 'conf_encoder' in self.optimized_modules:
+        if hasattr(self.model, "conf_cnn"):
+            if hasattr(self.model, "conf_regressor"):
+                if "conf_encoder" in self.optimized_modules:
                     self.model.conf_cnn.train()
                     self.model.conf_regressor.train()
                 else:
                     self.model.conf_cnn.eval()
                     self.model.conf_regressor.eval()
 
-        if hasattr(self.model, 'pose_table'):
-            if 'pose_table' in self.optimized_modules:
+        if hasattr(self.model, "pose_table"):
+            if "pose_table" in self.optimized_modules:
                 self.model.pose_table.train()
             else:
                 self.model.pose_table.eval()
 
-        if hasattr(self.model, 'conf_table'):
-            if 'conf_table' in self.optimized_modules:
+        if hasattr(self.model, "conf_table"):
+            if "conf_table" in self.optimized_modules:
                 self.model.conf_table.train()
             else:
                 self.model.conf_table.eval()
@@ -982,55 +1066,57 @@ class ModelTrainer:
             self.model.module.pretrain = self.pretraining
             self.model.module.is_in_pose_search_step = self.is_in_pose_search_step
             self.model.module.use_point_estimates_conf = (
-                not self.configs.use_conf_encoder)
+                not self.configs.use_conf_encoder
+            )
 
         else:
             self.model.pose_only = self.pose_only
             self.model.use_point_estimates = self.use_point_estimates
             self.model.pretrain = self.pretraining
             self.model.is_in_pose_search_step = self.is_in_pose_search_step
-            self.model.use_point_estimates_conf = (
-                not self.configs.use_conf_encoder)
+            self.model.use_point_estimates_conf = not self.configs.use_conf_encoder
 
         if self.configs.subtomogram_averaging:
-            in_dict['tilt_index'] = in_dict['tilt_index'].reshape(
-                *in_dict['y'].shape[0:2])
+            in_dict["tilt_index"] = in_dict["tilt_index"].reshape(
+                *in_dict["y"].shape[0:2]
+            )
 
         out_dict = self.model(in_dict)
-        self.run_times['encoder'].append(
-            torch.mean(out_dict['time_encoder'].cpu())
-            if self.configs.verbose_time else 0.
-            )
+        self.run_times["encoder"].append(
+            torch.mean(out_dict["time_encoder"].cpu())
+            if self.configs.verbose_time
+            else 0.0
+        )
 
-        self.run_times['decoder'].append(
-            torch.mean(out_dict['time_decoder'].cpu())
-            if self.configs.verbose_time else 0.
-            )
+        self.run_times["decoder"].append(
+            torch.mean(out_dict["time_decoder"].cpu())
+            if self.configs.verbose_time
+            else 0.0
+        )
 
-        self.run_times['decoder_coords'].append(
-            torch.mean(out_dict['time_decoder_coords'].cpu())
-            if self.configs.verbose_time else 0.
-            )
+        self.run_times["decoder_coords"].append(
+            torch.mean(out_dict["time_decoder_coords"].cpu())
+            if self.configs.verbose_time
+            else 0.0
+        )
 
-        self.run_times['decoder_query'].append(
-            torch.mean(out_dict['time_decoder_query'].cpu())
-            if self.configs.verbose_time else 0.
-            )
+        self.run_times["decoder_query"].append(
+            torch.mean(out_dict["time_decoder_query"].cpu())
+            if self.configs.verbose_time
+            else 0.0
+        )
 
         latent_variables_dict = out_dict
-        y_pred = out_dict['y_pred']
-        y_gt_processed = out_dict['y_gt_processed']
+        y_pred = out_dict["y_pred"]
+        y_gt_processed = out_dict["y_gt_processed"]
 
-        if (self.configs.subtomogram_averaging
-                and self.configs.dose_exposure_correction):
+        if self.configs.subtomogram_averaging and self.configs.dose_exposure_correction:
             mask = self.output_mask.binary_mask
             a_pix = self.ctf_params[0, 0]
 
             dose_filters = self.data.get_dose_filters(
-                in_dict['tilt_index'].reshape(-1),
-                self.lattice,
-                a_pix
-                ).reshape(*y_pred.shape[:2], -1)
+                in_dict["tilt_index"].reshape(-1), self.lattice, a_pix
+            ).reshape(*y_pred.shape[:2], -1)
 
             y_pred *= dose_filters[..., mask]
 
@@ -1045,35 +1131,42 @@ class ModelTrainer:
 
         # data loss
         data_loss = F.mse_loss(y_pred, y_gt)
-        all_losses['Data Loss'] = data_loss.item()
+        all_losses["Data Loss"] = data_loss.item()
         total_loss = data_loss
 
         # KL divergence
         if self.use_kl_divergence:
             kld_conf = kl_divergence_conf(latent_variables_dict)
-            total_loss += self.configs.beta_conf * kld_conf / self.resolution ** 2
-            all_losses['KL Div. Conf.'] = kld_conf.item()
+            total_loss += self.configs.beta_conf * kld_conf / self.resolution**2
+            all_losses["KL Div. Conf."] = kld_conf.item()
 
         # L1 regularization for translations
         if self.use_trans_l1_regularizer and self.use_point_estimates:
-            trans_l1_loss = l1_regularizer(latent_variables_dict['t'])
+            trans_l1_loss = l1_regularizer(latent_variables_dict["t"])
             total_loss += self.configs.trans_l1_regularizer * trans_l1_loss
-            all_losses['L1 Reg. Trans.'] = trans_l1_loss.item()
+            all_losses["L1 Reg. Trans."] = trans_l1_loss.item()
 
         # L2 smoothness prior
         if self.use_l2_smoothness_regularizer:
-            smoothness_loss = l2_frequency_bias(y_pred, self.lattice.freqs2d,
-                                                self.output_mask.binary_mask,
-                                                self.resolution)
+            smoothness_loss = l2_frequency_bias(
+                y_pred,
+                self.lattice.freqs2d,
+                self.output_mask.binary_mask,
+                self.resolution,
+            )
             total_loss += self.configs.l2_smoothness_regularizer * smoothness_loss
-            all_losses['L2 Smoothness Loss'] = smoothness_loss.item()
+            all_losses["L2 Smoothness Loss"] = smoothness_loss.item()
 
         return total_loss, all_losses
 
     def make_heavy_summary(self):
-        summary.make_img_summary(self.writer, self.in_dict_last,
-                                 self.y_pred_last, self.output_mask,
-                                 self.epoch)
+        summary.make_img_summary(
+            self.writer,
+            self.in_dict_last,
+            self.y_pred_last,
+            self.output_mask,
+            self.epoch,
+        )
 
         # conformation
         pca = None
@@ -1089,28 +1182,35 @@ class ModelTrainer:
             if self.mask_particles_seen_at_last_epoch is not None:
                 mask_idx = self.mask_particles_seen_at_last_epoch > 0.5
             else:
-                mask_idx = np.ones((self.n_particles_dataset, ), dtype=bool)
+                mask_idx = np.ones((self.n_particles_dataset,), dtype=bool)
 
             predicted_conf = self.predicted_conf[mask_idx]
             labels = labels[mask_idx] if labels is not None else None
-            logvar = (self.predicted_logvar[mask_idx]
-                      if self.predicted_logvar is not None else None)
+            logvar = (
+                self.predicted_logvar[mask_idx]
+                if self.predicted_logvar is not None
+                else None
+            )
 
             pca = summary.make_conf_summary(
-                self.writer, predicted_conf, self.epoch, labels,
-                pca=None, logvar=logvar,
-                palette_type=self.configs.color_palette
-                )
+                self.writer,
+                predicted_conf,
+                self.epoch,
+                labels,
+                pca=None,
+                logvar=logvar,
+                palette_type=self.configs.color_palette,
+            )
 
         # pose
         rotmat_gt = None
         trans_gt = None
-        shift = (not self.configs.no_trans)
+        shift = not self.configs.no_trans
 
         if self.mask_particles_seen_at_last_epoch is not None:
             mask_tilt_idx = self.mask_tilts_seen_at_last_epoch > 0.5
         else:
-            mask_tilt_idx = np.ones((self.n_tilts_dataset, ), dtype=bool)
+            mask_tilt_idx = np.ones((self.n_tilts_dataset,), dtype=bool)
 
         if self.configs.pose is not None:
             poses_gt = utils.load_pkl(self.configs.pose)
@@ -1133,15 +1233,24 @@ class ModelTrainer:
                     rotmat_gt = rotmat_gt[self.index]
 
             rotmat_gt = rotmat_gt[mask_tilt_idx]
-            trans_gt = (trans_gt[mask_tilt_idx] if trans_gt is not None
-                        else None)
+            trans_gt = trans_gt[mask_tilt_idx] if trans_gt is not None else None
 
         predicted_rots = self.predicted_rots[mask_tilt_idx]
-        predicted_trans = (self.predicted_trans[mask_tilt_idx]
-                           if self.predicted_trans is not None else None)
+        predicted_trans = (
+            self.predicted_trans[mask_tilt_idx]
+            if self.predicted_trans is not None
+            else None
+        )
 
-        summary.make_pose_summary(self.writer, predicted_rots, predicted_trans,
-                                  rotmat_gt, trans_gt, self.epoch, shift=shift)
+        summary.make_pose_summary(
+            self.writer,
+            predicted_rots,
+            predicted_trans,
+            rotmat_gt,
+            trans_gt,
+            self.epoch,
+            shift=shift,
+        )
 
         return pca
 
@@ -1150,36 +1259,36 @@ class ModelTrainer:
             f"# [Train Epoch: {self.epoch}/{self.num_epochs - 1}] "
             f"[{self.current_epoch_particles_count}"
             f"/{self.n_particles_dataset} particles]"
-            )
+        )
 
-        if hasattr(self.output_mask, 'current_radius'):
-            all_losses['Mask Radius'] = self.output_mask.current_radius
+        if hasattr(self.output_mask, "current_radius"):
+            all_losses["Mask Radius"] = self.output_mask.current_radius
 
         if self.model.trans_search_factor is not None:
-            all_losses['Trans. Search Factor'] = self.model.trans_search_factor
+            all_losses["Trans. Search Factor"] = self.model.trans_search_factor
 
-        summary.make_scalar_summary(self.writer, all_losses,
-                                    self.total_particles_count)
+        summary.make_scalar_summary(self.writer, all_losses, self.total_particles_count)
 
         if self.configs.verbose_time:
             for key in self.run_times.keys():
                 self.logger.info(
-                    f"{key} time: {np.mean(np.array(self.run_times[key]))}")
+                    f"{key} time: {np.mean(np.array(self.run_times[key]))}"
+                )
 
     def save_latents(self):
         """Write model's latent variables to file."""
         out_pose = os.path.join(self.outdir, f"pose.{self.epoch}.pkl")
 
         if self.configs.no_trans:
-            with open(out_pose, 'wb') as f:
+            with open(out_pose, "wb") as f:
                 pickle.dump(self.predicted_rots, f)
         else:
-            with open(out_pose, 'wb') as f:
+            with open(out_pose, "wb") as f:
                 pickle.dump((self.predicted_rots, self.predicted_trans), f)
 
         if self.configs.z_dim > 0:
             out_conf = os.path.join(self.outdir, f"conf.{self.epoch}.pkl")
-            with open(out_conf, 'wb') as f:
+            with open(out_conf, "wb") as f:
                 pickle.dump(self.predicted_conf, f)
 
     def save_volume(self):
@@ -1187,14 +1296,14 @@ class ModelTrainer:
         out_mrc = os.path.join(self.outdir, f"reconstruct.{self.epoch}.mrc")
 
         self.model.hypervolume.eval()
-        if hasattr(self.model, 'conf_cnn'):
-            if hasattr(self.model, 'conf_regressor'):
+        if hasattr(self.model, "conf_cnn"):
+            if hasattr(self.model, "conf_regressor"):
                 self.model.conf_cnn.eval()
                 self.model.conf_regressor.eval()
 
-        if hasattr(self.model, 'pose_table'):
+        if hasattr(self.model, "pose_table"):
             self.model.pose_table.eval()
-        if hasattr(self.model, 'conf_table'):
+        if hasattr(self.model, "conf_table"):
             self.model.conf_table.eval()
 
         if self.configs.z_dim > 0:
@@ -1202,7 +1311,7 @@ class ModelTrainer:
         else:
             zval = None
 
-        vol = -1. * self.model.eval_volume(self.data.norm, zval=zval)
+        vol = -1.0 * self.model.eval_volume(self.data.norm, zval=zval)
         mrc.write(out_mrc, vol.astype(np.float32))
 
     # TODO: weights -> model and reconstruct -> volume for output labels?
@@ -1215,23 +1324,22 @@ class ModelTrainer:
             optimizers_state_dict[key] = self.optimizers[key].state_dict()
 
         saved_objects = {
-            'epoch': self.epoch,
-
-            'model_state_dict': (self.model.module.state_dict()
-                                 if self.n_prcs > 1
-                                 else self.model.state_dict()),
-
-            'hypervolume_state_dict': (
-                self.model.module.hypervolume.state_dict() if self.n_prcs > 1
+            "epoch": self.epoch,
+            "model_state_dict": (
+                self.model.module.state_dict()
+                if self.n_prcs > 1
+                else self.model.state_dict()
+            ),
+            "hypervolume_state_dict": (
+                self.model.module.hypervolume.state_dict()
+                if self.n_prcs > 1
                 else self.model.hypervolume.state_dict()
-                ),
+            ),
+            "hypervolume_params": self.model.hypervolume.get_building_params(),
+            "optimizers_state_dict": optimizers_state_dict,
+        }
 
-            'hypervolume_params': self.model.hypervolume.get_building_params(),
-            'optimizers_state_dict': optimizers_state_dict,
-            }
-
-        if hasattr(self.output_mask, 'current_radius'):
-            saved_objects[
-                'output_mask_radius'] = self.output_mask.current_radius
+        if hasattr(self.output_mask, "current_radius"):
+            saved_objects["output_mask_radius"] = self.output_mask.current_radius
 
         torch.save(saved_objects, out_weights)

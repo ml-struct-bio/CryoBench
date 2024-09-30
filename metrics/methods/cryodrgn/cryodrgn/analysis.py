@@ -15,7 +15,8 @@ from sklearn.mixture import GaussianMixture
 from typing import Optional, Union, Tuple, List
 from cryodrgn.commands import eval_vol
 import matplotlib
-matplotlib.use('Agg')  # Set the backend to Agg
+
+matplotlib.use("Agg")  # Set the backend to Agg
 logger = logging.getLogger(__name__)
 
 

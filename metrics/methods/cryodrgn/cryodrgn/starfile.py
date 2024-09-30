@@ -96,7 +96,16 @@ class Starfile:
         df = pd.DataFrame(data=data)
         return cls(headers, df)
 
-    def _write_block(self, f, headers, df=None, block_header="data_", relion_values=None, is_relion=False, is_star=False):
+    def _write_block(
+        self,
+        f,
+        headers,
+        df=None,
+        block_header="data_",
+        relion_values=None,
+        is_relion=False,
+        is_star=False,
+    ):
         f.write(f"{block_header}\n\n")
         f.write("loop_\n")
         if is_star:
@@ -121,7 +130,9 @@ class Starfile:
                     f.write(" ".join([str(v) for v in df.loc[i]]))
                     f.write("\n")
 
-    def write(self, outstar: str, relion_headers=None, relion_values=None, is_star=False):
+    def write(
+        self, outstar: str, relion_headers=None, relion_values=None, is_star=False
+    ):
         f = open(outstar, "w")
         f.write("# Created {}\n".format(dt.now()))
         f.write("\n")
@@ -137,11 +148,21 @@ class Starfile:
                     block_header="data_optics",
                 )
                 f.write("\n\n")
-                self._write_block(f, self.headers, self.df, block_header="data_particles")
+                self._write_block(
+                    f, self.headers, self.df, block_header="data_particles"
+                )
             else:
-                self._write_block(f, relion_headers, block_header="data_optics", relion_values=relion_values, is_relion=True)
+                self._write_block(
+                    f,
+                    relion_headers,
+                    block_header="data_optics",
+                    relion_values=relion_values,
+                    is_relion=True,
+                )
                 # print('relion_headers:',relion_headers)
-                self._write_block(f, self.headers, self.df, block_header="data_particles")
+                self._write_block(
+                    f, self.headers, self.df, block_header="data_particles"
+                )
                 # print('self.headers:',self.headers)
 
     def get_particles(self, datadir: Optional[str] = None, lazy: bool = True):

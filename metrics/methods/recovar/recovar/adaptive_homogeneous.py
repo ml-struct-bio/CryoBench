@@ -16,7 +16,7 @@
 
 
 # def predict_optimal_h_value(summed_grad_terms ,summed_squared_weights, noise_variance, grad_norm, max_dist=1,order =1 ):
-    
+
 #     # A random divided by 10 term here...
 #     normalized_c1 = (grad_norm * summed_grad_terms )**2 / 10
 #     normalized_c2 =  noise_variance* (summed_squared_weights * max_dist**3)
@@ -53,7 +53,7 @@
 
 
 # def adaptive_discretization(cryo, grad_norm, prior, noise_variance, batch_size_inp, image_weights):
-    
+
 #     num_reconstructions = image_weights.shape[0]
 #     summed_squared_weights = {}
 #     xs = {}
@@ -63,7 +63,7 @@
 #     print("here BEFORE,", batch_size_inp)
 #     print("here BEFORE,", utils.report_memory_device())
 
-#     memory_to_use = utils.get_gpu_memory_total() -  utils.get_size_in_gb(prior) * 20 
+#     memory_to_use = utils.get_gpu_memory_total() -  utils.get_size_in_gb(prior) * 20
 #     print("mem to use,", memory_to_use)
 #     assert memory_to_use > 0, "reduce number of volumes computed at once"
 #     batch_size_inp = 2 * utils.get_image_batch_size(cryo.grid_size, memory_to_use) * 20
@@ -76,9 +76,9 @@
 
 #     # A first pass to compute optimal h
 #     xs[(order, dist)], _, summed_squared_weights[(order, dist)], _, _, summed_grad_terms[(order, dist)], bias_fac = solve_least_squares_mean_iteration_second_order(
-#     cryo ,prior * 0, 1e-8,  batch_size, None, image_weights = image_weights, disc_type = None, return_lhs_rhs = False, 
+#     cryo ,prior * 0, 1e-8,  batch_size, None, image_weights = image_weights, disc_type = None, return_lhs_rhs = False,
 #     grid_dist = np.ceil(dist), max_dist=dist*np.ones([num_reconstructions, cryo.volume_size], dtype = cryo.dtype_real), order = order  )
-        
+
 #     h_adapt = predict_optimal_h_value(summed_grad_terms[(order, dist)] ,summed_squared_weights[(order, dist)], noise_variance, grad_norm, max_dist=1,order =order )
 #     # regularization.average_over_shells()
 
@@ -93,7 +93,7 @@
 
 #     dist = 'a'
 #     xs[(order, dist)], _, summed_squared_weights[(order, dist)], _, _ , summed_grad_terms[(order, dist)], _ = solve_least_squares_mean_iteration_second_order(
-#     cryo ,1/prior, 1e-8,  batch_size, None, image_weights = image_weights, disc_type = None, return_lhs_rhs = False, 
+#     cryo ,1/prior, 1e-8,  batch_size, None, image_weights = image_weights, disc_type = None, return_lhs_rhs = False,
 #     grid_dist = max_grid_dist, max_dist=h_adapt, order = order  )
 
 #     print("here 4 ,", batch_size)
@@ -132,7 +132,7 @@
 #     valid_points = (distances < max_dist_this) * core.check_vol_indices_in_bound(near_frequencies,volume_shape[0])
 
 #     near_frequencies_vec_indices = core.vol_indices_to_vec_indices(near_frequencies, volume_shape)
-    
+
 #     # This could be done more efficiently
 #     if order==2:
 #         C_mat = jnp.concatenate([jnp.ones_like(differences[...,0:1]), differences], axis = -1)
@@ -144,8 +144,8 @@
 #         C_mat = CTF[...,None]
 #         C_mat = C_mat #* valid_points[...]
 
-#     # C_mat_veced = C_mat#.reshape([C_mat.shape[0]* C_mat.shape[1]*C_mat.shape[2], C_mat.shape[3]]) 
-    
+#     # C_mat_veced = C_mat#.reshape([C_mat.shape[0]* C_mat.shape[1]*C_mat.shape[2], C_mat.shape[3]])
+
 #     near_frequencies_vec_indices = near_frequencies_vec_indices#.reshape(-1)
 
 #     return C_mat, near_frequencies_vec_indices, valid_points
@@ -182,19 +182,14 @@
 #     #     C_mat = CTF[...,None]
 #     #     C_mat = C_mat #* valid_points[...]
 
-#     # # C_mat_veced = C_mat#.reshape([C_mat.shape[0]* C_mat.shape[1]*C_mat.shape[2], C_mat.shape[3]]) 
-    
+#     # # C_mat_veced = C_mat#.reshape([C_mat.shape[0]* C_mat.shape[1]*C_mat.shape[2], C_mat.shape[3]])
+
 #     # near_frequencies_vec_indices = near_frequencies_vec_indices#.reshape(-1)
 
 #     return C_mat, near_frequencies_vec_indices, valid_points
 
 
-
-
-
-
-
-# @functools.partial(jax.jit, static_argnums = [3,4,5,6,7])    
+# @functools.partial(jax.jit, static_argnums = [3,4,5,6,7])
 # def compute_weight_matrix_inner(rotation_matrices, CTF_params, voxel_size, volume_shape, image_shape, grid_size, CTF_fun, grid_dist, max_dist, image_weights ):
 #     volume_size = np.prod(np.array(volume_shape))
 #     if grid_dist is None:
@@ -207,7 +202,7 @@
 #     # return RR
 #     return batch_compute_weight_matrix_inner_last_step(C_mat_outer, grid_point_indices, image_weights, valid_points, volume_size)
 
-# @functools.partial(jax.jit, static_argnums = [4])    
+# @functools.partial(jax.jit, static_argnums = [4])
 # def compute_weight_matrix_inner_last_step( C_mat_outer, grid_point_indices, image_weights, valid_points, volume_size ):
 #     C_mat_outer = multiply_along_axis(C_mat_outer,image_weights, 0 ) * valid_points[...,None,None]
 
@@ -230,7 +225,7 @@
 #     for i in range(utils.get_number_of_index_batch(experiment_dataset.n_images, batch_size)):
 #         batch_st, batch_end = utils.get_batch_of_indices(experiment_dataset.n_images, batch_size, i)
 #         # Make sure mean_estimate is size # volume_size ?
-#         RR_this = compute_weight_matrix_inner(experiment_dataset.rotation_matrices[batch_st:batch_end], experiment_dataset.CTF_params[batch_st:batch_end], experiment_dataset.voxel_size, experiment_dataset.volume_shape, experiment_dataset.image_shape, experiment_dataset.grid_size, experiment_dataset.CTF_fun, grid_dist, max_dist, image_weights[...,batch_st:batch_end])        
+#         RR_this = compute_weight_matrix_inner(experiment_dataset.rotation_matrices[batch_st:batch_end], experiment_dataset.CTF_params[batch_st:batch_end], experiment_dataset.voxel_size, experiment_dataset.volume_shape, experiment_dataset.image_shape, experiment_dataset.grid_size, experiment_dataset.CTF_fun, grid_dist, max_dist, image_weights[...,batch_st:batch_end])
 #         RR += RR_this
 
 #     RR = RR.reshape([RR_this.shape[0], RR_this.shape[1], rr_size, rr_size])
@@ -273,10 +268,10 @@
 # batch_batch_slice_volume_by_nearest = jax.vmap(core.batch_slice_volume_by_nearest, in_axes = (0, None))
 
 # bcast0_broadcast_dot = jax.vmap(broadcast_dot, in_axes = (None,0))
-# @functools.partial(jax.jit, static_argnums = [8,9,10,11,12,13,14])    
+# @functools.partial(jax.jit, static_argnums = [8,9,10,11,12,13,14])
 # def compute_mean_least_squares_rhs_lhs_with_weights(images, precomp_weights, rotation_matrices, translations, CTF_params, mean_estimate, noise_variance, image_weights, voxel_size, volume_shape, image_shape, grid_size, disc_type, CTF_fun, grid_dist, max_dist ):
 
-#     corrected_images = core.translate_images(images, translations, image_shape)    
+#     corrected_images = core.translate_images(images, translations, image_shape)
 
 #     # Now use weights: w_i = C.^T v
 #     if grid_dist is None:
@@ -302,9 +297,9 @@
 #     return jnp.swapaxes(jnp.swapaxes(A, axis, -1) * B, -1, axis)
 
 
-# @functools.partial(jax.jit, static_argnums = [7])    
+# @functools.partial(jax.jit, static_argnums = [7])
 # def compute_mean_least_squares_rhs_lhs_with_weights_last_step(image_weights, weights, valid_points, residuals, C_squared, grid_point_indices, corrected_images, volume_size ):
-    
+
 #     weights = multiply_along_axis(weights,image_weights, 0 ) * valid_points
 #     residuals = multiply_along_axis(residuals,image_weights, 0 ) * valid_points[...,None]
 #     C_squared = multiply_along_axis(C_squared,image_weights, 0 ) * valid_points
@@ -319,7 +314,7 @@
 #     res_summed = jnp.linalg.norm(residuals[...,1:], axis=-1).reshape(-1)
 #     residuals_summed2 = core.summed_adjoint_slice_by_nearest(volume_size, res_summed.reshape(-1)**1, grid_point_indices.reshape(-1))
 
-#     res_summed = jnp.abs(residuals[...,0]) 
+#     res_summed = jnp.abs(residuals[...,0])
 
 #     residuals_summed1 = core.summed_adjoint_slice_by_nearest(volume_size, res_summed.reshape(-1)**1, grid_point_indices.reshape(-1))
 
@@ -342,26 +337,26 @@
 #     logger.info(f"time done with weights")
 #     data_generator = experiment_dataset.get_dataset_generator(batch_size=batch_size)
 #     for batch, indices in data_generator:
-        
+
 #         # Only place where image mask is used ?
 #         batch = experiment_dataset.image_stack.process_images(batch, apply_image_mask = False)
-                    
+
 #         estimate_this, summed_weights_squared_this, residuals_summed_this1, residuals_summed_this2, residuals_summed_this3  = compute_mean_least_squares_rhs_lhs_with_weights(batch,
 #                                          weights,
-#                                          experiment_dataset.rotation_matrices[indices], 
-#                                          experiment_dataset.translations[indices], 
-#                                          experiment_dataset.CTF_params[indices], 
+#                                          experiment_dataset.rotation_matrices[indices],
+#                                          experiment_dataset.translations[indices],
+#                                          experiment_dataset.CTF_params[indices],
 #                                          mean_estimate,
 #                                          cov_noise,
 #                                          image_weights[...,indices],
-#                                          experiment_dataset.voxel_size, 
-#                                          experiment_dataset.volume_shape, 
-#                                          experiment_dataset.image_shape, 
-#                                          experiment_dataset.grid_size, 
+#                                          experiment_dataset.voxel_size,
+#                                          experiment_dataset.volume_shape,
+#                                          experiment_dataset.image_shape,
+#                                          experiment_dataset.grid_size,
 #                                          disc_type,
 #                                          experiment_dataset.CTF_fun,
 #                                          grid_dist,max_dist)
-        
+
 #         estimate += estimate_this
 #         summed_weights_squared += summed_weights_squared_this
 #         residuals_summed1 += residuals_summed_this1
@@ -370,6 +365,3 @@
 #     logger.info(f"time done with estimate")
 
 #     return estimate, good_weights, summed_weights_squared, weights, residuals_summed1, residuals_summed2, bias_multiple
-
-
-

@@ -9,7 +9,8 @@ import shutil
 from datetime import datetime as dt
 import logging
 import matplotlib
-matplotlib.use('Agg')  # Set the backend to Agg
+
+matplotlib.use("Agg")  # Set the backend to Agg
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns

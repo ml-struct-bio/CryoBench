@@ -1,11 +1,11 @@
 # :dragon::robot: DRGN-AI: _Ab initio_ cryo-EM reconstruction #
 
 DRGN-AI is a neural network-based algorithm for _ab initio_ heterogeneous cryo-EM reconstruction. The
-method leverages the expressive representation capacity of neural models and implements a two-stage joint inference procedure of poses and heterogeneous conformational states to enable single-shot reconstruction of noisy, large cryo-EM datasets. 
+method leverages the expressive representation capacity of neural models and implements a two-stage joint inference procedure of poses and heterogeneous conformational states to enable single-shot reconstruction of noisy, large cryo-EM datasets.
 
 ## Documentation ##
 
-The latest detailed documentation for DRGN-AI is available [on gitbook](https://ez-lab.gitbook.io/drgn-ai/), 
+The latest detailed documentation for DRGN-AI is available [on gitbook](https://ez-lab.gitbook.io/drgn-ai/),
 including an overview and walkthrough of DRGN-AI installation, training and analysis. A brief quick start is
 provided below.
 
@@ -29,14 +29,14 @@ provided below.
 
 ## Installation ##
 
-We recommend installing DRGN-AI in a clean conda environment — first clone the latest stable version available in 
+We recommend installing DRGN-AI in a clean conda environment — first clone the latest stable version available in
 the git repository, and then use `pip` to install the package from the source code:
 
     (base) $ conda create --name drgnai python=3.9
     (base) $ conda activate drgnai
     (drgnai) $ git clone https://github.com/ml-struct-bio/drgnai.git
     (drgnai) $ cd drgnai/
-    (drgnai) $ pip install . 
+    (drgnai) $ pip install .
 
 To confirm that the package was installed successfully, use `drgnai test`:
 
@@ -46,7 +46,7 @@ Installation was successful!
 ```
 
 You may also choose to define an environment variable `$DRGNAI_DATASETS` in your bash environment, which will allow you
-to point to a file listing locations of input files and dataset labels to use as shortcuts. For more information, 
+to point to a file listing locations of input files and dataset labels to use as shortcuts. For more information,
 see our [detailed user guide](https://ez-lab.gitbook.io/drgn-ai/).
 
 
@@ -64,12 +64,12 @@ commonly used within a script submitted to a job scheduling system on a high-per
 
 ### Setup ###
 
-First, use the `drgnai setup` tool to create an output directory and a configuration file for DRGN-AI. 
+First, use the `drgnai setup` tool to create an output directory and a configuration file for DRGN-AI.
 
 ```
 drgnai setup your_outdir --particles /my_data/particles.mrcs --ctf /my_data/ctf.pkl \
                      --capture-setup spa --conf-estimation autodecoder \
-                     --pose-estimation abinit --reconstruction-type het                               
+                     --pose-estimation abinit --reconstruction-type het
 ```
 
 This command will create an output directory called `your_outdir` and a configuration file `your_outdir/configs.yaml`:
@@ -86,16 +86,16 @@ quick_config:
 
 ### Reconstruction and analysis ###
 
-After setup is complete, run the experiment using `drgnai train your_outdir`. 
+After setup is complete, run the experiment using `drgnai train your_outdir`.
 
 ```
 drgnai train your_outdir
 ```
 
-DRGN-AI will save the outputs of training under `your_outdir/out/`. By default, at the end of training, DRGN-AI will analyze the results from the last epoch. 
+DRGN-AI will save the outputs of training under `your_outdir/out/`. By default, at the end of training, DRGN-AI will analyze the results from the last epoch.
 
 
-You can also run analyses on a particular training epoch instead of the last epoch. Outputs of each analysis will be stored under 
+You can also run analyses on a particular training epoch instead of the last epoch. Outputs of each analysis will be stored under
 `your_outdir/out/analysis_<epoch>/`.
 
 ```
@@ -109,9 +109,9 @@ The progress of model training can be tracked using the `your_outdir/out/trainin
 The training step can also be monitored while it is running using Tensorboard, which is installed as part of DRGN-AI,
 by following these steps:
 
-1. Run the command `tensorboard --logdir out-dir/out --port 6565 --bind_all` remotely, where out-dir is the experiment 
+1. Run the command `tensorboard --logdir out-dir/out --port 6565 --bind_all` remotely, where out-dir is the experiment
 output directory and 6565 is an arbitrary port number.
-2. Run the command `ssh -NfL 6565:<server-name>:6565 <user-name>@<server-address>` locally, using the same port number 
+2. Run the command `ssh -NfL 6565:<server-name>:6565 <user-name>@<server-address>` locally, using the same port number
    above, and replacing the server info with your own.
 3. Navigate to localhost:6565 in your local browser to access the tensorboard interface.
 

@@ -11,6 +11,7 @@ from cryodrgn import fft, utils
 from cryodrgn.mrc import MRCHeader, MRCFile
 from cryodrgn.source import ImageSource
 import torch.nn.functional as F
+
 logger = logging.getLogger(__name__)
 
 
@@ -85,11 +86,11 @@ def main(args):
         assert not args.is_vol
         logger.info(f"Filtering image dataset with {args.ind}")
         ind = utils.load_pkl(args.ind).astype(int)
-    
+
     old = ImageSource.from_file(args.mrcs, lazy=lazy, indices=ind, datadir=args.datadir)
 
     oldD = old.D
-    old_Apix = old.Apix # 1.5
+    old_Apix = old.Apix  # 1.5
     # nx, ny / mx, my
     # n: dimension / m: pixel size
     assert (
@@ -99,8 +100,8 @@ def main(args):
     D = args.D
     start = int(oldD / 2 - D / 2)
     stop = int(oldD / 2 + D / 2)
-    
-    new_Apix = (oldD/D)*old_Apix
+
+    new_Apix = (oldD / D) * old_Apix
     print(f"pixel change: from {old_Apix} to {new_Apix}")
     # Downsample volume
     if args.is_vol:
@@ -111,7 +112,7 @@ def main(args):
         logger.info(newft.shape)
         new = np.array(fft.ihtn_center(newft)).astype(np.float32)
         logger.info(f"Saving {args.o}")
-        
+
         # header = MRCHeader.make_default_header(mz=1, my=1, mx=1, data=new, is_vol=args.is_vol)
         # MRCFile.write(args.o, array=new, header=header, is_vol=True)
         MRCFile.write(args.o, array=new, Apix=new_Apix, is_vol=True)
@@ -128,6 +129,7 @@ def main(args):
 
     # Downsample images
     else:
+
         def transform_fn(chunk, indices):
             oldft = fft.ht2_center(chunk)
             newft = oldft[:, start:stop, start:stop]
@@ -159,8 +161,13 @@ def main(args):
                 logger.info("Processing chunk {}".format(i))
                 chunk = old[i * args.chunk : (i + 1) * args.chunk]
 
-                header = MRCHeader.make_default_header( # add mx, my to this
-                    nz=len(chunk), ny=D, nx=D, Apix=new_Apix, data=None, is_vol=args.is_vol
+                header = MRCHeader.make_default_header(  # add mx, my to this
+                    nz=len(chunk),
+                    ny=D,
+                    nx=D,
+                    Apix=new_Apix,
+                    data=None,
+                    is_vol=args.is_vol,
                 )
                 logger.info(f"Saving {out_mrcs[i]}")
                 MRCFile.write(

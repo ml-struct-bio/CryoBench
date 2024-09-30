@@ -10,14 +10,14 @@ import torch
 
 
 def grid_s1(resolution):
-    n_pix = 6 * 2 ** resolution
+    n_pix = 6 * 2**resolution
     dt = 2 * np.pi / n_pix
     grid = np.arange(n_pix) * dt + dt / 2
     return grid
 
 
 def grid_s2(resolution):
-    n_side = 2 ** resolution
+    n_side = 2**resolution
     n_pix = 12 * n_side * n_side
     theta, phi = pix2ang(n_side, np.arange(n_pix), nest=True)
     return theta, phi
@@ -34,10 +34,14 @@ def hopf_to_quat(theta, phi, psi):
     """
     ct = np.cos(theta / 2)
     st = np.sin(theta / 2)
-    quat = np.array([ct * np.cos(psi / 2),
-                     ct * np.sin(psi / 2),
-                     st * np.cos(phi + psi / 2),
-                     st * np.sin(phi + psi / 2)])
+    quat = np.array(
+        [
+            ct * np.cos(psi / 2),
+            ct * np.sin(psi / 2),
+            st * np.cos(phi + psi / 2),
+            st * np.sin(phi + psi / 2),
+        ]
+    )
     return quat.T.astype(np.float32)
 
 
@@ -52,12 +56,15 @@ def hopf_to_quat_tensor(theta, phi, psi):
     """
     ct = np.cos(theta / 2)
     st = np.sin(theta / 2)
-    quat = np.concatenate([
-        (ct * np.cos(psi / 2))[..., None],
-        (ct * np.sin(psi / 2))[..., None],
-        (st * np.cos(phi + psi / 2))[..., None],
-        (st * np.sin(phi + psi / 2))[..., None]
-    ], -1)
+    quat = np.concatenate(
+        [
+            (ct * np.cos(psi / 2))[..., None],
+            (ct * np.sin(psi / 2))[..., None],
+            (st * np.cos(phi + psi / 2))[..., None],
+            (st * np.sin(phi + psi / 2))[..., None],
+        ],
+        -1,
+    )
     return quat.astype(np.float32)
 
 
@@ -141,9 +148,9 @@ def get_base_ind(ind, base):
     """
     Return the corresponding S2 and S1 grid index for an index on the base SO3 grid
     """
-    n_p = 6 * 2 ** base
+    n_p = 6 * 2**base
     psi_i = ind % n_p
-    theta_i = torch.div(ind, n_p, rounding_mode='trunc')
+    theta_i = torch.div(ind, n_p, rounding_mode="trunc")
 
     return np.stack((theta_i, psi_i), axis=1)
 
@@ -154,15 +161,18 @@ def get_neighbor(quat, s2i, s1i, cur_res):
     """
     (theta, phi), s2_next_i = get_s2_neighbor(s2i, cur_res)
     psi, s1_next_i = get_s1_neighbor(s1i, cur_res)
-    quat_n = hopf_to_quat(np.repeat(theta, len(psi)),
-                          np.repeat(phi, len(psi)),
-                          np.tile(psi, len(theta)))
-    ind = np.array([np.repeat(s2_next_i, len(psi)),
-                    np.tile(s1_next_i, len(theta))])  # 2, 16
+    quat_n = hopf_to_quat(
+        np.repeat(theta, len(psi)), np.repeat(phi, len(psi)), np.tile(psi, len(theta))
+    )
+    ind = np.array(
+        [np.repeat(s2_next_i, len(psi)), np.tile(s1_next_i, len(theta))]
+    )  # 2, 16
     ind = ind.T  # 16, 2
     # find the 8 nearest neighbors of 16 possible points
     # need to check distance from both +q and -q
-    dists = np.minimum(np.sum((quat_n - quat) ** 2, axis=1), np.sum((quat_n + quat) ** 2, axis=1))
+    dists = np.minimum(
+        np.sum((quat_n - quat) ** 2, axis=1), np.sum((quat_n + quat) ** 2, axis=1)
+    )
     ii = np.argsort(dists)[:8]
     return quat_n[ii], ind[ii]
 
@@ -182,19 +192,26 @@ def get_neighbor_tensor(quat, q_ind, cur_res, device):
     quat_n = hopf_to_quat_tensor(
         np.repeat(theta[..., None], psi.shape[-1], axis=-1).reshape(nq, -1),
         np.repeat(phi[..., None], psi.shape[-1], axis=-1).reshape(nq, -1),
-        np.repeat(psi[:, None], theta.shape[-1], axis=-2).reshape(nq, -1)
+        np.repeat(psi[:, None], theta.shape[-1], axis=-2).reshape(nq, -1),
     )  # nq, 16, 4
-    ind = np.concatenate([
-        np.repeat(s2_next[..., None], psi.shape[-1], axis=-1).reshape(nq, -1)[..., None],
-        np.repeat(s1_next[:, None], theta.shape[-1], axis=-2).reshape(nq, -1)[..., None]
-    ], -1)  # nq, 16, 2
+    ind = np.concatenate(
+        [
+            np.repeat(s2_next[..., None], psi.shape[-1], axis=-1).reshape(nq, -1)[
+                ..., None
+            ],
+            np.repeat(s1_next[:, None], theta.shape[-1], axis=-2).reshape(nq, -1)[
+                ..., None
+            ],
+        ],
+        -1,
+    )  # nq, 16, 2
 
     # find the 8 nearest neighbors of 16 possible points
     # need to check distance from both +q and -q
     quat_n = torch.tensor(quat_n).to(device)
     dists = torch.minimum(
         torch.sum((quat_n - quat[:, None]) ** 2, dim=-1),
-        torch.sum((quat_n + quat[:, None]) ** 2, dim=-1)
+        torch.sum((quat_n + quat[:, None]) ** 2, dim=-1),
     )  # nq, 16
     ii = torch.argsort(dists, dim=-1)[:, :8].cpu()
     quat_out = quat_n[torch.arange(nq)[..., None], ii]
@@ -206,7 +223,9 @@ try:
     with open(f"{os.path.dirname(__file__)}/healpy_grid.json") as hf:
         _GRIDS = {int(k): np.array(v).T for k, v in json.load(hf).items()}
 except IOError as e:
-    print("WARNING: Couldn't load cached healpy grid; will fall back to importing healpy")
+    print(
+        "WARNING: Couldn't load cached healpy grid; will fall back to importing healpy"
+    )
     _GRIDS = None
 
 
@@ -219,7 +238,7 @@ def pix2ang_tensor(n_side, i_pix, nest=False, lonlat=False):
     assert _GRIDS is not None and n_side in _GRIDS and nest and not lonlat
     # _GRIDS[n_side]: [x, 2]
     nq = i_pix.shape[0]
-    return np.einsum('ijk->kij', _GRIDS[n_side][i_pix.reshape(-1)].reshape(nq, 4, 2))
+    return np.einsum("ijk->kij", _GRIDS[n_side][i_pix.reshape(-1)].reshape(nq, 4, 2))
 
 
 def pix2ang(n_side, i_pix, nest=False, lonlat=False):
@@ -230,5 +249,7 @@ def pix2ang(n_side, i_pix, nest=False, lonlat=False):
         try:
             import healpy
         except ImportError:
-            raise RuntimeError("You need to `pip install healpy` to run with non-standard grid sizes.")
+            raise RuntimeError(
+                "You need to `pip install healpy` to run with non-standard grid sizes."
+            )
         return healpy.pix2ang(n_side, i_pix, nest=nest, lonlat=lonlat)

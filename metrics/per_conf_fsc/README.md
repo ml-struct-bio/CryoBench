@@ -5,10 +5,10 @@
 ### Example usage (CryoDRGN):
 ```
   $ conda activate cryodrgn
-  
+
   # Compute per conformation FSC
   $ python metrics/per_conf_fsc/cdrgn.py results/cryodrgn --epoch 19 --Apix 3.0 -o output --method cryodrgn --gt-dir ./gt_vols --mask ./mask.mrc --num-imgs 1000 --num-vols 100
-  
+
   # Plot FSCs
   $ python metrics/per_conf_fsc/per_conf_plot.py output --method cryodrgn
 ```
@@ -16,10 +16,10 @@
 ### Example usage (DRGN-AI-fixed):
 ```
   $ conda activate drgnai
-  
+
   # Compute per conformation FSC
   $ python metrics/per_conf_fsc/drgnai_fixed.py results/drgnai_fixed --epoch 100 -o output --method drgnai_fixed --gt-dir ./gt_vols --mask ./mask.mrc --Apix 3.0 --num-vols 100 --num-imgs 1000
-  
+
   # Plot FSCs
   $ python metrics/per_conf_fsc/per_conf_fsc_plot.py output --method drgnai_fixed
 ```
@@ -27,10 +27,10 @@
 ### Example usage (Opus-DSD):
 ```
   $ conda activate dsd
-  
+
   # Compute per conformation FSC
   $ python metrics/per_conf_fsc/opus-dsd.py results/opus-dsd --epoch 19 -o output --method opus-dsd --gt-dir ./gt_vols --mask ./mask.mrc --Apix 3.0 --num-vols 100 --num-imgs 1000
-  
+
   # Plot FSCs
   $ python metrics/per_conf_fsc/per_conf_plot.py output --method opus-dsd
 ```
@@ -39,7 +39,7 @@
 * Get 3DFlex reconstructed volumes by using `3dflex_per-conf-fsc.ipynb` before computing FSC, then move the generated volumes to `output/3dflex/per_conf_fsc/vols/`.
 ```
   $ conda activate cryodrgn
-  
+
   # Compute per conformation FSC
   $ python metrics/per_conf_fsc/3dflex.py -o output --method 3dflex --gt-dir ./gt_vols --cryosparc-job J130 --mask ./mask.mrc
 
@@ -50,7 +50,7 @@
 ### Example usage (3DVA):
 ```
   $ conda activate cryodrgn
-  
+
   # Compute per conformation FSC
   $ python metrics/per_conf_fsc/3dva.py -o output --method 3dva --gt-dir ./gt_vols --cryosparc-dir cryosparc/CS-IgG1D --cryosparc-job J60 --mask ./mask.mrc --Apix 3.0 --num-imgs 1000 --num-vols 100
 
@@ -61,7 +61,7 @@
 ### Example usage (RECOVAR):
 ```
   $ conda activate recovar
-  
+
   # Generate volumes before computing FSC
   $ python metrics/methods/recovar/gen_reordered_z.py --recovar-result-dir results/recovar
   $ python metrics/methods/recovar/gen_vol_for_per_conf_fsc.py results/recovar -o output/recovar/per_conf_fsc/vols --zdim 10 --num-imgs 1000 --num-vols 100
@@ -70,7 +70,7 @@
 
   # Compute per conformation FSC
   $ python metrics/per_conf_fsc/recovar.py output/recovar/per_conf_fsc/vols -o output --method recovar --gt-dir ./gt_vols --mask ./mask.mrc
-  
+
   # Plot FSCs
   $ python metrics/per_conf_fsc/per_conf_plot.py output --method recovar
 ```
@@ -79,7 +79,7 @@
 * Move each class volume to `results/3dcls` before computing metric.
 ```
   $ conda activate cryodrgn
-  
+
   # Compute per conformation FSC
   $ python metrics/per_conf_fsc/3dcls.py results/3dcls -o output --method 3dcls --gt-dir ./gt_vols --cryosparc-dir cryosparc/CS-IgG1D --num-classes 10 --mask ./mask.mrc
 
@@ -99,7 +99,7 @@
 
   # Compute per conformation FSC
   $ python metrics/per_conf_fsc/cdrgn2_after_align.py -o output --method cryodrgn2 --gt-dir ./gt_vols --mask ./mask.mrc
-  
+
   # Plot FSCs
   $ python metrics/per_conf_fsc/per_conf_plot.py output --method cryodrgn2
   $ python metrics/per_conf_fsc/per_conf_plot.py output --method cryodrgn2 --flip True
@@ -120,7 +120,7 @@
 
   # Compute per conformation FSC
   $ python metrics/per_conf_fsc/drgnai_abinit_after_align.py  -o output --method drgnai_abinit --gt-dir ./gt_vols --mask ./mask.mrc
-  
+
   # Plot FSCs
   $ python metrics/per_conf_fsc/per_conf_plot.py output --method drgnai_abinit
   $ python metrics/per_conf_fsc/per_conf_plot.py output --method drgnai_abinit --flip True
@@ -132,7 +132,7 @@
 
   # Compute per conformation FSC
   $ python metrics/per_conf_fsc/3dcls_abinit.py results/3dcls_abinit -o output --method 3dcls_abinit --gt-dir ./gt_vols --cryosparc-dir cryosparc/CS-IgG1D --cryosparc-job J45 --num-classes 20 --mask ./mask.mrc --num-classes 20 --num-imgs 1000
-  
+
   # Plot FSCs
   $ python metrics/per_conf_fsc/per_conf_plot.py output --method 3dcls_abinit
   $ python metrics/per_conf_fsc/per_conf_plot.py output --method 3dcls_abinit --flip True

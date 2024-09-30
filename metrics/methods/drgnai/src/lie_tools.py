@@ -21,9 +21,9 @@ def s2s2_to_rotmat(s2s2):
     v2 = s2s2[..., 3:]
     v1 = s2s2[..., 0:3]
     u1 = v1
-    e1 = u1 / u1.norm(p=2, dim=-1, keepdim=True).clamp(min=1E-5)
+    e1 = u1 / u1.norm(p=2, dim=-1, keepdim=True).clamp(min=1e-5)
     u2 = v2 - (e1 * v2).sum(-1, keepdim=True) * e1
-    e2 = u2 / u2.norm(p=2, dim=-1, keepdim=True).clamp(min=1E-5)
+    e2 = u2 / u2.norm(p=2, dim=-1, keepdim=True).clamp(min=1e-5)
     e3 = torch.linalg.cross(e1, e2)
     return torch.cat([e1[..., None, :], e2[..., None, :], e3[..., None, :]], -2)
 
@@ -45,14 +45,15 @@ def r3_to_rotmat(r3):
     output: [batch_size, 3, 3]
     """
     batch_size = r3.shape[0]
-    z = r3 / r3.norm(p=2, dim=-1, keepdim=True).clamp(min=1E-5)
-    y_world = torch.tensor([0., 1., 0.]).float().to(z.device)[None].repeat(
-        batch_size, 1)
+    z = r3 / r3.norm(p=2, dim=-1, keepdim=True).clamp(min=1e-5)
+    y_world = (
+        torch.tensor([0.0, 1.0, 0.0]).float().to(z.device)[None].repeat(batch_size, 1)
+    )
 
     x = torch.linalg.cross(y_world, z)
-    x = x / x.norm(p=2, dim=-1, keepdim=True).clamp(min=1E-5)
+    x = x / x.norm(p=2, dim=-1, keepdim=True).clamp(min=1e-5)
     y = torch.linalg.cross(z, x)
-    y = y / x.norm(p=2, dim=-1, keepdim=True).clamp(min=1E-5)
+    y = y / x.norm(p=2, dim=-1, keepdim=True).clamp(min=1e-5)
 
     return torch.cat([x[..., None, :], y[..., None, :], z[..., None, :]], -2)
 
@@ -94,12 +95,15 @@ def quat_to_rotmat(q):
 
 def random_quat(n, dtype=torch.float32, device=None):
     u1, u2, u3 = torch.rand(3, n, dtype=dtype, device=device)
-    return torch.stack((
-        torch.sqrt(1-u1) * torch.sin(2 * np.pi * u2),
-        torch.sqrt(1-u1) * torch.cos(2 * np.pi * u2),
-        torch.sqrt(u1) * torch.sin(2 * np.pi * u3),
-        torch.sqrt(u1) * torch.cos(2 * np.pi * u3),
-    ), 1)
+    return torch.stack(
+        (
+            torch.sqrt(1 - u1) * torch.sin(2 * np.pi * u2),
+            torch.sqrt(1 - u1) * torch.cos(2 * np.pi * u2),
+            torch.sqrt(u1) * torch.sin(2 * np.pi * u3),
+            torch.sqrt(u1) * torch.cos(2 * np.pi * u3),
+        ),
+        1,
+    )
 
 
 def random_rotmat(n, dtype=torch.float32, device=None):
@@ -112,7 +116,7 @@ def rotmat_to_euler(rotmat):
 
     output: [..., 3]
     """
-    return Rotation.from_matrix(rotmat.swapaxes(-2, -1)).as_euler('zxz')
+    return Rotation.from_matrix(rotmat.swapaxes(-2, -1)).as_euler("zxz")
 
 
 def euler_to_rotmat(euler):
@@ -121,7 +125,7 @@ def euler_to_rotmat(euler):
 
     output: [..., 3, 3]
     """
-    return Rotation.from_euler('zxz', euler).as_matrix().swapaxes(-2, -1)
+    return Rotation.from_euler("zxz", euler).as_matrix().swapaxes(-2, -1)
 
 
 def symmetric_rot(rots, planes):
@@ -131,23 +135,28 @@ def symmetric_rot(rots, planes):
 
     output: [batch_size, 3, 3]
     """
-    in_plane_flip = torch.tensor(
-        [-1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 1.0]
-        ).float().reshape(3, 3).to(rots.device)
+    in_plane_flip = (
+        torch.tensor([-1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 1.0])
+        .float()
+        .reshape(3, 3)
+        .to(rots.device)
+    )
 
     sym_rots_l = in_plane_flip @ rots  # in-plane rotation
-    u_z = planes / planes.norm(p=2, dim=-1, keepdim=True).clamp(min=1E-5)
+    u_z = planes / planes.norm(p=2, dim=-1, keepdim=True).clamp(min=1e-5)
     n_planes = planes.shape[0]
     e_y = torch.linalg.cross(
-        u_z, torch.tensor([1.0, 0.0, 0.0]).float().expand(n_planes, 3).to(
-            u_z.device), dim=-1
-        )
+        u_z,
+        torch.tensor([1.0, 0.0, 0.0]).float().expand(n_planes, 3).to(u_z.device),
+        dim=-1,
+    )
 
-    u_y = e_y / e_y.norm(p=2, dim=-1, keepdim=True).clamp(min=1E-5)
+    u_y = e_y / e_y.norm(p=2, dim=-1, keepdim=True).clamp(min=1e-5)
     e_x = torch.linalg.cross(u_y, u_z, dim=-1)
-    u_x = e_x / e_x.norm(p=2, dim=-1, keepdim=True).clamp(min=1E-5)
-    plane_basis = torch.cat([
-        u_x[..., None, :], u_y[..., None, :], u_z[..., None, :]], -2)
+    u_x = e_x / e_x.norm(p=2, dim=-1, keepdim=True).clamp(min=1e-5)
+    plane_basis = torch.cat(
+        [u_x[..., None, :], u_y[..., None, :], u_z[..., None, :]], -2
+    )
 
     rotmat_r = in_plane_flip @ plane_basis
     rotmat = torch.swapaxes(plane_basis, -2, -1) @ rotmat_r

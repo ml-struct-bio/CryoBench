@@ -6,9 +6,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 from cryodrgn import fft
 from cryodrgn.source import ImageSource
-import os 
+import os
 import glob, re
+
 logger = logging.getLogger(__name__)
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -18,17 +20,21 @@ def parse_args():
     parser.add_argument("--method", default=None)
     parser.add_argument("--plot", action="store_true")
     parser.add_argument("--Apix", type=float, default=1)
-    parser.add_argument("--vol-num", type=int, help="volume index (e.g., kmeans each center index)")
+    parser.add_argument(
+        "--vol-num", type=int, help="volume index (e.g., kmeans each center index)"
+    )
     parser.add_argument("-o", help="output folder (fsc.txt will be saved)")
     return parser
 
+
 def natural_sort_key(s):
     # Convert the string to a list of text and numbers
-    parts = re.split('([0-9]+)', s)
+    parts = re.split("([0-9]+)", s)
     # Convert numeric parts to integers for proper numeric comparison
     parts[1::2] = map(int, parts[1::2])
-    
+
     return parts
+
 
 def main(args, gt_path, output_file):
     vol1 = ImageSource.from_file(args.vol1)
@@ -105,16 +111,18 @@ if __name__ == "__main__":
 
     file_pattern = "*.mrc"
     gt_files = glob.glob(os.path.join(args.vol2, file_pattern))
-    gt_files = sorted(gt_files, key=natural_sort_key)    
-    
+    gt_files = sorted(gt_files, key=natural_sort_key)
+
     cls = int(args.vol_num)
     assert isinstance(cls, int)
     for gt_path in gt_files:
-        gt = gt_path.split('/')[-1].split('.')[0].split('_')[0]
+        gt = gt_path.split("/")[-1].split(".")[0].split("_")[0]
         gt = int(gt)
         assert isinstance(gt, int)
         if args.mask is not None:
-            output_file = os.path.join(args.o, "mask", f"masked_fsc_cls_{cls}_gt_{gt}.txt")
+            output_file = os.path.join(
+                args.o, "mask", f"masked_fsc_cls_{cls}_gt_{gt}.txt"
+            )
         else:
             output_file = os.path.join(args.o, "no_mask", f"fsc_cls_{cls}_gt_{gt}.txt")
 

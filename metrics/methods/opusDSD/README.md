@@ -65,7 +65,7 @@ OPUS-DSD2 has superior structural disentanglement ability to encode distinct com
 https://github.com/alncat/opusDSD/assets/3967300/9d64292a-a018-4949-b31c-4f04c03be829
 
 ## Covid Spike Protein <a name="cov"></a>
-The open and close of S1 region resolved by OPUS-DSD2 multi-body dynamics, PC3 shows the dynamics to open S1 region, while PC1 shows the dynamics to close S1 region. Red arrows 
+The open and close of S1 region resolved by OPUS-DSD2 multi-body dynamics, PC3 shows the dynamics to open S1 region, while PC1 shows the dynamics to close S1 region. Red arrows
 indicate the directions of movements of S1 subunits. Note that these two modes are orthogonal, and have similar patterns of the vibrational dynamics of water molecule H_2O https://strawberryfields.ai/photonics/apps/run_tutorial_dynamics.html
 
 https://github.com/alncat/opusDSD/assets/3967300/3bc8090c-6eaa-4122-a51a-78375ab3be34
@@ -112,7 +112,7 @@ You can then install OPUS-DSD by changing to the directory with cloned repositor
 pip install -e .
 ```
 
-OPUS-DSD can be kept up to date by 
+OPUS-DSD can be kept up to date by
 ```
 git pull
 ```
@@ -144,7 +144,7 @@ dsdsh commandx ...
 More information about each argument of the command can be displayed using
 
 ```
-dsd commandx -h 
+dsd commandx -h
 ```
 or
 ```
@@ -175,11 +175,11 @@ Finally, you should **create a mask using the consensus model and RELION** throu
 
 **Data Preparation for OPUS-DSD2 with Composition and Dynamics Disentanglement**
 
-OPUS-DSD2 features a new capacity to reconstruct multi-body dynamics and resolving compositional heterogeniety. 
-Reconstructing multibody dynamics in OPUS-DSD2 is very similar to Relion's multibody refinement protocol though the underlying dynamics model is different (You can see the details 
+OPUS-DSD2 features a new capacity to reconstruct multi-body dynamics and resolving compositional heterogeniety.
+Reconstructing multibody dynamics in OPUS-DSD2 is very similar to Relion's multibody refinement protocol though the underlying dynamics model is different (You can see the details
 in the preprint). First of all, you shall create a set of masks following Relion's multibody refinement protocol. You can find examples about masks and input starfile for
 the multibody refinement of spliceosome in https://empiar.pdbj.org/entry/10180/.
-There is also a tutorial with detailed process for creating masks in https://www.cryst.bbk.ac.uk/embo2019/pracs/RELION%20practical%20EMBO%202019_post%20practice.pdf . 
+There is also a tutorial with detailed process for creating masks in https://www.cryst.bbk.ac.uk/embo2019/pracs/RELION%20practical%20EMBO%202019_post%20practice.pdf .
 The segment map tool in ChimeraX is also perfect for creating segmentations.
 
 After the masks and the starfile for multibody refinement are created, you can prepare the pkls for multibody dynamics estimation by executing
@@ -188,9 +188,9 @@ After the masks and the starfile for multibody refinement are created, you can p
 dsdsh prepare_multi starfile D apix masks numb --volumes VOLUMES
 ```
 The details about each argument can be checked using ```dsdsh prepare_multi -h```
-The prepare_multi commands will create a pkl file that contains the parameters of defined bodies, which will be ***stored in the same directory 
+The prepare_multi commands will create a pkl file that contains the parameters of defined bodies, which will be ***stored in the same directory
 as the starfile***. The translation of each body is defined using the rotation around its reference body. The magnitude of its translation then is the magnitude of rotation of the center of this body in relative to its reference body. OPUS-DSD2 will read the reference bodies from the starfile, which are specified in ```_rlnBodyRotateRelativeTo```.
-But you should note that the index of body starts from 1. The body that occurs most often as the reference body for others will be 
+But you should note that the index of body starts from 1. The body that occurs most often as the reference body for others will be
 selected as the translation-free center. The translation of center will always be set to zero. The direction of rotational axis for the translation of multi-bodies can be determined using
  the volume series found by PCA analysis for the OPUS-DSD's result (**You can specify the volume series by giving the directory of volume series using --volumes**), since they represents a possible mode of movement. Otherwise, the direction of rotational axis will be aligned to the displacement between the center of a body and the center of its center body.
 
@@ -322,7 +322,7 @@ To access detailed usage information for each command, execute the following:
 dsdsh commandx -h
 ```
 ## sample latent spaces <div id="sample">
-The first step is to sample the latent space using kmeans and PCA algorithms. Suppose the training results are in ```/work/sp```, 
+The first step is to sample the latent space using kmeans and PCA algorithms. Suppose the training results are in ```/work/sp```,
 ```
 dsdsh analyze /work/sp 16 4 16
                 $1    $2 $3 $4
@@ -339,7 +339,7 @@ The analysis result will be stored in /work/sp/analyze.16, i.e., the output dire
 After executing the above command once, you may skip the lengthy umap embedding laterly by appending ```--skip-umap``` to the command in analyze.sh. Our analysis script will read the pickled umap embeddings directly.
 The eval_vol command has following options,
 
-If the model is trained by fitting multi-body dynamics, we have a mode, eval_vol, to reconstruct the 
+If the model is trained by fitting multi-body dynamics, we have a mode, eval_vol, to reconstruct the
 multi-body dynamics, using the command
 ```
 dsdsh eval_vol resdir N dpc num apix --masks MASKS --kmeans KMEANS --dfk DFK

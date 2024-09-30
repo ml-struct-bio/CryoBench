@@ -29,20 +29,20 @@
 #         print("batch done")
 
 #     return new
-    
+
 # def downsample_mrc(input_particle_file, output_particle_file, D, datadir = "", output_dir = "",  batch_size = 8192):
-    
+
 #     image_stack = dataset.LazyMRCDataMod( input_particle_file, ind = None, datadir = datadir, padding = 0)
 #     print("done loading old")
-#     new_images =  downsample_image_stack(image_stack, D, batch_size)    
+#     new_images =  downsample_image_stack(image_stack, D, batch_size)
 #     mrc.write(output_dir + output_particle_file, new_images.astype(np.float32), is_vol=False)
 
-# def main():    
+# def main():
 
 #     datadir = "/scratch/gpfs/mg6942/10180/data/"
 #     output_dir = "/scratch/gpfs/mg6942/cryodrgn_empiar/empiar10180/inputs/"
 #     input_particle_file = "consensus_data.star"
-        
+
 #     datadir = "/scratch/gpfs/mg6942/10180/data/"
 #     output_dir = "/scratch/gpfs/mg6942/cryodrgn_empiar/empiar10180/inputs/"
 #     input_particle_file = "consensus_data.star"
@@ -52,7 +52,7 @@
 #     input_particle_file = "particles.128.mrcs"
 #     new_grid_size = 16
 #     output_particle_file = "particles."+ str(new_grid_size) + ".mrcs"
-    
+
 #     downsample_mrc(output_dir + input_particle_file, output_particle_file, new_grid_size, datadir = datadir, output_dir = output_dir,  batch_size = int(8192/16))
 
 

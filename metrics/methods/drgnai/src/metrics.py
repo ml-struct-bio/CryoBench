@@ -5,7 +5,7 @@ Metrics
 import numpy as np
 import logging
 import torch
-from . import lie_tools
+from metrics.methods.drgnai.src import lie_tools
 
 logger = logging.getLogger(__name__)
 
@@ -60,8 +60,7 @@ def align_view_dir(rot_gt_tensor, rot_pred_tensor):
 
     alignment = torch.tensor(
         rigid_transform_3d(
-            lie_tools.rotmat_to_r3(rot_pred),
-            lie_tools.rotmat_to_r3(rot_gt)
+            lie_tools.rotmat_to_r3(rot_pred), lie_tools.rotmat_to_r3(rot_gt)
         )
     ).float()
 
@@ -71,7 +70,9 @@ def align_view_dir(rot_gt_tensor, rot_pred_tensor):
     euler_gt = lie_tools.rotmat_to_euler(rot_gt)
     euler_pred_aligned = lie_tools.rotmat_to_euler(rotmat_pred_aligned.clone().numpy())
     euler_pred_aligned[..., 0] = euler_gt[..., 0]
-    rotmat_pred_aligned = torch.tensor(lie_tools.euler_to_rotmat(euler_pred_aligned)).float()
+    rotmat_pred_aligned = torch.tensor(
+        lie_tools.euler_to_rotmat(euler_pred_aligned)
+    ).float()
 
     rotmat_pred = alignment.permute(0, 1) @ rotmat_pred_aligned
 
@@ -148,16 +149,18 @@ def get_angular_error(rot_gt, rot_pred):
     out_of_planes_pred = out_of_planes_pred.numpy()
     out_of_planes_pred /= np.linalg.norm(out_of_planes_pred, axis=-1, keepdims=True)
 
-    angles = np.arccos(np.clip(np.sum(out_of_planes_gt * out_of_planes_pred, -1), -1.0, 1.0)) * 180.0 / np.pi
+    angles = (
+        np.arccos(np.clip(np.sum(out_of_planes_gt * out_of_planes_pred, -1), -1.0, 1.0))
+        * 180.0
+        / np.pi
+    )
 
     return angles, np.mean(angles), np.median(angles)
 
 
-def get_trans_metrics(trans_gt, trans_pred, rotmat,
-                      correct_global_trans=False):
+def get_trans_metrics(trans_gt, trans_pred, rotmat, correct_global_trans=False):
     if correct_global_trans:
-        b = torch.cat([(trans_pred - trans_gt)[:, 0],
-                       (trans_pred - trans_gt)[:, 1]], 0)
+        b = torch.cat([(trans_pred - trans_gt)[:, 0], (trans_pred - trans_gt)[:, 1]], 0)
 
         matrix_a = torch.cat([rotmat[:, 0, :], rotmat[:, 1, :]], 0)
         u = torch.tensor(np.linalg.lstsq(matrix_a, b, rcond=-1)[0]).float()
@@ -166,8 +169,8 @@ def get_trans_metrics(trans_gt, trans_pred, rotmat,
 
         trans_pred_corr = trans_pred - torch.bmm(
             matrix_n.repeat(batch_size, 1, 1),
-            (u @ rotmat.permute(0, 2, 1)).reshape(-1, 3, 1)
-            ).reshape(-1, 2)
+            (u @ rotmat.permute(0, 2, 1)).reshape(-1, 3, 1),
+        ).reshape(-1, 2)
 
     else:
         trans_pred_corr = trans_pred
@@ -175,10 +178,10 @@ def get_trans_metrics(trans_gt, trans_pred, rotmat,
     dist = np.sum((trans_gt.numpy() - trans_pred_corr.numpy()) ** 2, axis=1)
 
     trans_metrics = {
-        'rmse': np.sqrt(np.mean(dist)),
-        'rmedse': np.sqrt(np.median(dist)),
-        'mae': np.mean(np.sqrt(dist)),
-        'medae': np.median(np.sqrt(dist))
+        "rmse": np.sqrt(np.mean(dist)),
+        "rmedse": np.sqrt(np.median(dist)),
+        "mae": np.mean(np.sqrt(dist)),
+        "medae": np.median(np.sqrt(dist)),
     }
 
     return trans_pred_corr, trans_gt, trans_metrics, dist

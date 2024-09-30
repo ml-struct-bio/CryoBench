@@ -36,7 +36,7 @@ Look at the repo [metrics/per_conf_fsc](https://github.com/ml-struct-bio/CryoBen
 ### 2. UMAP visualization
 Look at the repo [metrics/visualization](https://github.com/ml-struct-bio/CryoBench/tree/main/metrics/visualization)
 
-	
+
 ## References:
 
 Jeon, Minkyu, et al. "CryoBench: Diverse and challenging datasets for the heterogeneity problem in cryo-EM." arXiv preprint arXiv:2408.05526 (2024) [paper](https://arxiv.org/abs/2408.05526).

@@ -19,14 +19,16 @@ def load_data(file):
 def plot_data(x, y, label):
     plt.plot(x, y, label=label)
 
+
 def natural_sort_key(s):
     # Convert the string to a list of text and numbers
-    parts = re.split('([0-9]+)', s)
-    
+    parts = re.split("([0-9]+)", s)
+
     # Convert numeric parts to integers for proper numeric comparison
     parts[1::2] = map(int, parts[1::2])
-    
+
     return parts
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Plot FSC data.")
@@ -48,7 +50,7 @@ def main(args):
     file_pattern = "*.txt"
     all_fscs = glob.glob(os.path.join(args.input, file_pattern))
     all_fscs = sorted(all_fscs, key=natural_sort_key)
-    print('len(all_fscs):',len(all_fscs))
+    print("len(all_fscs):", len(all_fscs))
     for file in all_fscs:
         x, y = load_data(file)
         plot_data(x, y, os.path.basename(file))
@@ -81,7 +83,9 @@ def main(args):
     if args.output:
         if not os.path.exists(args.output):
             os.makedirs(args.output)
-        plt.savefig(os.path.join(args.output,"fsc_plots.png"), dpi=300, bbox_inches="tight")
+        plt.savefig(
+            os.path.join(args.output, "fsc_plots.png"), dpi=300, bbox_inches="tight"
+        )
     else:
         plt.show()
 

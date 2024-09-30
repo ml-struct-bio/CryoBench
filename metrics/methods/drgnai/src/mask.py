@@ -3,6 +3,7 @@ Masks
 """
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 
@@ -15,12 +16,15 @@ def get_circular_mask(lattice, radius):
     """
     coords = lattice.coords
     resolution = lattice.D
-    assert 2 * radius + 1 <= resolution, 'Mask with radius {} too large for lattice with size {}'.format(radius,
-                                                                                                         resolution)
+    assert (
+        2 * radius + 1 <= resolution
+    ), "Mask with radius {} too large for lattice with size {}".format(
+        radius, resolution
+    )
     r = radius / (resolution // 2) * lattice.extent
-    mask = coords.pow(2).sum(-1) <= r ** 2
+    mask = coords.pow(2).sum(-1) <= r**2
     if lattice.ignore_DC:
-        mask[resolution ** 2 // 2] = 0
+        mask[resolution**2 // 2] = 0
     return mask.cpu()
 
 
@@ -44,14 +48,18 @@ class CircularMask:
         self.current_radius = radius
 
     def get_lf_submask(self):
-        return get_circular_mask(self.lattice, self.current_radius // 2)[self.binary_mask]
+        return get_circular_mask(self.lattice, self.current_radius // 2)[
+            self.binary_mask
+        ]
 
     def get_hf_submask(self):
         return ~self.get_lf_submask()
 
 
 class FrequencyMarchingMask(CircularMask):
-    def __init__(self, lattice, radius_max, radius=3, add_one_every=100000, exp_factor=0.05):
+    def __init__(
+        self, lattice, radius_max, radius=3, add_one_every=100000, exp_factor=0.05
+    ):
         """
         lattice: Lattice
         radius: float

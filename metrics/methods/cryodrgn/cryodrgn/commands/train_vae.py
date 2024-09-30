@@ -734,7 +734,9 @@ def main(args):
         # print('Nimg:',Nimg)
         # print('ctf_params.shape:',ctf_params.shape.shape)
         # print('ctf_params1:',ctf_params.shape)
-        ctf_params = ctf_params[:Nimg, :] # We should change -- make sure we use same ctf that used in previous steps(add_ctf.py)
+        ctf_params = ctf_params[
+            :Nimg, :
+        ]  # We should change -- make sure we use same ctf that used in previous steps(add_ctf.py)
         # print('ctf_params2:',ctf_params.shape)
         assert ctf_params.shape == (Nimg, 8)
         if args.encode_mode == "tilt":  # TODO: Parse this in cryodrgn parse_ctf_star

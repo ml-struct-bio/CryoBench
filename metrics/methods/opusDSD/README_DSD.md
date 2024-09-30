@@ -96,7 +96,7 @@ You can then install OPUS-DSD by changing to the directory with cloned repositor
 pip install -e .
 ```
 
-OPUS-DSD can be kept up to date by 
+OPUS-DSD can be kept up to date by
 ```
 git pull
 ```
@@ -248,7 +248,7 @@ To access detailed usage information for each command, execute the following:
 dsdsh commandx -h
 ```
 
-The first step is to sample the latent space using kmeans and PCA algorithms. Suppose the training results are in ```/work/sp```, 
+The first step is to sample the latent space using kmeans and PCA algorithms. Suppose the training results are in ```/work/sp```,
 ```
 dsdsh analyze /work/sp 16 4 16
                 $1    $2 $3 $4

@@ -17,11 +17,11 @@ Running RECOVAR:
 Peak at what output looks like on a [synthetic dataset](output_visualization_simple_synthetic.ipynb) and [real dataset](output_visualization_empiar10076.ipynb).
 
 Also:
-[using the source code](#using-the-source-code), 
-[limitations](#limitations), 
+[using the source code](#using-the-source-code),
+[limitations](#limitations),
 [contact](#contact)
 
-## Installation 
+## Installation
 To run this code, CUDA and [JAX](https://jax.readthedocs.io/en/latest/index.html#) are required. See information about JAX installation [here](https://jax.readthedocs.io/en/latest/installation.html).
 Assuming you already have CUDA, installation should take less than 5 minutes.
 Below are a set of commands which runs on our university cluster (Della), but may need to be tweaked to run on other clusters.
@@ -36,7 +36,7 @@ Then create an environment, download JAX-cuda (for some reason the latest versio
     pip install -U "jax[cuda12_pip]"==0.4.23 -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
     git clone https://github.com/ma-gilles/recovar.git
     pip install --no-deps -r  recovar/recovar_install_requirements.txt
-    python -m ipykernel install --user --name=recovar 
+    python -m ipykernel install --user --name=recovar
 
 
 
@@ -48,10 +48,10 @@ The code for the paper was run on [this commit](https://github.com/ma-gilles/rec
 
 
 
-## I. Preprocessing 
+## I. Preprocessing
 
-The input interface of RECOVAR is borrowed directly from the ex)cellent [cryoDRGN toolbox](https://cryodrgn.cs.princeton.edu/). 
-Particles, poses and CTF must be prepared in the same way, and below is copy-pasted part of 
+The input interface of RECOVAR is borrowed directly from the ex)cellent [cryoDRGN toolbox](https://cryodrgn.cs.princeton.edu/).
+Particles, poses and CTF must be prepared in the same way, and below is copy-pasted part of
 [cryoDRGN's documentation](https://github.com/ml-struct-bio/cryodrgn#2-parse-image-poses-from-a-consensus-homogeneous-reconstructiqqon).
 CryoDRGN is a dependency, so you should be able to run the commands below after ``conda activate recovar``.
 
@@ -271,18 +271,18 @@ Assuming you have run the pipeline.py and analyze.py, the output will be saved i
     │   │   │   │   └── ...
     │   │   │   ├── path1
     │   │   │   │   ├── ...
-    │   │   │   ├── reweight_000.mrc # volume reconstruction of kmeans 
+    │   │   │   ├── reweight_000.mrc # volume reconstruction of kmeans
     │   │   │   ├── ...
     │   │   │   ├── reweight_halfmap1_039.mrc # also halfmaps
-    │   │   │   └── trajectory_endpoints.pkl # end points of trajectory used 
-    │   │   └── umap_embedding.pkl 
+    │   │   │   └── trajectory_endpoints.pkl # end points of trajectory used
+    │   │   └── umap_embedding.pkl
     │   └── volumes
     │       ├── dilated_mask.mrc
     │       ├── eigen_neg000.mrc # Eigenvectors
     │       ├── ...
     │       ├── eigen_pos000.mrc # Negative of eigenvectors. Useful for Chimera visualization to have the two separated, even though they contain the same information
     │       ├── ...
-    │       ├── mask.mrc # mask used 
+    │       ├── mask.mrc # mask used
     │       ├── mean.mrc # computed mean
     │       ├── variance10.mrc # compute variance from rank 10 approximation
     │       └── ...
@@ -293,11 +293,11 @@ Assuming you have run the pipeline.py and analyze.py, the output will be saved i
 ### Visualization in jupyter notebook
 
 You can visualize the results using [this notebook](output_visualization.ipynb), which will show a bunch of results including:
-* the FSC of the mean estimation, which you can interpret as an upper bound of the resolution you can expect. 
+* the FSC of the mean estimation, which you can interpret as an upper bound of the resolution you can expect.
 * decay of eigenvalues to help you pick the right `zdim`
 * and standard clustering visualization (borrowed from the cryoDRGN output).
 
-<!-- 
+<!--
 ## VI. Generating additional trajectories
 
 Usage example:
@@ -337,7 +337,7 @@ A short example illustrating the steps to run the code on EMPIAR-10076. Assuming
     cd cryodrgn_empiar/empiar10076/inputs/
 
     # Download particles stack from here. https://www.ebi.ac.uk/empiar/EMPIAR-10076/ with your favorite method.
-    # My method of choice is to use https://www.globus.org/ 
+    # My method of choice is to use https://www.globus.org/
     # Move the data into cryodrgn_empiar/empiar10076/inputs/
 
     conda activate recovar
@@ -347,15 +347,15 @@ A short example illustrating the steps to run the code on EMPIAR-10076. Assuming
     # Extract pose and ctf information from cryoSPARC refinement
     cryodrgn parse_ctf_csparc cryosparc_P4_J33_004_particles.cs -o ctf.pkl
     cryodrgn parse_pose_csparc cryosparc_P4_J33_004_particles.cs -D 320 -o poses.pkl
-    
+
     # run recovar
-    python [recovar_dir]/pipeline.py particles.256.mrcs --ctf --ctf.pkl -poses poses.pkl --o recovar_test 
+    python [recovar_dir]/pipeline.py particles.256.mrcs --ctf --ctf.pkl -poses poses.pkl --o recovar_test
 
     # run analysis
-    python [recovar_dir]/analysis.py recovar_test --zdim=20 
+    python [recovar_dir]/analysis.py recovar_test --zdim=20
 
     # Open notebook output_visualization.ipynb
-    # Change the recovar_result_dir = '[path_to_this_dir]/recovar_test' and 
+    # Change the recovar_result_dir = '[path_to_this_dir]/recovar_test' and
 
 Note that this is different from the one in the paper. Run the following pipeline command to get the one in the paper (runs on the filtered stack from the cryoDRGN paper, and uses a predefined mask):
 
@@ -376,7 +376,7 @@ Some of the features which may be of interest:
 - A heterogeneity dataset simulator that includes variations in contrast, realistic CTF and pose distribution (loaded from real dataset), junk proteins, outliers, etc. See [recovar.simulator](recovar/simulator.py).
 
 
-- A code to go from atomic positions to volumes or images. Does not run on GPU. Thanks to [prody](http://prody.csb.pitt.edu/), if you have an internet connection, you can generate the volume from only the PDB ID. E.g., you can do `recovar.simulate_scattering_potential.generate_molecule_spectrum_from_pdb_id('6VXX', 2, 256)` to generate the volume of the spike protein with voxel size 2 on a 256^3 grid. Note that this code exactly evaluates the Fourier transform of the potential, thus it is exact in Fourier space, which can produce some oscillations artifact in the spatial domain. 
+- A code to go from atomic positions to volumes or images. Does not run on GPU. Thanks to [prody](http://prody.csb.pitt.edu/), if you have an internet connection, you can generate the volume from only the PDB ID. E.g., you can do `recovar.simulate_scattering_potential.generate_molecule_spectrum_from_pdb_id('6VXX', 2, 256)` to generate the volume of the spike protein with voxel size 2 on a 256^3 grid. Note that this code exactly evaluates the Fourier transform of the potential, thus it is exact in Fourier space, which can produce some oscillations artifact in the spatial domain.
 
 - If you have come up with a different embedding and would like to generate volumes from reweighting (i.e., solve the homogeneous problem with weights on images), you can do this efficiently using `recovar.homogeneous.get_multiple_conformations`. You would need to load the dataset in the recovar style, see tutorial.
 
@@ -391,7 +391,7 @@ Some of the features which may be of interest:
 - *Memory*: you need a lot of memory to run this. For a stack of images of size 256, you probably need 400 GB+.
 - *ignore-zero-frequency*: I haven't thought much about the best way to do this. I would advise against using it for now.
 - *Importing mask from other software*: there might be axes index conventions which are different across software. Should be pretty to easy to see if this is the case by trying it and looking at output from [this notebook](recovar_coding_tutorial.ipynb)
-- *Other ones, probably?*: if you run into issues, please let me know. 
+- *Other ones, probably?*: if you run into issues, please let me know.
 
 
 

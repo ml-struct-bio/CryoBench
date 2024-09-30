@@ -4,6 +4,7 @@ import torch
 import logging
 from cryodrgn import utils
 import pickle
+
 logger = logging.getLogger(__name__)
 
 
@@ -109,11 +110,12 @@ def compute_ctf(
         ctf *= torch.exp(-bfactor / 4 * s2)
     return ctf
 
+
 def compute_ctf_np(freqs, dfu, dfv, dfang, volt, cs, w, phase_shift=0, bfactor=None):
-    '''
+    """
     Compute the 2D CTF
-   
-    Input: 
+
+    Input:
         freqs (np.ndarray) Nx2 array of 2D spatial frequencies
         dfu (float): DefocusU (Angstrom)
         dfv (float): DefocusV (Angstrom)
@@ -121,28 +123,32 @@ def compute_ctf_np(freqs, dfu, dfv, dfang, volt, cs, w, phase_shift=0, bfactor=N
         volt (float): accelerating voltage (kV)
         cs (float): spherical aberration (mm)
         w (float): amplitude contrast ratio
-        phase_shift (float): degrees 
+        phase_shift (float): degrees
         bfactor (float): envelope fcn B-factor (Angstrom^2)
-    '''
+    """
     # convert units
     volt = volt * 1000
     cs = cs * 10**7
     dfang = dfang * np.pi / 180
     phase_shift = phase_shift * np.pi / 180
-    
+
     # lam = sqrt(h^2/(2*m*e*Vr)); Vr = V + (e/(2*m*c^2))*V^2
     lam = 12.2639 / np.sqrt(volt + 0.97845e-6 * volt**2)
-    x = freqs[:,0]
-    y = freqs[:,1]
-    ang = np.arctan2(y,x)
+    x = freqs[:, 0]
+    y = freqs[:, 1]
+    ang = np.arctan2(y, x)
     s2 = x**2 + y**2
-    df = .5*(dfu + dfv + (dfu-dfv)*np.cos(2*(ang-dfang)))
-    gamma = 2*np.pi*(-.5*df*lam*s2 + .25*cs*lam**3*s2**2) - phase_shift
-    ctf = np.sqrt(1-w**2)*np.sin(gamma) - w*np.cos(gamma) 
+    df = 0.5 * (dfu + dfv + (dfu - dfv) * np.cos(2 * (ang - dfang)))
+    gamma = (
+        2 * np.pi * (-0.5 * df * lam * s2 + 0.25 * cs * lam**3 * s2**2)
+        - phase_shift
+    )
+    ctf = np.sqrt(1 - w**2) * np.sin(gamma) - w * np.cos(gamma)
     if bfactor is not None:
-        ctf *= np.exp(-bfactor/4*s2)
-    return np.require(ctf,dtype=freqs.dtype)
-    
+        ctf *= np.exp(-bfactor / 4 * s2)
+    return np.require(ctf, dtype=freqs.dtype)
+
+
 def print_ctf_params(params: np.ndarray) -> None:
     assert len(params) == 9
     logger.info("Image size (pix)  : {}".format(int(params[0])))
@@ -173,10 +179,12 @@ def plot_ctf(D: int, Apix: float, ctf_params: np.ndarray) -> None:
     c = compute_ctf(freqs, *ctf_params_torch)
     sns.heatmap(c.cpu().numpy().reshape(D, D))
 
+
 def load_pkl(pkl: str):
     with open(pkl, "rb") as f:
         x = pickle.load(f)
     return x
+
 
 def load_ctf_for_training(D: int, ctf_params_pkl: str) -> np.ndarray:
     assert D % 2 == 0

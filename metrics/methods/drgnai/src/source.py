@@ -21,8 +21,8 @@ import pandas as pd
 from typing import List, Optional, Union
 import logging
 import torch
-from .mrc import MRCHeader
-from .starfile import Starfile
+from metrics.methods.drgnai.src.mrc import MRCHeader
+from metrics.methods.drgnai.src.starfile import Starfile
 
 logger = logging.getLogger(__name__)
 

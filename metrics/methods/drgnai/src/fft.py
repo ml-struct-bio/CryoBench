@@ -7,7 +7,9 @@ def fft2_center(img, tensor=False):
     if tensor:
         return fftshift(fft2(fftshift(img, dim=(-1, -2))), dim=(-1, -2))
     else:
-        return np.fft.fftshift(np.fft.fft2(np.fft.ifftshift(img, axes=(-1, -2))), axes=(-1, -2))
+        return np.fft.fftshift(
+            np.fft.fft2(np.fft.ifftshift(img, axes=(-1, -2))), axes=(-1, -2)
+        )
 
 
 def fftn_center(img):
@@ -33,7 +35,7 @@ def htn_center(img):
 
 def iht2_center(img):
     img = fft2_center(img)
-    img /= (img.shape[-1] * img.shape[-2])
+    img /= img.shape[-1] * img.shape[-2]
     return img.real - img.imag
 
 

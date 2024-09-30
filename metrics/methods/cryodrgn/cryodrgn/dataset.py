@@ -7,12 +7,14 @@ from torch.utils import data
 from typing import Optional, Tuple, Union
 from cryodrgn import fft, starfile
 from cryodrgn.source import ImageSource
+
 # from cryodrgn.utils import window_mask
 
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import BatchSampler, RandomSampler, SequentialSampler
 
 logger = logging.getLogger(__name__)
+
 
 def window_mask(D, in_rad: float, out_rad: float):
     """
@@ -38,6 +40,7 @@ def window_mask(D, in_rad: float, out_rad: float):
         torch.maximum(torch.tensor(0.0), 1 - (r - in_rad) / (out_rad - in_rad)),
     )
     return mask
+
 
 class ImageDataset(data.Dataset):
     def __init__(

@@ -12,7 +12,7 @@ For any feedback, questions, or bugs, please file a Github issue, start a Github
 
 ## New in Version 3.x
 
-The official [cryoDRGN-ET](https://www.biorxiv.org/content/10.1101/2023.08.18.553799v1) release for heterogeneous subtomogram analysis. 
+The official [cryoDRGN-ET](https://www.biorxiv.org/content/10.1101/2023.08.18.553799v1) release for heterogeneous subtomogram analysis.
 
 * [NEW] Heterogeneous reconstruction of subtomograms. See documentation [on gitbook](https://ez-lab.gitbook.io/cryodrgn/)
 * [NEW] `cryodrgn direct_traversal` for making movies
@@ -22,7 +22,7 @@ The official [cryoDRGN-ET](https://www.biorxiv.org/content/10.1101/2023.08.18.55
 ### Previous versions
 
 <details><summary>Version 2.3</summary>
-	
+
 * Model configuration files are now saved as human-readable config.yaml files (https://github.com/zhonge/cryodrgn/issues/235)
 * Fix machine stamp in output .mrc files for better compatibility with downstream tools (https://github.com/zhonge/cryodrgn/pull/260)
 * Better documentation of help flags in ab initio reconstruction tools (https://github.com/zhonge/cryodrgn/issues/258)

@@ -43,6 +43,7 @@ def htn_center(img):
     _img = fftshift(fftn(fftshift(img)))
     return _img.real - _img.imag
 
+
 def iht2_center(img):
     img = fft2_center(img)
     img /= img.shape[-1] * img.shape[-2]

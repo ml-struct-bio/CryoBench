@@ -6,9 +6,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 from cryodrgn import fft
 from cryodrgn.source import ImageSource
-import os 
+import os
 import glob, re
+
 logger = logging.getLogger(__name__)
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -21,13 +23,15 @@ def parse_args():
     parser.add_argument("-o", help="output folder (fsc.txt will be saved)")
     return parser
 
+
 def natural_sort_key(s):
     # Convert the string to a list of text and numbers
-    parts = re.split('([0-9]+)', s)
+    parts = re.split("([0-9]+)", s)
     # Convert numeric parts to integers for proper numeric comparison
     parts[1::2] = map(int, parts[1::2])
-    
+
     return parts
+
 
 def main(args, cls_path, gt_path, output_file):
     vol1 = ImageSource.from_file(cls_path)
@@ -107,27 +111,31 @@ if __name__ == "__main__":
     class_files = sorted(class_files, key=natural_sort_key)
     gt_files = glob.glob(os.path.join(args.vol2, file_pattern))
     gt_files = sorted(gt_files, key=natural_sort_key)
-    
+
     for cls_path in class_files:
-        if args.method == '3dcls':
-            cls = cls_path.split('/')[-1].split('.')[0].split('_')[2]
-        elif '3dcls_abinit' in args.method:
-            cls = cls_path.split('/')[-1].split('.')[0].split('_')[2]
-        elif args.method == 'opus-dsd' or args.method == 'opus-dsd_2':
+        if args.method == "3dcls":
+            cls = cls_path.split("/")[-1].split(".")[0].split("_")[2]
+        elif "3dcls_abinit" in args.method:
+            cls = cls_path.split("/")[-1].split(".")[0].split("_")[2]
+        elif args.method == "opus-dsd" or args.method == "opus-dsd_2":
             # print('cls_path:',cls_path)
-            cls = cls_path.split('/')[-1].split('.')[0][9:]
+            cls = cls_path.split("/")[-1].split(".")[0][9:]
         else:
-            cls = cls_path.split('/')[-1].split('.')[0].split('_')[-1]
-        print('cls:',cls)
+            cls = cls_path.split("/")[-1].split(".")[0].split("_")[-1]
+        print("cls:", cls)
         cls = int(cls)
         assert isinstance(cls, int)
         for gt_path in gt_files:
-            gt = gt_path.split('/')[-1].split('.')[0].split('_')[0]
+            gt = gt_path.split("/")[-1].split(".")[0].split("_")[0]
             gt = int(gt)
             assert isinstance(gt, int)
             if args.mask is not None:
-                output_file = os.path.join(args.o, "mask", f"masked_fsc_cls_{cls}_gt_{gt}.txt")
+                output_file = os.path.join(
+                    args.o, "mask", f"masked_fsc_cls_{cls}_gt_{gt}.txt"
+                )
             else:
-                output_file = os.path.join(args.o, "no_mask", f"fsc_cls_{cls}_gt_{gt}.txt")
-    
+                output_file = os.path.join(
+                    args.o, "no_mask", f"fsc_cls_{cls}_gt_{gt}.txt"
+                )
+
             main(args, cls_path, gt_path, output_file)

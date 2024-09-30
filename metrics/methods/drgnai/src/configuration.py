@@ -13,7 +13,8 @@ import difflib
 
 
 CONFIG_DIR = os.path.join(
-    os.path.abspath(os.path.dirname(os.path.dirname(__file__))), 'configs')
+    os.path.abspath(os.path.dirname(os.path.dirname(__file__))), "configs"
+)
 
 
 @dataclass
@@ -61,7 +62,8 @@ class _BaseConfigurations(ABC):
             for cfg_k, cfg_val in self.quick_config.items():
                 if cfg_k not in self.quick_configs:
                     raise ValueError(
-                        f"Unrecognized quick_config shortcut field `{cfg_k}`!")
+                        f"Unrecognized quick_config shortcut field `{cfg_k}`!"
+                    )
 
                 if cfg_val not in self.quick_configs[cfg_k]:
                     raise ValueError(
@@ -93,14 +95,21 @@ class _BaseConfigurations(ABC):
     def write(self, fl: str, **add_cfgs) -> None:
         """Saving configurations to file using the original order."""
         with open(fl, "w") as f:
-            yaml.dump(dict(training=asdict(self), **add_cfgs), f,
-                      default_flow_style=False, sort_keys=False)
+            yaml.dump(
+                dict(training=asdict(self), **add_cfgs),
+                f,
+                default_flow_style=False,
+                sort_keys=False,
+            )
 
     @classmethod
     def fields(cls) -> list[Field]:
         members = inspect.getmembers(cls)
-        return list(list(filter(
-            lambda x: x[0] == '__dataclass_fields__', members))[0][1].values())
+        return list(
+            list(filter(lambda x: x[0] == "__dataclass_fields__", members))[0][
+                1
+            ].values()
+        )
 
     @classmethod
     def parse_cfg_keys(cls, cfg_keys: list[str]) -> dict[str, Any]:
@@ -108,11 +117,13 @@ class _BaseConfigurations(ABC):
 
         for cfg_str in cfg_keys:
             if cfg_str.count("=") != 1:
-                raise ValueError("--cfgs entries must have exactly one equals sign "
-                                 "and be in the form 'CFG_KEY=CFG_VAL'!")
-            cfg_key, cfg_val = cfg_str.split('=')
+                raise ValueError(
+                    "--cfgs entries must have exactly one equals sign "
+                    "and be in the form 'CFG_KEY=CFG_VAL'!"
+                )
+            cfg_key, cfg_val = cfg_str.split("=")
 
-            if cfg_val is None or cfg_val == 'None':
+            if cfg_val is None or cfg_val == "None":
                 cfgs[cfg_key] = None
 
             else:
@@ -132,17 +143,21 @@ class _BaseConfigurations(ABC):
 
                 else:
                     close_keys = difflib.get_close_matches(
-                        cfg_key, [fld.name for fld in cls.fields()])
+                        cfg_key, [fld.name for fld in cls.fields()]
+                    )
 
                     if close_keys:
                         close_str = f"\nDid you mean one of:\n{', '.join(close_keys)}"
                     else:
                         close_str = ""
 
-                    raise ValueError(f"--cfgs parameter `{cfg_key}` is not a "
-                                     f"valid configuration parameter!{close_str}")
+                    raise ValueError(
+                        f"--cfgs parameter `{cfg_key}` is not a "
+                        f"valid configuration parameter!{close_str}"
+                    )
 
         return cfgs
+
 
 @dataclass
 class TrainingConfigurations(_BaseConfigurations):
@@ -171,7 +186,7 @@ class TrainingConfigurations(_BaseConfigurations):
     log_heavy_interval: int = 5
     verbose_time: bool = False
 
-    #data loading
+    # data loading
     shuffle: bool = True
     lazy: bool = False
     num_workers: int = 2
@@ -264,39 +279,45 @@ class TrainingConfigurations(_BaseConfigurations):
 
     quick_configs = OrderedDict(
         {
-            'capture_setup': {
-                'spa': dict(),
-                'et': {'subtomogram_averaging': True, 'fast_dataloading': True,
-                       'shuffler_size': 0, 'num_workers': 0, 't_extent': 0.0,
-                       'batch_size_known_poses': 8, 'batch_size_sgd': 32,
-                       'n_imgs_pose_search': 150000, 'pose_only_phase': 50000,
-                       'lr_pose_table': 1.0e-5}
+            "capture_setup": {
+                "spa": dict(),
+                "et": {
+                    "subtomogram_averaging": True,
+                    "fast_dataloading": True,
+                    "shuffler_size": 0,
+                    "num_workers": 0,
+                    "t_extent": 0.0,
+                    "batch_size_known_poses": 8,
+                    "batch_size_sgd": 32,
+                    "n_imgs_pose_search": 150000,
+                    "pose_only_phase": 50000,
+                    "lr_pose_table": 1.0e-5,
                 },
-
-            'reconstruction_type': {
-                'homo': {'z_dim': 0}, 'het': dict()},
-
-            'pose_estimation': {
-                'abinit': dict(),
-                'refine': {'refine_gt_poses': True, 'pretrain_with_gt_poses': True,
-                           'lr_pose_table': 1.0e-4},
-                'fixed': {'use_gt_poses': True}
+            },
+            "reconstruction_type": {"homo": {"z_dim": 0}, "het": dict()},
+            "pose_estimation": {
+                "abinit": dict(),
+                "refine": {
+                    "refine_gt_poses": True,
+                    "pretrain_with_gt_poses": True,
+                    "lr_pose_table": 1.0e-4,
                 },
-
-            'conf_estimation': {
+                "fixed": {"use_gt_poses": True},
+            },
+            "conf_estimation": {
                 None: dict(),
-                'autodecoder': dict(),
-                'refine': dict(),
-                'encoder': {'use_conf_encoder': True}
-                }
-            }
-        )
+                "autodecoder": dict(),
+                "refine": dict(),
+                "encoder": {"use_conf_encoder": True},
+            },
+        }
+    )
 
     def __post_init__(self):
         super().__post_init__()
 
         if self.test_installation:
-            print('Installation was successful!')
+            print("Installation was successful!")
             sys.exit()
 
         if self.seed < 0:
@@ -306,76 +327,89 @@ class TrainingConfigurations(_BaseConfigurations):
         if self.quick_config is not None:
             for key, value in self.quick_config.items():
                 if key not in self.quick_configs:
-                    raise ValueError("Unrecognized parameter "
-                                     f"shortcut field `{key}`!")
+                    raise ValueError(
+                        "Unrecognized parameter " f"shortcut field `{key}`!"
+                    )
 
                 if value not in self.quick_configs[key]:
-                    raise ValueError("Unrecognized parameter shortcut label "
-                                     f"`{value}` for field `{key}`!")
+                    raise ValueError(
+                        "Unrecognized parameter shortcut label "
+                        f"`{value}` for field `{key}`!"
+                    )
 
                 for _key, _value in self.quick_configs[key][value].items():
                     if _key not in self:
-                        raise ValueError("Unrecognized configuration "
-                                         f"parameter `{key}`!")
+                        raise ValueError(
+                            "Unrecognized configuration " f"parameter `{key}`!"
+                        )
 
                     # parameters given elsewhere in configs have priority
                     if getattr(self, _key) == getattr(type(self), _key):
                         setattr(self, _key, _value)
 
         if self.explicit_volume and self.z_dim >= 1:
-            raise ValueError("Explicit volumes do not support "
-                             "heterogeneous reconstruction.")
+            raise ValueError(
+                "Explicit volumes do not support " "heterogeneous reconstruction."
+            )
 
         if self.dataset is None:
             if self.particles is None:
-                raise ValueError("As dataset was not specified, please "
-                                 "specify particles!")
+                raise ValueError(
+                    "As dataset was not specified, please " "specify particles!"
+                )
 
             if self.ctf is None:
-                raise ValueError("As dataset was not specified, please "
-                                 "specify ctf!")
+                raise ValueError("As dataset was not specified, please " "specify ctf!")
 
-        if self.hypervolume_optimizer_type not in {'adam'}:
-            raise ValueError("Invalid value "
-                             f"`{self.hypervolume_optimizer_type}` "
-                             "for hypervolume_optimizer_type!")
+        if self.hypervolume_optimizer_type not in {"adam"}:
+            raise ValueError(
+                "Invalid value "
+                f"`{self.hypervolume_optimizer_type}` "
+                "for hypervolume_optimizer_type!"
+            )
 
-        if self.pose_table_optimizer_type not in {'adam', 'lbfgs'}:
-            raise ValueError("Invalid value "
-                             f"`{self.pose_table_optimizer_type}` "
-                             "for pose_table_optimizer_type!")
+        if self.pose_table_optimizer_type not in {"adam", "lbfgs"}:
+            raise ValueError(
+                "Invalid value "
+                f"`{self.pose_table_optimizer_type}` "
+                "for pose_table_optimizer_type!"
+            )
 
-        if self.conf_table_optimizer_type not in {'adam', 'lbfgs'}:
-            raise ValueError("Invalid value "
-                             f"`{self.conf_table_optimizer_type}` "
-                             "for conf_table_optimizer_type!")
+        if self.conf_table_optimizer_type not in {"adam", "lbfgs"}:
+            raise ValueError(
+                "Invalid value "
+                f"`{self.conf_table_optimizer_type}` "
+                "for conf_table_optimizer_type!"
+            )
 
-        if self.conf_encoder_optimizer_type not in {'adam'}:
-            raise ValueError("Invalid value "
-                             f"`{self.conf_encoder_optimizer_type}` "
-                             "for conf_encoder_optimizer_type!")
+        if self.conf_encoder_optimizer_type not in {"adam"}:
+            raise ValueError(
+                "Invalid value "
+                f"`{self.conf_encoder_optimizer_type}` "
+                "for conf_encoder_optimizer_type!"
+            )
 
-        if self.output_mask not in {'circ', 'frequency_marching'}:
-            raise ValueError("Invalid value "
-                             f"{self.output_mask} for output_mask!")
+        if self.output_mask not in {"circ", "frequency_marching"}:
+            raise ValueError("Invalid value " f"{self.output_mask} for output_mask!")
 
-        if self.pe_type not in {'gaussian'}:
+        if self.pe_type not in {"gaussian"}:
             raise ValueError(f"Invalid value {self.pe_type} for pe_type!")
 
-        if self.pe_type_conf not in {None, 'geom'}:
-            raise ValueError(f"Invalid value {self.pe_type_conf} "
-                             "for pe_type_conf!")
+        if self.pe_type_conf not in {None, "geom"}:
+            raise ValueError(f"Invalid value {self.pe_type_conf} " "for pe_type_conf!")
 
-        if self.hypervolume_domain not in {'hartley'}:
-            raise ValueError(f"Invalid value {self.hypervolume_domain} "
-                             "for hypervolume_domain.")
+        if self.hypervolume_domain not in {"hartley"}:
+            raise ValueError(
+                f"Invalid value {self.hypervolume_domain} " "for hypervolume_domain."
+            )
 
         if self.n_imgs_pose_search < 0:
             raise ValueError("n_imgs_pose_search must be greater than 0!")
 
         if self.use_conf_encoder and self.initial_conf:
-            raise ValueError("Conformations cannot be initialized "
-                             "when using an encoder!")
+            raise ValueError(
+                "Conformations cannot be initialized " "when using an encoder!"
+            )
 
         if self.use_gt_trans and self.pose is None:
             raise ValueError("Poses must be specified to use GT translations!")
@@ -384,32 +418,34 @@ class TrainingConfigurations(_BaseConfigurations):
             self.n_imgs_pose_search = 0
 
             if self.pose is None:
-                raise ValueError("Initial poses must be specified "
-                                 "to be refined!")
+                raise ValueError("Initial poses must be specified " "to be refined!")
 
         if self.subtomogram_averaging:
             self.fast_dataloading = True
 
             # TODO: Implement conformation encoder for subtomogram averaging.
             if self.use_conf_encoder:
-                raise ValueError("Conformation encoder is not implemented "
-                                 "for subtomogram averaging!")
+                raise ValueError(
+                    "Conformation encoder is not implemented "
+                    "for subtomogram averaging!"
+                )
 
             # TODO: Implement translation search for subtomogram averaging.
-            if not (self.use_gt_poses or self.use_gt_trans
-                    or self.t_extent == 0.):
-                raise ValueError("Translation search is not implemented "
-                                 "for subtomogram averaging!")
+            if not (self.use_gt_poses or self.use_gt_trans or self.t_extent == 0.0):
+                raise ValueError(
+                    "Translation search is not implemented "
+                    "for subtomogram averaging!"
+                )
 
             if self.average_over_tilts and self.n_tilts_pose_search % 2 == 0:
-                raise ValueError("n_tilts_pose_search must be odd "
-                                 "to use average_over_tilts!")
+                raise ValueError(
+                    "n_tilts_pose_search must be odd " "to use average_over_tilts!"
+                )
 
             if self.n_tilts_pose_search is None:
                 self.n_tilts_pose_search = self.n_tilts
             if self.n_tilts_pose_search > self.n_tilts:
-                raise ValueError("n_tilts_pose_search must be "
-                                 "smaller than n_tilts!")
+                raise ValueError("n_tilts_pose_search must be " "smaller than n_tilts!")
 
         if self.use_gt_poses:
             # "poses" include translations
@@ -419,27 +455,27 @@ class TrainingConfigurations(_BaseConfigurations):
                 raise ValueError("Ground truth poses must be specified!")
 
         if self.no_trans:
-            self.t_extent = 0.
-        if self.t_extent == 0.:
+            self.t_extent = 0.0
+        if self.t_extent == 0.0:
             self.t_n_grid = 1
 
         if self.dataset:
-            with open(os.environ.get("DRGNAI_DATASETS"), 'r') as f:
+            with open(os.environ.get("DRGNAI_DATASETS"), "r") as f:
                 paths = yaml.safe_load(f)
 
-            self.particles = paths[self.dataset]['particles']
-            self.ctf = paths[self.dataset]['ctf']
+            self.particles = paths[self.dataset]["particles"]
+            self.ctf = paths[self.dataset]["ctf"]
 
-            if self.pose is None and 'pose' in paths[self.dataset]:
-                self.pose = paths[self.dataset]['pose']
-            if 'datadir' in paths[self.dataset]:
-                self.datadir = paths[self.dataset]['datadir']
-            if 'labels' in paths[self.dataset]:
-                self.labels = paths[self.dataset]['labels']
-            if self.ind is None and 'ind' in paths[self.dataset]:
-                self.ind = paths[self.dataset]['ind']
-            if 'dose_per_tilt' in paths[self.dataset]:
-                self.dose_per_tilt = paths[self.dataset]['dose_per_tilt']
+            if self.pose is None and "pose" in paths[self.dataset]:
+                self.pose = paths[self.dataset]["pose"]
+            if "datadir" in paths[self.dataset]:
+                self.datadir = paths[self.dataset]["datadir"]
+            if "labels" in paths[self.dataset]:
+                self.labels = paths[self.dataset]["labels"]
+            if self.ind is None and "ind" in paths[self.dataset]:
+                self.ind = paths[self.dataset]["ind"]
+            if "dose_per_tilt" in paths[self.dataset]:
+                self.dose_per_tilt = paths[self.dataset]["dose_per_tilt"]
 
 
 @dataclass

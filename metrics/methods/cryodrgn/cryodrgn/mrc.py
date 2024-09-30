@@ -153,7 +153,7 @@ class MRCHeader:
             0,  # nxstart, nystart, nzstart
             nx,
             ny,
-            nz, 
+            nz,
             Apix * nx,
             Apix * ny,
             Apix * nz,  # cella

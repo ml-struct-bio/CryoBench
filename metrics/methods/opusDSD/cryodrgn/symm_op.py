@@ -18,7 +18,10 @@ from numpy.typing import ArrayLike
 
 __author__ = "Shyue Ping Ong, Shyam Dwaraknath, Matthew Horton"
 
-def transformation_to_string(matrix, translation_vec=(0, 0, 0), components=("x", "y", "z"), c="", delim=","):
+
+def transformation_to_string(
+    matrix, translation_vec=(0, 0, 0), components=("x", "y", "z"), c="", delim=","
+):
     """
     Convenience method. Given matrix returns string, e.g. x+2y+1/4
     :param matrix
@@ -46,7 +49,9 @@ def transformation_to_string(matrix, translation_vec=(0, 0, 0), components=("x",
                 if f.denominator != 1:
                     s += "/" + str(f.denominator)
         if t != 0:
-            s += ("+" if (t > 0 and s != "") else "") + str(Fraction(t).limit_denominator())
+            s += ("+" if (t > 0 and s != "") else "") + str(
+                Fraction(t).limit_denominator()
+            )
         if s == "":
             s += "0"
         parts.append(s)
@@ -82,6 +87,7 @@ class SymmOp:
     @staticmethod
     def identity():
         return SymmOp.from_rotation_and_translation()
+
     @staticmethod
     def from_rotation_and_translation(
         rotation_matrix: ArrayLike = ((1, 0, 0), (0, 1, 0), (0, 0, 1)),
@@ -103,7 +109,9 @@ class SymmOp:
         if rotation_matrix.shape != (3, 3):
             raise ValueError("Rotation Matrix must be a 3x3 numpy array.")
         if translation_vec.shape != (3,):
-            raise ValueError("Translation vector must be a rank 1 numpy array with 3 elements.")
+            raise ValueError(
+                "Translation vector must be a rank 1 numpy array with 3 elements."
+            )
         affine_matrix = np.eye(4)
         affine_matrix[0:3][:, 0:3] = rotation_matrix
         affine_matrix[0:3][:, 3] = translation_vec
@@ -147,7 +155,9 @@ class SymmOp:
             Numpy array of coordinates after operation
         """
         points = np.array(points)
-        affine_points = np.concatenate([points, np.ones(points.shape[:-1] + (1,))], axis=-1)
+        affine_points = np.concatenate(
+            [points, np.ones(points.shape[:-1] + (1,))], axis=-1
+        )
         return np.inner(affine_points, self.affine_matrix)[..., :-1]
 
     def apply_rotation_only(self, vector: ArrayLike):
@@ -180,7 +190,9 @@ class SymmOp:
 
         return np.einsum(einsum_string, *einsum_args)
 
-    def are_symmetrically_related(self, point_a: ArrayLike, point_b: ArrayLike, tol: float = 0.001) -> bool:
+    def are_symmetrically_related(
+        self, point_a: ArrayLike, point_b: ArrayLike, tol: float = 0.001
+    ) -> bool:
         """
         Checks if two points are symmetrically related.
         Args:
@@ -228,7 +240,10 @@ class SymmOp:
 
     @staticmethod
     def from_axis_angle_and_translation(
-        axis: ArrayLike, angle: float, angle_in_radians: bool = False, translation_vec: ArrayLike = (0, 0, 0)
+        axis: ArrayLike,
+        angle: float,
+        angle_in_radians: bool = False,
+        translation_vec: ArrayLike = (0, 0, 0),
     ) -> "SymmOp":
         """
         Generates a SymmOp for a rotation about a given axis plus translation.
@@ -357,16 +372,18 @@ class SymmOp:
         translation = np.eye(4)
         translation[0:3, 3] = -np.array(origin)
 
-        xx = 1 - 2 * u ** 2
-        yy = 1 - 2 * v ** 2
-        zz = 1 - 2 * w ** 2
+        xx = 1 - 2 * u**2
+        yy = 1 - 2 * v**2
+        zz = 1 - 2 * w**2
         xy = -2 * u * v
         xz = -2 * u * w
         yz = -2 * v * w
         mirror_mat = [[xx, xy, xz, 0], [xy, yy, yz, 0], [xz, yz, zz, 0], [0, 0, 0, 1]]
 
         if np.linalg.norm(origin) > 1e-6:
-            mirror_mat = np.dot(np.linalg.inv(translation), np.dot(mirror_mat, translation))
+            mirror_mat = np.dot(
+                np.linalg.inv(translation), np.dot(mirror_mat, translation)
+            )
         return SymmOp(mirror_mat)
 
     @staticmethod
@@ -385,7 +402,9 @@ class SymmOp:
         return SymmOp(mat)
 
     @staticmethod
-    def rotoreflection(axis: ArrayLike, angle: float, origin: ArrayLike = (0, 0, 0)) -> "SymmOp":
+    def rotoreflection(
+        axis: ArrayLike, angle: float, origin: ArrayLike = (0, 0, 0)
+    ) -> "SymmOp":
         """
         Returns a roto-reflection symmetry operation
         Args:
@@ -421,7 +440,9 @@ class SymmOp:
         if not np.all(np.isclose(self.rotation_matrix, np.round(self.rotation_matrix))):
             warnings.warn("Rotation matrix should be integer")
 
-        return transformation_to_string(self.rotation_matrix, translation_vec=self.translation_vector, delim=", ")
+        return transformation_to_string(
+            self.rotation_matrix, translation_vec=self.translation_vector, delim=", "
+        )
 
     @staticmethod
     def from_xyz_string(xyz_string: str) -> "SymmOp":
@@ -442,13 +463,21 @@ class SymmOp:
             for m in re_rot.finditer(tok):
                 factor = -1.0 if m.group(1) == "-" else 1.0
                 if m.group(2) != "":
-                    factor *= float(m.group(2)) / float(m.group(3)) if m.group(3) != "" else float(m.group(2))
+                    factor *= (
+                        float(m.group(2)) / float(m.group(3))
+                        if m.group(3) != ""
+                        else float(m.group(2))
+                    )
                 j = ord(m.group(4)) - 120
                 rot_matrix[i, j] = factor
             # build the translation vector
             for m in re_trans.finditer(tok):
                 factor = -1 if m.group(1) == "-" else 1
-                num = float(m.group(2)) / float(m.group(3)) if m.group(3) != "" else float(m.group(2))
+                num = (
+                    float(m.group(2)) / float(m.group(3))
+                    if m.group(3) != ""
+                    else float(m.group(2))
+                )
                 trans[i] = num * factor
         return SymmOp.from_rotation_and_translation(rot_matrix, trans)
 
@@ -459,4 +488,3 @@ class SymmOp:
         :return: SymmOp from dict representation.
         """
         return cls(d["matrix"], d["tolerance"])
-

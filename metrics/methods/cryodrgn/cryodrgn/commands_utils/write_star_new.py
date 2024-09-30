@@ -61,14 +61,16 @@ def add_args(parser):
 
     return parser
 
+
 def natural_sort_key(s):
     # Convert the string to a list of text and numbers
-    parts = re.split('([0-9]+)', s)
-    
+    parts = re.split("([0-9]+)", s)
+
     # Convert numeric parts to integers for proper numeric comparison
     parts[1::2] = map(int, parts[1::2])
-    
+
     return parts
+
 
 def main(args):
     assert args.o.endswith(".star"), "Output file must be .star file"
@@ -127,17 +129,19 @@ def main(args):
             image_names = [os.path.abspath(image_name) for image_name in image_names]
         # names = [f"{i+1}@{name}" for i, name in zip(ind, image_names)]
         names = []
-        j=1
+        j = 1
         for i, name in zip(ind, image_names):
-            if j % 1000 ==1:
-                j=1
+            if j % 1000 == 1:
+                j = 1
             # print('args.relative_path:',args.relative_path)
-            print(f"{j}@{name}"+particle_path+'/'+file_names_lst[i//1000])
-            if file_names_lst[i//1000].split('.')[-1] == 'txt':
+            print(f"{j}@{name}" + particle_path + "/" + file_names_lst[i // 1000])
+            if file_names_lst[i // 1000].split(".")[-1] == "txt":
                 continue
             else:
-                names.append(f"{j}@{name}"+particle_path+'/'+file_names_lst[i//1000])
-            j = j+1
+                names.append(
+                    f"{j}@{name}" + particle_path + "/" + file_names_lst[i // 1000]
+                )
+            j = j + 1
         if ctf is not None:
             ctf = ctf[:, 2:]
 
@@ -160,18 +164,24 @@ def main(args):
                 data[POSE_HDRS[3 + i]] = trans[:, i]
         df = pd.DataFrame(data=data)
 
-    s = Starfile(headers=None, df=df)#, relion31=True)
-    
+    s = Starfile(headers=None, df=df)  # , relion31=True)
+
     ### Adding more columns ###
-    column_name = ['_rlnImagePixelSize', '_rlnImageSize', '_rlnImageDimensionality', '_rlnOpticsGroup', '_rlnRandomSubset']
+    column_name = [
+        "_rlnImagePixelSize",
+        "_rlnImageSize",
+        "_rlnImageDimensionality",
+        "_rlnOpticsGroup",
+        "_rlnRandomSubset",
+    ]
     column_values = [3.0, 128, 2, 1, 1]
     s.df[column_name] = column_values
 
     ### Half set
     lst = list(range(len(s.df)))
-    list_sampled = random.sample(lst, k=len(lst)//2)
+    list_sampled = random.sample(lst, k=len(lst) // 2)
     s.df[column_name[-1]].loc[list_sampled] = 2
-    
+
     ### Header
     for i in range(len(column_name)):
         s.headers.append(column_name[i])

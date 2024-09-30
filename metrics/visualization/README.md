@@ -7,7 +7,7 @@
 * `result-path`: A path to the folder that contains UMAP and latent files before the method name (e.g., /scratch/gpfs/ZHONGE/mj7341/CryoBench/results/IgG-1D/snr0.01).
 ```
   $ conda activate cryodrgn
-  
+
   # 3D Class
   * Copy 3dcls job to `results/3dcls/cls_{num classes}` (e.g., JXX_class_XX_XXXXX_volume.mrc)
   $ python metrics/visualization/visualize_umap_IgG-1D.py --method 3dcls --is_cryosparc -o output/visualize_umap_igg1d --cryosparc_path cryosparc/CS-IgG1D --result-path results --num_imgs 1000 --num_classes 10 --num_vols 100

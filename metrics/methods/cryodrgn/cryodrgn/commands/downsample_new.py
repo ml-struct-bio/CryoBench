@@ -11,6 +11,7 @@ from cryodrgn import fft, utils
 from cryodrgn.mrc import MRCHeader, MRCFile
 from cryodrgn.source import ImageSource
 import torch.nn.functional as F
+
 logger = logging.getLogger(__name__)
 
 
@@ -38,7 +39,10 @@ def add_args(parser):
         "--is-vol", action="store_true", help="Flag if input .mrc is a volume"
     )
     parser.add_argument(
-        "--alg", type=str, default="fft", help="choose algorithm for downsampling(fft, tri)"
+        "--alg",
+        type=str,
+        default="fft",
+        help="choose algorithm for downsampling(fft, tri)",
     )
     parser.add_argument(
         "--chunk",
@@ -103,7 +107,7 @@ def main(args):
 
     # Downsample volume
     if args.is_vol:
-        if args.alg == 'fft':
+        if args.alg == "fft":
             old = old.images()
             # old *= -1
             oldft = fft.htn_center(old)
@@ -114,10 +118,12 @@ def main(args):
             logger.info(f"Saving {args.o}")
             MRCFile.write(args.o, array=new, is_vol=True)
 
-        elif args.alg == 'tri':
-            old = old.images() # [256, 256, 256]
-            old = old.view(1,1, oldD, oldD, oldD)
-            new_interpolated = F.interpolate(old, size=(D, D, D), mode='trilinear', align_corners=False)
+        elif args.alg == "tri":
+            old = old.images()  # [256, 256, 256]
+            old = old.view(1, 1, oldD, oldD, oldD)
+            new_interpolated = F.interpolate(
+                old, size=(D, D, D), mode="trilinear", align_corners=False
+            )
             new_interpolated = new_interpolated.view(D, D, D)
             new = np.array(new_interpolated).astype(np.float32)
             logger.info(new.shape)

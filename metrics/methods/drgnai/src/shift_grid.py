@@ -2,7 +2,7 @@ import numpy as np
 
 
 def grid_1d(resol, extent, ngrid, shift=0):
-    Npix = ngrid * 2 ** resol
+    Npix = ngrid * 2**resol
     dt = 2 * extent / Npix
     grid = np.arange(Npix, dtype=np.float32) * dt + dt / 2 - extent + shift
     return grid

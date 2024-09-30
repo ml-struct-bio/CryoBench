@@ -2,10 +2,10 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 
-from . import shift_grid
-from . import lie_tools
-from . import so3_grid
-from . import mask as masking
+from metrics.methods.drgnai.src import shift_grid
+from metrics.methods.drgnai.src import lie_tools
+from metrics.methods.drgnai.src import so3_grid
+from metrics.methods.drgnai.src import mask as masking
 
 MAX_POSES = 2048
 
@@ -13,26 +13,26 @@ MAX_POSES = 2048
 def get_base_shifts(ps_params):
     return torch.tensor(
         shift_grid.base_shift_grid(
-            ps_params['base_healpy'] - 1,
-            ps_params['t_extent'],
-            ps_params['t_n_grid'],
-            x_shift=ps_params['t_xshift'],
-            y_shift=ps_params['t_yshift']
+            ps_params["base_healpy"] - 1,
+            ps_params["t_extent"],
+            ps_params["t_n_grid"],
+            x_shift=ps_params["t_xshift"],
+            y_shift=ps_params["t_yshift"],
         )
     ).float()
 
 
 def get_base_rot(ps_params):
-    base_quat = so3_grid.s2_grid_so3(ps_params['base_healpy'])
+    base_quat = so3_grid.s2_grid_so3(ps_params["base_healpy"])
     return lie_tools.quat_to_rotmat(to_tensor(base_quat))
 
 
 def get_so3_base_quat(ps_params):
-    return to_tensor(so3_grid.grid_so3(ps_params['base_healpy']))
+    return to_tensor(so3_grid.grid_so3(ps_params["base_healpy"]))
 
 
 def get_base_inplane(ps_params):
-    return to_tensor(so3_grid.grid_s1(ps_params['base_healpy']))
+    return to_tensor(so3_grid.grid_s1(ps_params["base_healpy"]))
 
 
 def to_tensor(x):
@@ -42,20 +42,16 @@ def to_tensor(x):
 
 
 def get_l(step, res, ps_params):
-    if ps_params['niter'] > 0:
-        l_current = ps_params['l_min'] + int(step / ps_params['niter'] * (ps_params['l_max'] - ps_params['l_min']))
+    if ps_params["niter"] > 0:
+        l_current = ps_params["l_min"] + int(
+            step / ps_params["niter"] * (ps_params["l_max"] - ps_params["l_min"])
+        )
     else:
-        l_current = ps_params['l_max']
+        l_current = ps_params["l_max"]
     return min(l_current, res // 2)
 
 
-def translate_images(
-        images,
-        shifts,
-        l_current,
-        lattice,
-        freqs2d
-):
+def translate_images(images, shifts, l_current, lattice, freqs2d):
     """
     images: [batch_size, D, D]
     shifts: [batch_size, T, 2] or [..., T, 2]
@@ -65,18 +61,11 @@ def translate_images(
     batch_size = images.shape[0]
     mask = masking.get_circular_mask(lattice, l_current).to(images.device)
     return lattice.translate_ht(
-        images.reshape(batch_size, -1)[:, mask],
-        shifts,
-        mask=mask,
-        freqs2d=freqs2d
+        images.reshape(batch_size, -1)[:, mask], shifts, mask=mask, freqs2d=freqs2d
     )
 
 
-def rot_2d(
-        angle,
-        out_d,
-        device
-):
+def rot_2d(angle, out_d, device):
     rot = torch.zeros((out_d, out_d), device=device)
     rot[0, 0] = torch.cos(angle)
     rot[0, 1] = -torch.sin(angle)
@@ -85,11 +74,7 @@ def rot_2d(
     return rot
 
 
-def rot_2d_tensor(
-        angles,
-        out_d,
-        device
-):
+def rot_2d_tensor(angles, out_d, device):
     rot = torch.zeros((*angles.shape, out_d, out_d), device=device)
     rot[..., 0, 0] = torch.cos(angles)
     rot[..., 0, 1] = -torch.sin(angles)
@@ -98,10 +83,7 @@ def rot_2d_tensor(
     return rot
 
 
-def interpolate(
-        img,
-        coords
-):
+def interpolate(img, coords):
     # print(f"Interpolating {img.shape} {coords.shape}")
     assert len(coords.shape) == 2
     assert coords.shape[-1] == 2
@@ -109,25 +91,13 @@ def interpolate(
     grid = grid[None, None, ...].expand(img.shape[0], -1, -1, -1)
 
     output = (
-        F.grid_sample(
-            img.unsqueeze(1),
-            grid,
-            align_corners=False
-        )
-        .squeeze(2)
-        .squeeze(1)
+        F.grid_sample(img.unsqueeze(1), grid, align_corners=False).squeeze(2).squeeze(1)
     )
 
     return output
 
 
-def rotate_images(
-        images,
-        angles,
-        l_current,
-        masked_coords,
-        lattice
-):
+def rotate_images(images, angles, l_current, masked_coords, lattice):
     batch_size, d1, nq, yx = images.shape
     bnq = batch_size * nq
     device = images.device
@@ -159,20 +129,20 @@ def rotate_images(
 
 
 def compute_err(
-        model,
-        images,
-        rot,
-        lattice,
-        masked_coords,
-        angles_inplane,
-        z=None,
-        nq=None,
-        yx=None,
-        l_current=None,
-        ctf_i=None,
-        tilting_func=None,
-        apply_tilting_scheme=False,
-        in_plane_in_image_space=True
+    model,
+    images,
+    rot,
+    lattice,
+    masked_coords,
+    angles_inplane,
+    z=None,
+    nq=None,
+    yx=None,
+    l_current=None,
+    ctf_i=None,
+    tilting_func=None,
+    apply_tilting_scheme=False,
+    in_plane_in_image_space=True,
 ) -> torch.Tensor:
     device = images.device
 
@@ -187,7 +157,9 @@ def compute_err(
             rot = rand_inplane_rot @ rot
             adj_angles_inplane = angles_inplane - rand_a
         else:
-            rot = torch.matmul(rot_2d_tensor(angles_inplane, 3, device), rot[..., None, :, :])
+            rot = torch.matmul(
+                rot_2d_tensor(angles_inplane, 3, device), rot[..., None, :, :]
+            )
             rot = rot.reshape(-1, 3, 3)  # [nq * ip, 3, 3]
             n_in_planes = len(angles_inplane)
 
@@ -196,7 +168,7 @@ def compute_err(
         rot = tilting_func(rot)
         n_tilts = rot.shape[-3]
         rot = rot.reshape(-1, 3, 3)  # [nq * ip * n_tilts, 3, 3]
-    batch_size = torch.div(ctf_i.shape[0], n_tilts, rounding_mode='trunc')
+    batch_size = torch.div(ctf_i.shape[0], n_tilts, rounding_mode="trunc")
 
     x = masked_coords @ rot.to(device)
     with torch.no_grad():
@@ -212,34 +184,42 @@ def compute_err(
                     if z is None:
                         y = y.expand(batch_size, -1, -1)
                     y_hat.append(y[..., None, :])
-            else:    # local refinement steps
+            else:  # local refinement steps
                 x = x.reshape(-1, n_tilts, *x.shape[-2:])
                 for chunk_idx in range(n_tilts):
                     y = model.eval_on_slice(x[:, chunk_idx], z=z)
                     y = y.float()  # [b * nq, npts]
                     y_hat.append(y[..., None, :])
-            y_hat = torch.cat(y_hat, -2)  # [b, nq, ip * n_tilts, npts], [b * nq, n_tilts, npts]
+            y_hat = torch.cat(
+                y_hat, -2
+            )  # [b, nq, ip * n_tilts, npts], [b * nq, n_tilts, npts]
         else:
             # x: [b, nq, npts, 3], [b * nq, npts, 3]
             # z: [b, z_dim], [b * nq, z_dim]
             y_hat = model.eval_on_slice(x, z=z)
             y_hat = y_hat.float()  # [b, nq, npts], [b * nq, npts]
-    y_hat = y_hat.reshape(-1, 1, nq * n_in_planes, n_tilts, yx)  # [1/b, 1, nq * ip, n_tilts, yx] for base grid, [b, 1, 8, n_tilts, yx] for incremental grid
-    y_hat = torch.permute(y_hat, (0, 3, 1, 2, 4)).reshape(-1, 1, nq * n_in_planes, yx)  # [b * n_tilts, 1, nq * ip, yx], [b * n_tilts, 1, 8 * ip, yx]
+    y_hat = y_hat.reshape(
+        -1, 1, nq * n_in_planes, n_tilts, yx
+    )  # [1/b, 1, nq * ip, n_tilts, yx] for base grid, [b, 1, 8, n_tilts, yx] for incremental grid
+    y_hat = torch.permute(y_hat, (0, 3, 1, 2, 4)).reshape(
+        -1, 1, nq * n_in_planes, yx
+    )  # [b * n_tilts, 1, nq * ip, yx], [b * n_tilts, 1, 8 * ip, yx]
 
     if ctf_i is not None:
         y_hat = y_hat * ctf_i
 
     if adj_angles_inplane is not None:
-        y_hat = rotate_images(y_hat, adj_angles_inplane, l_current, masked_coords, lattice)
+        y_hat = rotate_images(
+            y_hat, adj_angles_inplane, l_current, masked_coords, lattice
+        )
 
     images = images.unsqueeze(2)  # [b * n_tilts, t, 1, yx]
     batch_size, t, _, n_pts = images.shape
 
     # computational speed up of mse
     dots = (
-            images.reshape(batch_size, -1, n_pts).to(y_hat.device)
-            @ y_hat.reshape(y_hat.shape[0], -1, n_pts).transpose(-1, -2)
+        images.reshape(batch_size, -1, n_pts).to(y_hat.device)
+        @ y_hat.reshape(y_hat.shape[0], -1, n_pts).transpose(-1, -2)
     ).reshape(batch_size, t, -1)
     norm = (y_hat * y_hat).sum(-1) / 2
     err = -dots + norm  # [b (* n_tilts), t, nq * ip]
@@ -252,18 +232,18 @@ def compute_err(
 
 
 def eval_grid(
-        model,
-        images,
-        rot,
-        lattice,
-        coords,
-        z=None,
-        nq=None,
-        l_current=None,
-        angles_inplane=None,
-        ctf_i=None,
-        tilting_func=None,
-        apply_tilting_scheme=False
+    model,
+    images,
+    rot,
+    lattice,
+    coords,
+    z=None,
+    nq=None,
+    l_current=None,
+    angles_inplane=None,
+    ctf_i=None,
+    tilting_func=None,
+    apply_tilting_scheme=False,
 ):
     batch_size = images.shape[0]
     device = images.device
@@ -289,16 +269,12 @@ def eval_grid(
         l_current=l_current,
         ctf_i=ctf_i_masked,
         tilting_func=tilting_func,
-        apply_tilting_scheme=apply_tilting_scheme
+        apply_tilting_scheme=apply_tilting_scheme,
     )
     return err
 
 
-def keep_matrix(
-        loss,
-        batch_size,
-        max_poses
-):
+def keep_matrix(loss, batch_size, max_poses):
     """
     loss: [batch_size, t, q]: tensor of losses for each translation and rotation.
 
@@ -318,19 +294,14 @@ def keep_matrix(
     keep_idx = torch.empty(
         len(shape), batch_size * max_poses, dtype=torch.long, device=loss.device
     )
-    keep_idx[0] = torch.div(flat_idx, shape[2], rounding_mode='trunc')
+    keep_idx[0] = torch.div(flat_idx, shape[2], rounding_mode="trunc")
     keep_idx[2] = flat_idx % shape[2]
     keep_idx[1] = best_trans_idx[keep_idx[0], keep_idx[2]]
 
     return keep_idx
 
 
-def get_neighbor_so3(
-        quat,
-        q_ind,
-        res,
-        device
-):
+def get_neighbor_so3(quat, q_ind, res, device):
     """
     quat: [nq, 4]
     q_ind: [nq, 2], np.array
@@ -342,12 +313,7 @@ def get_neighbor_so3(
     return so3_grid.get_neighbor_tensor(quat, q_ind, res, device)
 
 
-def subdivide(
-        quat,
-        q_ind,
-        cur_res,
-        device
-):
+def subdivide(quat, q_ind, cur_res, device):
     """
     Subdivides poses for next resolution level.
 
@@ -365,14 +331,7 @@ def subdivide(
     return quat, q_ind, rot
 
 
-def opt_trans(
-        model,
-        y_gt,
-        y_pred,
-        lattice,
-        ps_params,
-        current_radius
-):
+def opt_trans(model, y_gt, y_pred, lattice, ps_params, current_radius):
     """
     model: DrgnAI
     y_gt: [(sym_loss_factor * ) batch_size, D, D]
@@ -393,42 +352,48 @@ def opt_trans(
     output: [(sym_loss_factor * ) batch_size, n_pts], [(sym_loss_factor * ) batch_size, 2]
     """
     freqs2d = model.freqs2d
-    base_shifts = model.base_shifts   # [T, 2]
+    base_shifts = model.base_shifts  # [T, 2]
     best_trans = torch.zeros(1).float().to(base_shifts.device)
     mask_cpu = masking.get_circular_mask(lattice, current_radius).cpu()
 
     best_trans_idx = None
     translated_images = None
-    for iter_ in range(0, ps_params['niter'] + 1):
-        if iter_ < ps_params['niter']:
+    for iter_ in range(0, ps_params["niter"] + 1):
+        if iter_ < ps_params["niter"]:
             l_current = min(get_l(iter_, lattice.D, ps_params), current_radius)
         else:
             l_current = current_radius
         mask = masking.get_circular_mask(lattice, l_current).cpu()
-        trans = best_trans[:, None] + base_shifts / (2. ** iter_)  # [batch_size, T, 2]
-        translated_images = translate_images(y_gt, trans, l_current, lattice, freqs2d)  # [batch_size, T, n_pts]
+        trans = best_trans[:, None] + base_shifts / (2.0**iter_)  # [batch_size, T, 2]
+        translated_images = translate_images(
+            y_gt, trans, l_current, lattice, freqs2d
+        )  # [batch_size, T, n_pts]
         y = y_pred[:, None][..., mask[mask_cpu]]
         loss = torch.sum((translated_images - y) ** 2, -1)  # [batch_size, T]
         best_loss, best_trans_idx = loss.min(1)  # [batch_size], [batch_size]
         if iter_ == 0:
             best_trans = trans[best_trans_idx]  # [batch_size, 2]
         else:
-            best_trans = trans[np.arange(trans.shape[0]), best_trans_idx]  # [batch_size, 2]
+            best_trans = trans[
+                np.arange(trans.shape[0]), best_trans_idx
+            ]  # [batch_size, 2]
 
-    y_gt_translated = translated_images[np.arange(translated_images.shape[0]), best_trans_idx]
+    y_gt_translated = translated_images[
+        np.arange(translated_images.shape[0]), best_trans_idx
+    ]
 
     return y_gt_translated, best_trans
 
 
 def opt_theta_trans(
-        model,
-        images,
-        lattice,
-        ps_params,
-        z=None,
-        ctf_i=None,
-        gt_trans=None,
-        trans_search_factor=None
+    model,
+    images,
+    lattice,
+    ps_params,
+    z=None,
+    ctf_i=None,
+    gt_trans=None,
+    trans_search_factor=None,
 ):
     """
     model: DrgnAI
@@ -456,10 +421,14 @@ def opt_theta_trans(
     apply_tilting_scheme = False
     if images.ndim == 4:
         subtomogram_averaging = True
-        assert ps_params['t_extent'] == 0.  # translations cannot be searched over when tilts are jointly optimized
-        tilts = images[:, :ps_params['n_tilts_pose_search']]  # [batch_size, n_tilts, D, D]
+        assert (
+            ps_params["t_extent"] == 0.0
+        )  # translations cannot be searched over when tilts are jointly optimized
+        tilts = images[
+            :, : ps_params["n_tilts_pose_search"]
+        ]  # [batch_size, n_tilts, D, D]
         n_tilts_out = images.shape[1]
-        if ps_params['average_over_tilts']:
+        if ps_params["average_over_tilts"]:
             tilts = torch.mean(tilts, 1)  # [batch_size, D, D]
             particles = tilts  # [batch_size, D, D]
             ctf_selected = ctf_i[:, 0] if ctf_i is not None else None
@@ -471,7 +440,9 @@ def opt_theta_trans(
             n_tilts = tilts.shape[1]
             tilts = tilts.reshape(-1, *tilts.shape[-2:])  # [batch_size * n_tilts, D, D]
             ctf_selected = ctf_i.reshape(-1, *ctf_i.shape[-2:])
-            gt_trans_selected = gt_trans.reshape(-1, 2) if gt_trans is not None else None  # [batch_size * n_tilts, 2]
+            gt_trans_selected = (
+                gt_trans.reshape(-1, 2) if gt_trans is not None else None
+            )  # [batch_size * n_tilts, 2]
             apply_tilting_scheme = True
     else:
         tilts = images  # [batch_size, D, D]
@@ -491,8 +462,16 @@ def opt_theta_trans(
     device = model.coords.device
     coords = model.coords
     freqs2d = model.freqs2d
-    _base_shifts = gt_trans_selected.clone().to(device).unsqueeze(1) if gt_trans_selected is not None else model.base_shifts
-    base_shifts = _base_shifts * trans_search_factor if trans_search_factor is not None else _base_shifts
+    _base_shifts = (
+        gt_trans_selected.clone().to(device).unsqueeze(1)
+        if gt_trans_selected is not None
+        else model.base_shifts
+    )
+    base_shifts = (
+        _base_shifts * trans_search_factor
+        if trans_search_factor is not None
+        else _base_shifts
+    )
     base_rot = model.base_rot
     nq = len(base_rot)
     so3_base_quat = model.so3_base_quat
@@ -514,44 +493,64 @@ def opt_theta_trans(
         l_current=l_current,
         angles_inplane=base_inplane,
         ctf_i=ctf_selected,
-        tilting_func=ps_params['tilting_func'],
-        apply_tilting_scheme=apply_tilting_scheme
+        tilting_func=ps_params["tilting_func"],
+        apply_tilting_scheme=apply_tilting_scheme,
     )
-    keep_b, keep_t, keep_q = keep_matrix(loss, batch_size, ps_params['nkeptposes']).cpu()
+    keep_b, keep_t, keep_q = keep_matrix(
+        loss, batch_size, ps_params["nkeptposes"]
+    ).cpu()
 
-    new_init_poses = (torch.cat((keep_t, keep_q), dim=-1)
-                      .reshape(2, batch_size, ps_params['nkeptposes'])
-                      .permute(1, 2, 0))
+    new_init_poses = (
+        torch.cat((keep_t, keep_q), dim=-1)
+        .reshape(2, batch_size, ps_params["nkeptposes"])
+        .permute(1, 2, 0)
+    )
 
     quat = so3_base_quat[keep_q]
-    q_ind = so3_grid.get_base_ind(keep_q, ps_params['base_healpy'])
+    q_ind = so3_grid.get_base_ind(keep_q, ps_params["base_healpy"])
 
     if gt_trans_selected is not None:
-        trans = gt_trans_selected\
-            .clone()\
-            .to(device)\
-            .unsqueeze(1)\
-            .repeat(1, ps_params['nkeptposes'], 1)\
-            .reshape(-1, 2).unsqueeze(1)  # batch_size * n_tilts * nkeptposes, 1, 2
+        trans = (
+            gt_trans_selected.clone()
+            .to(device)
+            .unsqueeze(1)
+            .repeat(1, ps_params["nkeptposes"], 1)
+            .reshape(-1, 2)
+            .unsqueeze(1)
+        )  # batch_size * n_tilts * nkeptposes, 1, 2
         shifts = None
-    elif ps_params['t_extent'] < 1e-6:
-        trans = torch.zeros(batch_size * n_tilts * ps_params['nkeptposes'], 1, 2).float().to(device)
+    elif ps_params["t_extent"] < 1e-6:
+        trans = (
+            torch.zeros(batch_size * n_tilts * ps_params["nkeptposes"], 1, 2)
+            .float()
+            .to(device)
+        )
         shifts = None
     else:
         trans = base_shifts[keep_t]
         shifts = base_shifts.clone()
-    for iter_ in range(1, ps_params['niter'] + 1):
+    for iter_ in range(1, ps_params["niter"] + 1):
         keep_b8 = (
             keep_b.unsqueeze(1).repeat(1, 8).reshape(-1)
         )  # repeat each element 8 times
         zb = z[keep_b8] if z is not None else None
         l_current = get_l(iter_, res, ps_params)
-        quat, q_ind, rot = subdivide(quat, q_ind, iter_ + ps_params['base_healpy'] - 1, device)
-        if gt_trans_selected is None and ps_params['t_extent'] > 1e-6:
+        quat, q_ind, rot = subdivide(
+            quat, q_ind, iter_ + ps_params["base_healpy"] - 1, device
+        )
+        if gt_trans_selected is None and ps_params["t_extent"] > 1e-6:
             shifts /= 2
             trans = trans.unsqueeze(1) + shifts.unsqueeze(0)
-        tiltsb = tilts.reshape(-1, n_tilts, *tilts.shape[-2:])[keep_b].reshape(-1, *tilts.shape[-2:])
-        ctfb = ctf_selected.reshape(-1, n_tilts, *ctf_selected.shape[-2:])[keep_b].reshape(-1, *ctf_selected.shape[-2:]) if ctf_selected is not None else None
+        tiltsb = tilts.reshape(-1, n_tilts, *tilts.shape[-2:])[keep_b].reshape(
+            -1, *tilts.shape[-2:]
+        )
+        ctfb = (
+            ctf_selected.reshape(-1, n_tilts, *ctf_selected.shape[-2:])[keep_b].reshape(
+                -1, *ctf_selected.shape[-2:]
+            )
+            if ctf_selected is not None
+            else None
+        )
         loss = eval_grid(
             model,
             translate_images(tiltsb, trans, l_current, lattice, freqs2d),
@@ -562,19 +561,21 @@ def opt_theta_trans(
             nq=8,
             l_current=l_current,
             ctf_i=ctfb,
-            tilting_func=ps_params['tilting_func'],
-            apply_tilting_scheme=apply_tilting_scheme
+            tilting_func=ps_params["tilting_func"],
+            apply_tilting_scheme=apply_tilting_scheme,
         )
-        nkeptposes = ps_params['nkeptposes'] if iter_ < ps_params['niter'] else 1
+        nkeptposes = ps_params["nkeptposes"] if iter_ < ps_params["niter"] else 1
 
-        keep_bn, keep_t, keep_q = keep_matrix(loss, batch_size, nkeptposes).cpu()  # B x (self.Nkeptposes*32)
-        keep_b = keep_bn * torch.div(batch_size, loss.shape[0], rounding_mode='trunc')
+        keep_bn, keep_t, keep_q = keep_matrix(
+            loss, batch_size, nkeptposes
+        ).cpu()  # B x (self.Nkeptposes*32)
+        keep_b = keep_bn * torch.div(batch_size, loss.shape[0], rounding_mode="trunc")
         assert (
-                len(keep_b) == batch_size * nkeptposes
+            len(keep_b) == batch_size * nkeptposes
         ), f"{len(keep_b)} != {batch_size} x {nkeptposes} at iter {iter_}"
         quat = quat[keep_bn, keep_q]
         q_ind = q_ind[keep_bn, keep_q]
-        if gt_trans_selected is None and ps_params['t_extent'] > 1e-6:
+        if gt_trans_selected is None and ps_params["t_extent"] > 1e-6:
             trans = trans[keep_bn, keep_t]
 
     assert loss is not None
@@ -584,13 +585,13 @@ def opt_theta_trans(
     best_rot = rot.reshape(-1, 8, 3, 3)[best_bn, best_q]
     if gt_trans_selected is not None:
         best_trans = gt_trans_selected.clone().to(device)
-    elif ps_params['t_extent'] < 1e-6:
+    elif ps_params["t_extent"] < 1e-6:
         best_trans = torch.zeros(batch_size * n_tilts, 2).float().to(device)
     else:
         best_trans = trans.to(device)
 
     if subtomogram_averaging:
-        best_rot = ps_params['tilting_func'](best_rot)
+        best_rot = ps_params["tilting_func"](best_rot)
         # We need to connect the pose search and the tilting scheme,
         # which is a property of the dataset for now.
         # We should instead create a TiltingScheme object from the dataset,

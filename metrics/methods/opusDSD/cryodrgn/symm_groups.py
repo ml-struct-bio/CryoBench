@@ -19,10 +19,12 @@ from monty.design_patterns import cached_class
 
 import numpy as np
 
-from . import symm_op
+from metrics.methods.opusDSD.cryodrgn import symm_op
+
 SymmOp = symm_op.SymmOp
 
 SYMM_DATA = None
+
 
 class SymmGroup:
     def __init__(self, name):
@@ -38,7 +40,7 @@ class SymmGroup:
         self.symm_opsR.append(SymmOp.identity())
 
     def fill_symmetry_class(self):
-        if self.pgGroup == 'C':
+        if self.pgGroup == "C":
             fileContent = "rot_axis " + self.pgOrder + " 0 0 1"
         return fileContent
 
@@ -46,7 +48,7 @@ class SymmGroup:
         text = text.split()
         i = 0
         while i < len(text):
-            if text[i] == 'rot_axis':
+            if text[i] == "rot_axis":
                 i += 1
                 fold = int(text[i])
                 self.true_symNo += fold - 1
@@ -56,11 +58,13 @@ class SymmGroup:
                     axis[j] = float(text[i])
                 i += 1
 
-                rot_ang = ang_incr = 360. / fold
+                rot_ang = ang_incr = 360.0 / fold
                 for j in range(1, fold):
                     identity = SymmOp.from_rotation_and_translation()
                     elem = SymmOp.from_axis_angle_and_translation(axis, rot_ang)
-                    trans_elem = SymmOp.from_rotation_and_translation(elem.rotation_matrix.transpose(), elem.translation_vector)
+                    trans_elem = SymmOp.from_rotation_and_translation(
+                        elem.rotation_matrix.transpose(), elem.translation_vector
+                    )
                     rot_ang += ang_incr
                     self.symm_opsL.append(identity)
                     self.symm_opsR.append(trans_elem)
@@ -98,8 +102,8 @@ class SymmGroup:
             if not found:
                 self.add_matrices(newL, newR, new_chain_length)
                 old_tried = tried
-                tried = np.zeros((old_tried.shape[0]+1, old_tried.shape[1]+1))
-                tried[:old_tried.shape[0], :old_tried.shape[1]] = old_tried
+                tried = np.zeros((old_tried.shape[0] + 1, old_tried.shape[1] + 1))
+                tried[: old_tried.shape[0], : old_tried.shape[1]] = old_tried
 
     def found_not_tried(self, tried, ij, true_symNo):
         ij[0] = 0
@@ -107,7 +111,7 @@ class SymmGroup:
         n = 0
         while n != tried.shape[1]:
             i, j = ij
-            #print(ij, n, true_symNo)
+            # print(ij, n, true_symNo)
             if not (i >= true_symNo and j >= true_symNo) and tried[i][j] == 0:
                 return True
             if i != n:
@@ -139,7 +143,7 @@ def _get_symm_data(name):
     global SYMM_DATA
     if SYMM_DATA is None:
         SYMM_DATA = loadfn(os.path.join(os.path.dirname(__file__), "symm_data.json"))
-        #print(SYMM_DATA["point_group_encoding"])
+        # print(SYMM_DATA["point_group_encoding"])
     return SYMM_DATA[name]
 
 
@@ -181,7 +185,9 @@ class SymmetryGroup(Sequence, metaclass=ABCMeta):
         Returns:
             True if this group is a subgroup of the supplied group.
         """
-        warnings.warn("This is not fully functional. Only trivial subsets are tested right now. ")
+        warnings.warn(
+            "This is not fully functional. Only trivial subsets are tested right now. "
+        )
         return set(self.symmetry_ops).issubset(supergroup.symmetry_ops)
 
     def is_supergroup(self, subgroup):
@@ -194,7 +200,9 @@ class SymmetryGroup(Sequence, metaclass=ABCMeta):
         Returns:
             True if this group is a supergroup of the supplied group.
         """
-        warnings.warn("This is not fully functional. Only trivial subsets are tested right now. ")
+        warnings.warn(
+            "This is not fully functional. Only trivial subsets are tested right now. "
+        )
         return set(subgroup.symmetry_ops).issubset(self.symmetry_ops)
 
     def to_latex_string(self) -> str:
@@ -233,9 +241,13 @@ class PointGroup(SymmetryGroup):
         """
         self.symbol = int_symbol
         self.generators = [
-            _get_symm_data("generator_matrices")[c] for c in _get_symm_data("point_group_encoding")[int_symbol]
+            _get_symm_data("generator_matrices")[c]
+            for c in _get_symm_data("point_group_encoding")[int_symbol]
         ]
-        self._symmetry_ops = {SymmOp.from_rotation_and_translation(m) for m in self._generate_full_symmetry_ops()}
+        self._symmetry_ops = {
+            SymmOp.from_rotation_and_translation(m)
+            for m in self._generate_full_symmetry_ops()
+        }
         self.order = len(self._symmetry_ops)
 
     @property
@@ -314,7 +326,9 @@ class SpaceGroup(SymmetryGroup):
     sgencoding = _get_symm_data("space_group_encoding")
     abbrev_sg_mapping = _get_symm_data("abbreviated_spacegroup_symbols")
     translations = {k: Fraction(v) for k, v in _get_symm_data("translations").items()}
-    full_sg_mapping = {v["full_symbol"]: k for k, v in _get_symm_data("space_group_encoding").items()}
+    full_sg_mapping = {
+        v["full_symbol"]: k for k, v in _get_symm_data("space_group_encoding").items()
+    }
 
     def __init__(self, int_symbol):
         """
@@ -367,7 +381,11 @@ class SpaceGroup(SymmetryGroup):
             ngen = int(enc.pop(0))
             symm_ops = [np.eye(4)]
             if inversion:
-                symm_ops.append(np.array([[-1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]]))
+                symm_ops.append(
+                    np.array(
+                        [[-1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]]
+                    )
+                )
             for i in range(ngen):
                 m = np.eye(4)
                 m[:3, :3] = SpaceGroup.gen_matrices[enc.pop(0)]
@@ -484,7 +502,9 @@ class SpaceGroup(SymmetryGroup):
         crys_system = self.crystal_system
 
         def check(param, ref, tolerance):
-            return all(abs(i - j) < tolerance for i, j in zip(param, ref) if j is not None)
+            return all(
+                abs(i - j) < tolerance for i, j in zip(param, ref) if j is not None
+            )
 
         if crys_system == "cubic":
             a = abc[0]
@@ -517,14 +537,20 @@ class SpaceGroup(SymmetryGroup):
             )
         ):
             a = abc[0]
-            return check(abc, [a, a, None], tol) and check(angles, [90, 90, 120], angle_tol)
+            return check(abc, [a, a, None], tol) and check(
+                angles, [90, 90, 120], angle_tol
+            )
         if crys_system == "trigonal":
             a = abc[0]
             alpha = angles[0]
-            return check(abc, [a, a, a], tol) and check(angles, [alpha, alpha, alpha], angle_tol)
+            return check(abc, [a, a, a], tol) and check(
+                angles, [alpha, alpha, alpha], angle_tol
+            )
         if crys_system == "tetragonal":
             a = abc[0]
-            return check(abc, [a, a, None], tol) and check(angles, [90, 90, 90], angle_tol)
+            return check(abc, [a, a, None], tol) and check(
+                angles, [90, 90, 90], angle_tol
+            )
         if crys_system == "orthorhombic":
             return check(angles, [90, 90, 90], angle_tol)
         if crys_system == "monoclinic":
@@ -566,11 +592,15 @@ class SpaceGroup(SymmetryGroup):
 
         groups = [[supergroup.int_number]]
         all_groups = [supergroup.int_number]
-        max_subgroups = {int(k): v for k, v in _get_symm_data("maximal_subgroups").items()}
+        max_subgroups = {
+            int(k): v for k, v in _get_symm_data("maximal_subgroups").items()
+        }
         while True:
             new_sub_groups = set()
             for i in groups[-1]:
-                new_sub_groups.update([j for j in max_subgroups[i] if j not in all_groups])
+                new_sub_groups.update(
+                    [j for j in max_subgroups[i] if j not in all_groups]
+                )
             if self.int_number in new_sub_groups:
                 return True
 

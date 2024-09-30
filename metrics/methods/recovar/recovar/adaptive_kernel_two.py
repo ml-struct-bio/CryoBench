@@ -35,7 +35,7 @@
 
 #     return X_mat, grid_point_vec_indices
 
-    
+
 # def keep_upper_triangular(XWX):
 #     iu1 = np.triu_indices(XWX.shape[-1])
 #     return XWX[...,iu1[0], iu1[1]]
@@ -57,7 +57,7 @@
 
 # undo_keep_upper_triangular = jax.vmap(undo_keep_upper_triangular_one, in_axes = (0,None), out_axes = 0)
 
-# @functools.partial(jax.jit, static_argnums = [5,6,7,8, 10])    
+# @functools.partial(jax.jit, static_argnums = [5,6,7,8, 10])
 # def precompute_kernel_one_batch(images, rotation_matrices, translations, CTF_params, voxel_size, volume_shape, image_shape, grid_size, CTF_fun, noise_variance, pol_degree =0):
 
 #     # Precomp piece
@@ -73,15 +73,15 @@
 #     XWX_summed = core.batch_over_vol_summed_adjoint_slice_by_nearest(
 #         volume_size, XWX,
 #         grid_point_indices.reshape(-1),None)
-    
+
 #     # Z
 #     # Z  = X * ctf_over_noise_variance[...,None]
 #     # Z_summed = core.batch_over_vol_summed_adjoint_slice_by_nearest(volume_size, Z, grid_point_indices.reshape(-1))
 
 #     # F
-#     images = core.translate_images(images, translations, image_shape) 
+#     images = core.translate_images(images, translations, image_shape)
 #     # In my formalism, images === images / CTF soo I guess this is right
-#     F = X * (images * CTF / noise_variance)[...,None] 
+#     F = X * (images * CTF / noise_variance)[...,None]
 #     F_summed = core.batch_over_vol_summed_adjoint_slice_by_nearest(volume_size, F, grid_point_indices.reshape(-1),None)
 
 #     # alpha
@@ -116,7 +116,7 @@
 #     near_frequencies_vec_indices = core.vol_indices_to_vec_indices(near_frequencies, volume_shape)
 #     valid_points = (distances <= grid_distances[...,None] )* core.check_vol_indices_in_bound(near_frequencies,volume_shape[0])
 
-    
+
 #     XWX_summed_neighbor = batch_summed_over_indices(XWX, near_frequencies_vec_indices, valid_points)
 #     XWX_summed_neighbor = undo_keep_upper_triangular(XWX_summed_neighbor, differences_zero.shape[-1])
 
@@ -178,10 +178,10 @@
 
 # @jax.jit
 # def solve_for_m(XWX, f, regularization):
-    
+
 #     XWX = XWX.at[0,0].add(regularization)
 #     # XWX += jnp.diag(regularization)
-    
+
 #     dtype_to_solve = np.float64
 #     vreal = jax.scipy.linalg.solve(XWX.astype(dtype_to_solve), f.real.astype(dtype_to_solve), lower=False, assume_a='pos')
 #     vimag = jax.scipy.linalg.solve(XWX.astype(dtype_to_solve), f.imag.astype(dtype_to_solve), lower=False, assume_a='pos')
@@ -214,7 +214,7 @@
 
 # # Should this be set by cross validation?
 
-# def precompute_kernel(experiment_dataset, cov_noise,  batch_size, pol_degree=0):    
+# def precompute_kernel(experiment_dataset, cov_noise,  batch_size, pol_degree=0):
 #     XWX, F = 0,0
 #     # Need to take out RR
 #     logger.info(f"batch size in precompute kernel: {batch_size}")
@@ -223,17 +223,17 @@
 
 
 #     for batch, indices in data_generator:
-        
+
 #         batch = experiment_dataset.image_stack.process_images(batch, apply_image_mask = False)
-    
+
 #         XWX_this, F_this = precompute_kernel_one_batch(batch,
-#                                 experiment_dataset.rotation_matrices[indices], 
-#                                 experiment_dataset.translations[indices], 
-#                                 experiment_dataset.CTF_params[indices], 
-#                                 experiment_dataset.voxel_size, 
-#                                 experiment_dataset.volume_shape, 
-#                                 experiment_dataset.image_shape, 
-#                                 experiment_dataset.grid_size, 
+#                                 experiment_dataset.rotation_matrices[indices],
+#                                 experiment_dataset.translations[indices],
+#                                 experiment_dataset.CTF_params[indices],
+#                                 experiment_dataset.voxel_size,
+#                                 experiment_dataset.volume_shape,
+#                                 experiment_dataset.image_shape,
+#                                 experiment_dataset.grid_size,
 #                                 experiment_dataset.CTF_fun,
 #                                 cov_noise_image, pol_degree = pol_degree)
 #         XWX += XWX_this
@@ -255,7 +255,7 @@
 #     params.append((0,2,True))
 
 #     return params
-            
+
 # def get_num_params(pol_degree):
 
 #     if pol_degree ==0:
@@ -282,8 +282,6 @@
 #     if pol_degree==2:
 #         return 10
 #     return pol_degree
-
-
 
 
 # def test_multiple_disc(experiment_dataset, cross_validation_dataset, cov_noise,  batch_size, discretization_params, signal_variance, return_all = False):
@@ -331,12 +329,11 @@
 #     weights_opt = jnp.take_along_axis(weights[...,0], np.expand_dims(index_array_vol, axis=-1), axis=-1)
 
 #     logger.info("Done with adaptive disc")
-    
+
 #     if return_all:
 #         return np.asarray(weights_opt), np.asarray(disc_choices), np.asarray(residuals_averaged), np.asarray(weights), discretization_params # XWX, Z, F, alpha
 #     else:
 #         return np.asarray(weights_opt), np.asarray(disc_choices), np.asarray(residuals_averaged)
-
 
 
 # def compute_weights_from_precompute(experiment_dataset, XWX, F, signal_variance, pol_degree, h):
@@ -379,7 +376,7 @@
 #         n_pix = ind_end - ind_st
 #         signal_variance_this = signal_variance[ind_st:ind_end] if use_regularization else None
 #         reconstruction[ind_st:ind_end], good_pixels[ind_st:ind_end], problems = compute_estimate_from_precompute_one(XWX, F, h_max, h_ar[ind_st:ind_end], threed_frequencies[ind_st:ind_end], experiment_dataset.volume_shape, pol_degree =pol_degree, signal_variance=signal_variance_this, use_regularization = use_regularization)
-        
+
 #         # if problems.any():
 #         #     logger.warning(f"Issues in linalg solve? Problems for {problems.sum() / problems.size} pixels, pol_degree={pol_degree}, h={h}, reg={use_regularization}")
 
@@ -389,7 +386,7 @@
 #         if problems.any():
 #             # logger.warning(f"Issues in linalg solve? Problems for {problems.sum() / problems.size} pixels, pol_degree={pol_degree}, h={h}, reg={use_regularization}")
 #         # if problems.any():
-#             if msgs < 10: 
+#             if msgs < 10:
 #                 msgs +=1
 #                 logger.warning(f"isinf {jnp.isinf(reconstruction[ind_st:ind_end]).sum() / reconstruction[ind_st:ind_end].size} pixels, pol_degree={pol_degree}, h={h}, reg={use_regularization}")
 
@@ -418,7 +415,7 @@
 #     XWX, F = precompute_kernel(experiment_dataset, cov_noise,  batch_size, pol_degree=pol_degree)
 #     return compute_weights_from_precompute(experiment_dataset, XWX, F, signal_variance, pol_degree, h)
 
-# @functools.partial(jax.jit, static_argnums = [5,6,7,8,9, 10])    
+# @functools.partial(jax.jit, static_argnums = [5,6,7,8,9, 10])
 # def compute_residuals_batch(images, weights, rotation_matrices, translations, CTF_params, volume_shape, image_shape, grid_size, CTF_fun, voxel_size, pol_degree ):
 
 #     X_mat, gridpoint_indices = make_X_mat(rotation_matrices, volume_shape, image_shape, grid_size, pol_degree = pol_degree)
@@ -436,9 +433,8 @@
 #     return summed_residuals, summed_n
 
 
-
 # def compute_residuals(experiment_dataset, weights,  batch_size, pol_degree ):
-    
+
 #     residuals, summed_n =0, 0
 #     logger.info(f"batch size in second order: {batch_size}")
 #     data_generator = experiment_dataset.get_dataset_generator(batch_size=batch_size)
@@ -449,9 +445,9 @@
 
 #         residuals_t, summed_n_t = compute_residuals_batch(batch, weights,
 #                                             experiment_dataset.rotation_matrices[indices],
-#                                             experiment_dataset.translations[indices], 
-#                                             experiment_dataset.CTF_params[indices], 
-#                                             experiment_dataset.volume_shape, 
+#                                             experiment_dataset.translations[indices],
+#                                             experiment_dataset.CTF_params[indices],
+#                                             experiment_dataset.volume_shape,
 #                                             experiment_dataset.image_shape, experiment_dataset.grid_size, experiment_dataset.CTF_fun, experiment_dataset.voxel_size, pol_degree )
 #         residuals += residuals_t
 #         summed_n += summed_n_t
@@ -461,7 +457,7 @@
 
 # batch_over_weight_dot = jax.vmap(linalg.broadcast_dot, in_axes = (None,-2))#, in_axes = )
 
-# # @functools.partial(jax.jit, static_argnums = [5,6,7,8,9, 10])    
+# # @functools.partial(jax.jit, static_argnums = [5,6,7,8,9, 10])
 # def compute_residuals_batch_many_weights(images, weights, rotation_matrices, translations, CTF_params, volume_shape, image_shape, grid_size, CTF_fun, voxel_size, pol_degree ):
 
 #     X_mat, gridpoint_indices = make_X_mat(rotation_matrices, volume_shape, image_shape, grid_size, pol_degree = pol_degree)
@@ -474,7 +470,7 @@
 #     CTF = CTF_fun( CTF_params, image_shape, voxel_size)
 #     translated_images = core.translate_images(images, translations, image_shape)
 #     residuals = jnp.abs(translated_images[...,None] - predicted_phi * CTF[...,None])**2
-    
+
 #     volume_size = np.prod(volume_shape)
 #     summed_residuals = core.batch_over_vol_summed_adjoint_slice_by_nearest(volume_size, residuals, gridpoint_indices.reshape(-1),None)
 
@@ -484,7 +480,7 @@
 
 
 # def compute_residuals_many_weights(experiment_dataset, weights,  batch_size, pol_degree ):
-    
+
 #     residuals, summed_n =0, 0
 #     logger.info(f"batch size in residual computation: {batch_size}")
 #     data_generator = experiment_dataset.get_dataset_generator(batch_size=batch_size)
@@ -495,9 +491,9 @@
 
 #         residuals_t, summed_n_t = compute_residuals_batch_many_weights(batch, weights,
 #                                             experiment_dataset.rotation_matrices[indices],
-#                                             experiment_dataset.translations[indices], 
-#                                             experiment_dataset.CTF_params[indices], 
-#                                             experiment_dataset.volume_shape, 
+#                                             experiment_dataset.translations[indices],
+#                                             experiment_dataset.CTF_params[indices],
+#                                             experiment_dataset.volume_shape,
 #                                             experiment_dataset.image_shape, experiment_dataset.grid_size, experiment_dataset.CTF_fun, experiment_dataset.voxel_size, pol_degree )
 #         residuals += residuals_t
 #         summed_n += summed_n_t
@@ -505,17 +501,16 @@
 #     return residuals , summed_n# / (summed_n[...,None] + constants.ROOT_EPSILON)
 
 
-
 # # ### PICK H BASED ON ASYMPTOTICS
 
 # # ## High level functions
 # # # Integral of u^2 K(u) du over R^3
-# # mu_2_kernel_statistics = { 'cube' : 1/27, 'Epanechnikov' : 3/5 } 
+# # mu_2_kernel_statistics = { 'cube' : 1/27, 'Epanechnikov' : 3/5 }
 
-# # # Integral of K(u)^2 du over R^3 . K(u) is normalized such that integral K(u) du = 1 
-# # R_kernel_statistics = { 'cube': 1/8,  'ball' : 4/3 * np.pi , 'Epanechnikov' : 1/5 } 
+# # # Integral of K(u)^2 du over R^3 . K(u) is normalized such that integral K(u) du = 1
+# # R_kernel_statistics = { 'cube': 1/8,  'ball' : 4/3 * np.pi , 'Epanechnikov' : 1/5 }
 
-# # # mu_2_kernel_statistics = { 'uniform' : 1/2, 'Epanechnikov' : 3/5 } 
+# # # mu_2_kernel_statistics = { 'uniform' : 1/2, 'Epanechnikov' : 3/5 }
 # # def Epanechnikov_kernel(dist_squared, h=1):
 # #     return 3/4 * jnp.where( dist_squared < h,  1- dist_squared/h, jnp.zeros_like(dist_squared) )
 
@@ -530,11 +525,11 @@
 # #     B_p_squared =  ( mu_2 *  hessian_norm /2)**2
 # #     d = 3
 # #     h = (d * R * noise_variance_over_density / ( 4 * B_p_squared))**(1/(4 + d))
-# #     # B_p^2 * h^4  + noise_variance_over_density * R / h^d 
+# #     # B_p^2 * h^4  + noise_variance_over_density * R / h^d
 # #     # Deriv is :
-# #     # B_p^2 * 4 h^3  + noise_variance_over_density * R * (-d) * h^(-d-1) = 0 
+# #     # B_p^2 * 4 h^3  + noise_variance_over_density * R * (-d) * h^(-d-1) = 0
 # #     # Solving for h:
-# #     # h = (d * R * density_over_variance / (B_p^2 * 4) )**(1/(4 + d)) 
+# #     # h = (d * R * density_over_variance / (B_p^2 * 4) )**(1/(4 + d))
 
 # #     return h
 

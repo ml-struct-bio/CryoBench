@@ -6,8 +6,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from cryodrgn import fft
 from cryodrgn.source import ImageSource
-import os 
+import os
+
 logger = logging.getLogger(__name__)
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -31,7 +33,7 @@ def main(args):
     # assert isinstance(vol1, np.ndarray)
     # assert isinstance(vol2, np.ndarray)
 
-    if args.mask is not None and args.mask != 'None':
+    if args.mask is not None and args.mask != "None":
         mask = ImageSource.from_file(args.mask)
         mask = mask.images()
 

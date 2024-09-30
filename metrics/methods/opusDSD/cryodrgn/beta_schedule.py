@@ -1,21 +1,22 @@
 import numpy as np
 
+
 def get_beta_schedule(schedule):
     if type(schedule) == float:
         return ConstantSchedule(schedule)
-    elif schedule == 'a':
+    elif schedule == "a":
         return LinearSchedule(0.001, 1, 0, 500000)
-    elif schedule == 'b':
+    elif schedule == "b":
         return LinearSchedule(5, 15, 200000, 800000)
-    elif schedule == 'c':
+    elif schedule == "c":
         return LinearSchedule(5, 18, 200000, 800000)
-    elif schedule == 'd':
+    elif schedule == "d":
         return LinearSchedule(5, 18, 1000000, 5000000)
-    elif schedule == 'cos':
+    elif schedule == "cos":
         return CosSchedule(0.001, 1, 0, 100000)
     else:
-        raise RuntimeError('Wrong beta schedule. Schedule={}'
-                           .format(schedule))
+        raise RuntimeError("Wrong beta schedule. Schedule={}".format(schedule))
+
 
 class ConstantSchedule:
     def __init__(self, value):
@@ -23,6 +24,7 @@ class ConstantSchedule:
 
     def __call__(self, x):
         return self.value
+
 
 class LinearSchedule:
     def __init__(self, start_y, end_y, start_x, end_x):
@@ -33,8 +35,10 @@ class LinearSchedule:
         self.coef = (end_y - start_y) / (end_x - start_x)
 
     def __call__(self, x):
-        return np.clip((x - self.start_x) * self.coef + self.start_y,
-                       self.min_y, self.max_y).item(0)
+        return np.clip(
+            (x - self.start_x) * self.coef + self.start_y, self.min_y, self.max_y
+        ).item(0)
+
 
 class CosSchedule:
     def __init__(self, start_y, end_y, start_x, end_x):
@@ -43,9 +47,11 @@ class CosSchedule:
         self.start_x = start_x
         self.start_y = start_y
         self.coef = (end_y - start_y) / (end_x - start_x)
-        self.period = (end_x - start_x)*1.25
+        self.period = (end_x - start_x) * 1.25
 
     def __call__(self, x):
-        return np.clip(np.mod(x - self.start_x, self.period) * self.coef + self.start_y,
-                       self.min_y, self.max_y).item(0)
-
+        return np.clip(
+            np.mod(x - self.start_x, self.period) * self.coef + self.start_y,
+            self.min_y,
+            self.max_y,
+        ).item(0)

@@ -19,6 +19,12 @@ To run the metrics, you have to install `cryodrgn`.
 
 More installation instructions are found in the [documentation](https://ez-lab.gitbook.io/cryodrgn/installation).
 
+Datasets are available for download at Zenodo.  
+
+1. Conf-het: [https://zenodo.org/records/11629428](https://zenodo.org/records/11629428).
+2. Comp-het: [https://zenodo.org/records/12528292](https://zenodo.org/records/12528292).
+3. Spike-MD: [https://zenodo.org/records/12528784]( https://zenodo.org/records/12528784).
+
 ## Image Formation
 Look at the repo [cryosim](https://github.com/ml-struct-bio/CryoBench/tree/main/cryosim).
 

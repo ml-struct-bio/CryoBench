@@ -1,19 +1,18 @@
 import argparse
 import numpy as np
-import sys, os
-import pickle
-import glob, re
+import os
+import re
+from glob import glob
 import subprocess
-import utils
-from cryodrgn import analysis
-from cryodrgn.commands_utils.fsc import calculate_fsc
-from cryodrgn import mrcfile
+import logging
+from cryodrgn import analysis, mrcfile, utils
+from cryodrgn.commands_utils.fsc import get_fsc_curve
 import torch
 
-log = utils.log
+logger = logging.getLogger(__name__)
 
 
-def parse_args():
+def add_args() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("input_dir", help="dir contains weights, config, z")
     parser.add_argument("-o", help="Output directory")
@@ -44,12 +43,13 @@ def parse_args():
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--fast", type=int, default=1)
     parser.add_argument("--cuda-device", default=0, type=int)
+
     return parser
 
 
 def get_cutoff(fsc, t):
     w = np.where(fsc[:, 1] < t)
-    log(w)
+    logger.info(w)
     if len(w[0]) >= 1:
         x = fsc[:, 0][w]
         return 1 / x[0]
@@ -57,7 +57,7 @@ def get_cutoff(fsc, t):
         return 2
 
 
-def natural_sort_key(s):
+def numfile_sort(s):
     # Convert the string to a list of text and numbers
     parts = re.split("([0-9]+)", s)
 
@@ -68,16 +68,29 @@ def natural_sort_key(s):
 
 
 def main(args):
-    print("method:", args.method)
-    if not os.path.exists(os.path.join(args.o, args.method, "per_conf_fsc")):
-        os.makedirs(os.path.join(args.o, args.method, "per_conf_fsc"))
+    logger.info(f"method: {args.method}")
 
-    weights = os.path.join(args.input_dir, f"weights.{args.epoch}.pkl")
     config = os.path.join(args.input_dir, "config.yaml")
+    if not os.path.exists(config):
+        raise ValueError(
+            f"Could not find cryoDRGN config file {config} "
+            f"— is {args.input_dir=} a folder cryoDRGN output folder?"
+        )
+    weights = os.path.join(args.input_dir, f"weights.{args.epoch}.pkl")
+    if not os.path.exists(weights):
+        raise ValueError(
+            f"Could not find cryoDRGN model weights for epoch {args.epoch} "
+            f"in output folder {args.input_dir=} — did model finishing running?"
+        )
     z_path = os.path.join(args.input_dir, f"z.{args.epoch}.pkl")
+    if not os.path.exists(z_path):
+        raise ValueError(
+            f"Could not find cryoDRGN latent space coordinates for epoch {args.epoch} "
+            f"in output folder {args.input_dir=} — did model finishing running?"
+        )
 
+    z = utils.load_pkl(z_path)
     gt = np.repeat(np.arange(0, args.num_vols), args.num_imgs)
-    z = pickle.load(open(z_path, "rb"))
     assert len(gt) == len(z)
 
     z_lst = []
@@ -96,67 +109,56 @@ def main(args):
         centers_ind_lst.append(centers_ind)
     nearest_z_array = np.array(nearest_z_lst)
 
-    file_pattern = "*.mrc"
-    files = glob.glob(os.path.join(args.gt_dir, file_pattern))
-    gt_dir = sorted(files, key=natural_sort_key)
+    gt_volfiles = sorted(glob(os.path.join(args.gt_dir, "*.mrc")), key=numfile_sort)
+    outdir = str(os.path.join(args.o, args.method, "per_conf_fsc"))
+    os.makedirs(os.path.join(outdir, "vols"), exist_ok=True)
+
     # Generate cdrgn volumes
-    if not os.path.exists("{}/{}/per_conf_fsc/vols".format(args.o, args.method)):
-        os.makedirs("{}/{}/per_conf_fsc/vols".format(args.o, args.method))
-    out_zfile = "{}/{}/per_conf_fsc/zfile.txt".format(args.o, args.method)
-    log(out_zfile)
+    out_zfile = os.path.join(outdir, "zfile.txt")
+    logger.info(out_zfile)
     cmd = "CUDA_VISIBLE_DEVICES={} cryodrgn eval_vol {} -c {} --zfile {} -o {}/{}/per_conf_fsc/vols --Apix {}".format(
         args.cuda_device, weights, config, out_zfile, args.o, args.method, args.Apix
     )
 
-    log(cmd)
+    logger.info(cmd)
     if os.path.exists(out_zfile) and not args.overwrite:
-        log("Z file exists, skipping...")
+        logger.info("Z file exists, skipping...")
     else:
         if not args.dry_run:
             np.savetxt(out_zfile, nearest_z_array)
             subprocess.check_call(cmd, shell=True)
 
     # Compute FSC cdrgn
-    if not os.path.exists("{}/{}/per_conf_fsc/fsc".format(args.o, args.method)):
-        os.makedirs("{}/{}/per_conf_fsc/fsc".format(args.o, args.method))
-    if not os.path.exists("{}/{}/per_conf_fsc/fsc_no_mask".format(args.o, args.method)):
-        os.makedirs("{}/{}/per_conf_fsc/fsc_no_mask".format(args.o, args.method))
-    for ii in range(len(gt_dir)):
+    outlbl = "fsc" if args.mask is not None else "fsc_no_mask"
+    os.makedirs(os.path.join(outdir, outlbl), exist_ok=True)
+    for ii, gt_volfile in enumerate(gt_volfiles):
         if ii % args.fast != 0:
             continue
+
+        out_fsc = os.path.join(outdir, outlbl, f"{ii}.txt")
+        vol_file = os.path.join(outdir, "vols", f"vol_{ii:03d}.mrc")
+        vol1 = torch.tensor(mrcfile.parse_mrc(gt_volfile)[0])
+        vol2 = torch.tensor(mrcfile.parse_mrc(vol_file)[0])
+        maskvol = None
         if args.mask is not None:
-            out_fsc = "{}/{}/per_conf_fsc/fsc/{}.txt".format(args.o, args.method, ii)
-        else:
-            out_fsc = "{}/{}/per_conf_fsc/fsc_no_mask/{}.txt".format(
-                args.o, args.method, ii
-            )
+            maskvol = torch.tensor(mrcfile.parse_mrc(args.mask)[0])
 
-        vol_file = "{}/{}/per_conf_fsc/vols/vol_{:03d}.mrc".format(
-            args.o, args.method, ii
-        )
-
-        vol1 = mrcfile.parse_mrc(gt_dir[ii])[0]
-        vol2 = mrcfile.parse_mrc(vol_file)[0]
         if os.path.exists(out_fsc) and not args.overwrite:
-            log("FSC exists, skipping...")
+            logger.info("FSC exists, skipping...")
         else:
-            fsc_vals = calculate_fsc(torch.tensor(vol1), torch.tensor(vol2), args.mask)
-            np.savetxt(out_fsc, fsc_vals)
+            get_fsc_curve(vol1, vol2, maskvol, out_file=out_fsc)
 
     # Summary statistics
-    fsc = [
-        np.loadtxt(x)
-        for x in glob.glob("{}/{}/per_conf_fsc/fsc/*txt".format(args.o, args.method))
-    ]
+    fsc = [np.loadtxt(x) for x in glob(os.path.join(outdir, outlbl, "*.txt"))]
     fsc143 = [get_cutoff(x, 0.143) for x in fsc]
     fsc5 = [get_cutoff(x, 0.5) for x in fsc]
-    log("cryoDRGN FSC=0.143")
-    log("Mean: {}".format(np.mean(fsc143)))
-    log("Median: {}".format(np.median(fsc143)))
-    log("cryoDRGN FSC=0.5")
-    log("Mean: {}".format(np.mean(fsc5)))
-    log("Median: {}".format(np.median(fsc5)))
+    logger.info("cryoDRGN FSC=0.143")
+    logger.info("Mean: {}".format(np.mean(fsc143)))
+    logger.info("Median: {}".format(np.median(fsc143)))
+    logger.info("cryoDRGN FSC=0.5")
+    logger.info("Mean: {}".format(np.mean(fsc5)))
+    logger.info("Median: {}".format(np.median(fsc5)))
 
 
 if __name__ == "__main__":
-    main(parse_args().parse_args())
+    main(add_args().parse_args())

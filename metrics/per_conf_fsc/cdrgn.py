@@ -1,13 +1,23 @@
+"""Calculate FSCs between conformations matched across cryoDRGN model latent spaces.
+
+Example usage
+-------------
+$ python metrics/per_conf_fsc/cdrgn.py results/cryodrgn --epoch 19 --Apix 3.0 \
+                                       -o output --gt-dir ./gt_vols --mask ./mask.mrc \
+                                       --num-imgs 1000 --num-vols 100
+
+"""
 import argparse
-import numpy as np
 import os
 import re
 from glob import glob
 import subprocess
 import logging
+import numpy as np
+import pandas as pd
+import torch
 from cryodrgn import analysis, mrcfile, utils
 from cryodrgn.commands_utils.fsc import get_fsc_curve
-import torch
 
 logger = logging.getLogger(__name__)
 
@@ -33,10 +43,16 @@ def add_args() -> argparse.ArgumentParser:
         help="Number of images per model (structure)",
     )
     parser.add_argument(
-        "--method", type=str, help="type of methods (Each method folder name)"
+        "--method",
+        default="cryodrgn",
+        type=str,
+        help="label for type of method, used for output subfolder",
     )
     parser.add_argument(
-        "--mask", default=None, help="Use mask to compute the masked metric"
+        "--mask",
+        default=None,
+        type=os.path.abspath,
+        help="Path to mask .mrc to compute the masked metric",
     )
     parser.add_argument("--gt-dir", help="Directory of gt volumes")
     parser.add_argument("--overwrite", action="store_true")
@@ -47,14 +63,10 @@ def add_args() -> argparse.ArgumentParser:
     return parser
 
 
-def get_cutoff(fsc, t):
-    w = np.where(fsc[:, 1] < t)
-    logger.info(w)
-    if len(w[0]) >= 1:
-        x = fsc[:, 0][w]
-        return 1 / x[0]
-    else:
-        return 2
+def get_fsc_cutoff(fsc_curve: pd.DataFrame, t: float) -> float:
+    """Find the resolution at which the FSC curve first crosses a given threshold."""
+    fsc_indx = np.where(fsc_curve.fsc < t)[0]
+    return fsc_curve.pixres[fsc_indx[0]] ** -1 if len(fsc_indx) > 0 else 2.0
 
 
 def numfile_sort(s):
@@ -68,8 +80,6 @@ def numfile_sort(s):
 
 
 def main(args):
-    logger.info(f"method: {args.method}")
-
     config = os.path.join(args.input_dir, "config.yaml")
     if not os.path.exists(config):
         raise ValueError(
@@ -89,6 +99,8 @@ def main(args):
             f"in output folder {args.input_dir=} — did model finishing running?"
         )
 
+    outdir = str(os.path.join(args.o, args.method, "per_conf_fsc"))
+    logger.info(f"Putting output under: {outdir} ...")
     z = utils.load_pkl(z_path)
     gt = np.repeat(np.arange(0, args.num_vols), args.num_imgs)
     assert len(gt) == len(z)
@@ -110,7 +122,6 @@ def main(args):
     nearest_z_array = np.array(nearest_z_lst)
 
     gt_volfiles = sorted(glob(os.path.join(args.gt_dir, "*.mrc")), key=numfile_sort)
-    outdir = str(os.path.join(args.o, args.method, "per_conf_fsc"))
     os.makedirs(os.path.join(outdir, "vols"), exist_ok=True)
 
     # Generate cdrgn volumes
@@ -131,6 +142,8 @@ def main(args):
     # Compute FSC cdrgn
     outlbl = "fsc" if args.mask is not None else "fsc_no_mask"
     os.makedirs(os.path.join(outdir, outlbl), exist_ok=True)
+    fsc_curves = dict()
+
     for ii, gt_volfile in enumerate(gt_volfiles):
         if ii % args.fast != 0:
             continue
@@ -144,14 +157,14 @@ def main(args):
             maskvol = torch.tensor(mrcfile.parse_mrc(args.mask)[0])
 
         if os.path.exists(out_fsc) and not args.overwrite:
-            logger.info("FSC exists, skipping...")
+            logger.info("FSC exists, loading from file...")
+            fsc_curves[ii] = pd.read_csv(out_fsc, sep=" ")
         else:
-            get_fsc_curve(vol1, vol2, maskvol, out_file=out_fsc)
+            fsc_curves[ii] = get_fsc_curve(vol1, vol2, maskvol, out_file=out_fsc)
 
     # Summary statistics
-    fsc = [np.loadtxt(x) for x in glob(os.path.join(outdir, outlbl, "*.txt"))]
-    fsc143 = [get_cutoff(x, 0.143) for x in fsc]
-    fsc5 = [get_cutoff(x, 0.5) for x in fsc]
+    fsc143 = [get_fsc_cutoff(x, 0.143) for x in fsc_curves.values()]
+    fsc5 = [get_fsc_cutoff(x, 0.5) for x in fsc_curves.values()]
     logger.info("cryoDRGN FSC=0.143")
     logger.info("Mean: {}".format(np.mean(fsc143)))
     logger.info("Median: {}".format(np.median(fsc143)))

@@ -1,20 +1,31 @@
 # Per Conformation FSC: Tools for computing per conformation FSC
-### Dependencies:
-* cryodrgn version 3.4.0
-* drgnai version 1.0.0
-### Example usage (CryoDRGN):
-```
-  $ conda activate cryodrgn
 
+## Installation instructions
+We recommend using `pip` or a conda environment to install the dependencies for calculating these metrics:
+
+### Dependencies
+
+* cryodrgn version >= 3.4.0
+* drgnai version >= 0.3.1
+
+### Installation using conda
+```bash
+$ conda create --name cryoBench_env python=3.10
+$ conda activate cryoBench_env
+(cryoBench_env)$ pip install 'cryodrgn>=3.4.0'
+```
+
+### Example usage (CryoDRGN):
+```bash
   # Compute per conformation FSC
-  $ python metrics/per_conf_fsc/cdrgn.py results/cryodrgn --epoch 19 --Apix 3.0 -o output --method cryodrgn --gt-dir ./gt_vols --mask ./mask.mrc --num-imgs 1000 --num-vols 100
+  (cryoBench_env)$ python metrics/per_conf_fsc/cdrgn.py results/cryodrgn --epoch 19 --Apix 3.0 -o output --method cryodrgn --gt-dir ./gt_vols --mask ./mask.mrc --num-imgs 1000 --num-vols 100
 
   # Plot FSCs
   $ python metrics/per_conf_fsc/per_conf_plot.py output --method cryodrgn
 ```
 
 ### Example usage (DRGN-AI-fixed):
-```
+```bash
   $ conda activate drgnai
 
   # Compute per conformation FSC
@@ -25,7 +36,7 @@
 ```
 
 ### Example usage (Opus-DSD):
-```
+```bash
   $ conda activate dsd
 
   # Compute per conformation FSC
@@ -37,7 +48,7 @@
 
 ### Example usage (3DFlex):
 * Get 3DFlex reconstructed volumes by using `3dflex_per-conf-fsc.ipynb` before computing FSC, then move the generated volumes to `output/3dflex/per_conf_fsc/vols/`.
-```
+```bash
   $ conda activate cryodrgn
 
   # Compute per conformation FSC
@@ -48,7 +59,7 @@
 ```
 
 ### Example usage (3DVA):
-```
+```bash
   $ conda activate cryodrgn
 
   # Compute per conformation FSC
@@ -59,7 +70,7 @@
 ```
 
 ### Example usage (RECOVAR):
-```
+```bash
   $ conda activate recovar
 
   # Generate volumes before computing FSC
@@ -77,7 +88,7 @@
 
 ### Example usage (3D Class):
 * Move each class volume to `results/3dcls` before computing metric.
-```
+```bash
   $ conda activate cryodrgn
 
   # Compute per conformation FSC
@@ -88,7 +99,7 @@
 ```
 
 ### Example usage (CryoDRGN2):
-```
+```bash
   $ conda activate cryodrgn
 
   # Generate volumes before computing FSC
@@ -106,7 +117,7 @@
 ```
 
 ### Example usage (DRGN-AI):
-```
+```bash
   $ conda activate drgnai
 
   # Generate volumes before computing FSC
@@ -127,7 +138,7 @@
 ```
 
 ### Example usage (3D Class abinit):
-```
+```bash
   $ conda activate cryodrgn
 
   # Compute per conformation FSC

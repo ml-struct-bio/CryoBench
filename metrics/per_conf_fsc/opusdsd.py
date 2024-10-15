@@ -74,7 +74,12 @@ def main(args: argparse.Namespace) -> None:
             return f"reference{i}.mrc"
 
         utils.get_fsc_curves(
-            outdir, args.gt_dir, args.mask, args.fast, args.overwrite, vol_fl_function
+            outdir,
+            args.gt_dir,
+            mask_file=args.mask,
+            fast=args.fast,
+            overwrite=args.overwrite,
+            vol_fl_function=vol_fl_function,
         )
 
 

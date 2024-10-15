@@ -1,8 +1,9 @@
-import argparse
 import os
 import re
 from glob import glob
+from collections.abc import Iterable
 import logging
+from typing import Optional
 import numpy as np
 import pandas as pd
 import torch
@@ -10,47 +11,6 @@ from cryodrgn import analysis, mrcfile
 from cryodrgn.commands_utils.fsc import get_fsc_curve
 
 logger = logging.getLogger(__name__)
-
-
-def add_calc_args() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("input_dir", help="dir contains weights, config, z")
-    parser.add_argument("-o", help="Output directory")
-    parser.add_argument(
-        "--epoch", default=19, type=int, help="Number of training epochs"
-    )
-    parser.add_argument(
-        "--num-vols",
-        default=100,
-        type=int,
-        help="Number of total reconstructed volumes",
-    )
-    parser.add_argument("--Apix", default=3.0, type=float)
-    parser.add_argument(
-        "--num-imgs",
-        default=1000,
-        type=int,
-        help="Number of images per model (structure)",
-    )
-    parser.add_argument(
-        "--method",
-        type=str,
-        default=None,
-        help="override auto label for type of method, used for output subfolder",
-    )
-    parser.add_argument(
-        "--mask",
-        default=None,
-        type=os.path.abspath,
-        help="Path to mask .mrc to compute the masked metric",
-    )
-    parser.add_argument("--gt-dir", help="Directory of gt volumes")
-    parser.add_argument("--overwrite", action="store_true")
-    parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument("--fast", type=int, default=1)
-    parser.add_argument("--cuda-device", default=0, type=int)
-
-    return parser
 
 
 def get_fsc_cutoff(fsc_curve: pd.DataFrame, t: float) -> float:
@@ -89,16 +49,48 @@ def get_nearest_z_array(zmat: np.ndarray, num_vols: int, num_imgs: int) -> np.nd
     return np.array(nearest_z_lst)
 
 
-def get_fsc_curves(outdir: str, args: argparse.Namespace) -> None:
-    gt_volfiles = sorted(glob(os.path.join(args.gt_dir, "*.mrc")), key=numfile_sort)
+def pad_mrc_vols(mrc_volfiles: Iterable[str], new_D: int) -> None:
+    for mrc_file in mrc_volfiles:
+        v, header = mrcfile.parse_mrc(mrc_file)
+        x, y, z = v.shape
+        assert new_D >= x
+        assert new_D >= y
+        assert new_D >= z
+
+        new = np.zeros((new_D, new_D, new_D), dtype=np.float32)
+
+        i = (new_D - x) // 2
+        j = (new_D - y) // 2
+        k = (new_D - z) // 2
+
+        new[i : (i + x), j : (j + y), k : (k + z)] = v
+
+        # adjust origin
+        apix = header.apix
+        xorg, yorg, zorg = header.origin
+        xorg -= apix * k
+        yorg -= apix * j
+        zorg -= apix * i
+
+        mrcfile.write_mrc(mrc_file, new)
+
+
+def get_fsc_curves(
+    outdir: str,
+    gt_dir: str,
+    mask_file: Optional[str] = None,
+    fast: int = 1,
+    overwrite: bool = False,
+) -> None:
+    gt_volfiles = sorted(glob(os.path.join(gt_dir, "*.mrc")), key=numfile_sort)
     os.makedirs(os.path.join(outdir, "vols"), exist_ok=True)
 
-    outlbl = "fsc" if args.mask is not None else "fsc_no_mask"
+    outlbl = "fsc" if mask_file is not None else "fsc_no_mask"
     os.makedirs(os.path.join(outdir, outlbl), exist_ok=True)
     fsc_curves = dict()
 
     for ii, gt_volfile in enumerate(gt_volfiles):
-        if ii % args.fast != 0:
+        if ii % fast != 0:
             continue
 
         out_fsc = os.path.join(outdir, outlbl, f"{ii}.txt")
@@ -106,10 +98,10 @@ def get_fsc_curves(outdir: str, args: argparse.Namespace) -> None:
         vol1 = torch.tensor(mrcfile.parse_mrc(gt_volfile)[0])
         vol2 = torch.tensor(mrcfile.parse_mrc(vol_file)[0])
         maskvol = None
-        if args.mask is not None:
-            maskvol = torch.tensor(mrcfile.parse_mrc(args.mask)[0])
+        if mask_file is not None:
+            maskvol = torch.tensor(mrcfile.parse_mrc(mask_file)[0])
 
-        if os.path.exists(out_fsc) and not args.overwrite:
+        if os.path.exists(out_fsc) and not overwrite:
             logger.info("FSC exists, loading from file...")
             fsc_curves[ii] = pd.read_csv(out_fsc, sep=" ")
         else:

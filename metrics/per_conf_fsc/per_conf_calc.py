@@ -11,7 +11,7 @@ import argparse
 import os
 import utils
 from cdrgn import main as run_cdrgn
-from drgnai_fixed import main as run_drgnai_fixed
+from drgnai import main as run_drgnai
 
 
 def main(args: argparse.Namespace):
@@ -22,7 +22,7 @@ def main(args: argparse.Namespace):
     elif "out" in input_files and "config.yaml" in os.listdir(
         os.path.join(args.input_dir, "out")
     ):
-        run_drgnai_fixed(args)
+        run_drgnai(args)
     else:
         raise ValueError(
             f"Unrecognized output folder format found in `{args.input_dir}`!"

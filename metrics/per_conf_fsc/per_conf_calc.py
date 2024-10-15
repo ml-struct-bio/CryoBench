@@ -12,6 +12,7 @@ import os
 import utils
 from cdrgn import main as run_cdrgn
 from drgnai import main as run_drgnai
+from opusdsd import main as run_opusdsd
 
 
 def main(args: argparse.Namespace):
@@ -19,6 +20,8 @@ def main(args: argparse.Namespace):
 
     if "config.yaml" in input_files:
         run_cdrgn(args)
+    elif "config.pkl" in input_files:
+        run_opusdsd(args)
     elif "out" in input_files and "config.yaml" in os.listdir(
         os.path.join(args.input_dir, "out")
     ):

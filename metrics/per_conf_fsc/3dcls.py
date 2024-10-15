@@ -1,60 +1,33 @@
 import argparse
 import numpy as np
 import os
-import glob, re
-import subprocess
+from glob import glob
+import logging
 import utils
-from cryodrgn.commands_utils.fsc import calculate_fsc
-from cryodrgn import mrcfile
-import torch
+import interface
 
-log = utils.log
+logger = logging.getLogger(__name__)
 
 
-def parse_args():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("input_dir", help="dir contains 3D Class output volumes")
-    parser.add_argument("-o", help="Output directory")
+def add_args(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
     parser.add_argument("--num-classes", default=10, type=int)
-    parser.add_argument("--num-imgs", default=1000, type=int)
-    parser.add_argument("--method", type=str, help="type of methods")
-    parser.add_argument("--mask", default=None)
-    parser.add_argument("--gt-dir", help="Directory of gt volumes")
-    parser.add_argument("--cryosparc-dir", help="Directory of cryosparc")
-    parser.add_argument("--overwrite", action="store_true")
-    parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument("--fast", type=int, default=1)
+
     return parser
 
 
-def get_cutoff(fsc, t):
-    w = np.where(fsc[:, 1] < t)
-    log(w)
-    if len(w[0]) >= 1:
-        x = fsc[:, 0][w]
-        return 1 / x[0]
-    else:
-        return 2
-
-
-def natural_sort_key(s):
-    # Convert the string to a list of text and numbers
-    parts = re.split("([0-9]+)", s)
-
-    # Convert numeric parts to integers for proper numeric comparison
-    parts[1::2] = map(int, parts[1::2])
-
-    return parts
-
-
 def main(args):
-    print("method:", args.method)
-    if not os.path.exists(os.path.join(args.o, args.method, "per_conf_fsc")):
-        os.makedirs(os.path.join(args.o, args.method, "per_conf_fsc"))
+    if args.method is None:
+        logger.info('No method label specified, using "3Dcls" as default...')
+        method_lbl = "3Dcls"
+    else:
+        method_lbl = str(args.method)
 
+    outdir = str(os.path.join(args.o, method_lbl, "per_conf_fsc"))
     file_pattern = "*.mrc"
-    files = glob.glob(os.path.join(args.input_dir, file_pattern))
-    pred_dir = sorted(files, key=natural_sort_key)
+    files = [
+        f for f in glob(os.path.join(args.input_dir, file_pattern)) if "mask" not in f
+    ]
+    pred_dir = sorted(files, key=utils.numfile_sort)
     print("pred_dir[0]:", pred_dir[0])
     cryosparc_num = pred_dir[0].split("/")[-1].split(".")[0].split("_")[3]
     cryosparc_job = pred_dir[0].split("/")[-1].split(".")[0].split("_")[0]
@@ -64,58 +37,33 @@ def main(args):
     lst = []
     for cls in range(args.num_classes):
         cs = np.load(
-            f"{args.cryosparc_dir}/{cryosparc_job}/{cryosparc_job}_passthrough_particles_class_{cls}.cs"
+            os.path.join(
+                args.input_dir, f"{cryosparc_job}_passthrough_particles_class_{cls}.cs"
+            )
         )
         cs_new = cs[:: args.num_imgs]
         print(f"class {cls}: {len(cs_new)}")
-        for i in range(len(cs_new)):
-            path = cs_new[i]["blob/path"].decode("utf-8")
+
+        for cs_i in range(len(cs_new)):
+            path = cs_new[cs_i]["blob/path"].decode("utf-8")
             gt = path.split("/")[-1].split("_")[1]
             lst.append((int(cls), int(gt)))
 
-    file_pattern = "*.mrc"
-    files = glob.glob(os.path.join(args.gt_dir, file_pattern))
-    gt_dir = sorted(files, key=natural_sort_key)
+    if args.calc_fsc_vals:
 
-    # Compute FSC cdrgn
-    if not os.path.exists("{}/{}/per_conf_fsc/fsc".format(args.o, args.method)):
-        os.makedirs("{}/{}/per_conf_fsc/fsc".format(args.o, args.method))
-    if not os.path.exists("{}/{}/per_conf_fsc/fsc_no_mask".format(args.o, args.method)):
-        os.makedirs("{}/{}/per_conf_fsc/fsc_no_mask".format(args.o, args.method))
-    for ii in range(len(gt_dir)):
-        if args.mask is not None:
-            out_fsc = "{}/{}/per_conf_fsc/fsc/{}.txt".format(args.o, args.method, ii)
-        else:
-            out_fsc = "{}/{}/per_conf_fsc/fsc_no_mask/{}.txt".format(
-                args.o, args.method, ii
-            )
+        def vol_fl_function(i: int):
+            return f"{cryosparc_job}_class_{lst[i][0]:02d}_{cryosparc_num}_volume.mrc"
 
-        vol_file = "{}/{}/{}_class_{:02d}_{}_volume.mrc".format(
-            args.cryosparc_dir, cryosparc_job, cryosparc_job, lst[ii][0], cryosparc_num
+        utils.get_fsc_curves(
+            outdir,
+            args.gt_dir,
+            vol_dir=args.input_dir,
+            mask_file=args.mask,
+            fast=args.fast,
+            overwrite=args.overwrite,
+            vol_fl_function=vol_fl_function,
         )
-
-        vol1 = mrcfile.parse_mrc(gt_dir[ii])[0]
-        vol2 = mrcfile.parse_mrc(vol_file)[0]
-        if os.path.exists(out_fsc) and not args.overwrite:
-            log("FSC exists, skipping...")
-        else:
-            fsc_vals = calculate_fsc(torch.tensor(vol1), torch.tensor(vol2), args.mask)
-            np.savetxt(out_fsc, fsc_vals)
-
-    # Summary statistics
-    fsc = [
-        np.loadtxt(x)
-        for x in glob.glob("{}/{}/per_conf_fsc/fsc/*txt".format(args.o, args.method))
-    ]
-    fsc143 = [get_cutoff(x, 0.143) for x in fsc]
-    fsc5 = [get_cutoff(x, 0.5) for x in fsc]
-    log("cryoDRGN FSC=0.143")
-    log("Mean: {}".format(np.mean(fsc143)))
-    log("Median: {}".format(np.median(fsc143)))
-    log("cryoDRGN FSC=0.5")
-    log("Mean: {}".format(np.mean(fsc5)))
-    log("Median: {}".format(np.median(fsc5)))
 
 
 if __name__ == "__main__":
-    main(parse_args().parse_args())
+    main(add_args(interface.add_calc_args()).parse_args())

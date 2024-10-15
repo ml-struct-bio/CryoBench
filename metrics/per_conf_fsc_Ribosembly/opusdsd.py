@@ -1,12 +1,10 @@
 import argparse
 import numpy as np
 import os
-import glob, re
+import glob
 import subprocess
+from cryodrgn import mrc
 import utils
-from cryodrgnai.cryodrgn import mrc
-import torch
-from cryodrgn import utils
 from cryodrgn import analysis
 from cryodrgn.commands_utils.fsc import calculate_fsc
 from cryodrgn import mrcfile
@@ -31,26 +29,6 @@ def parse_args():
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--fast", type=int, default=1)
     return parser
-
-
-def get_cutoff(fsc, t):
-    w = np.where(fsc[:, 1] < t)
-    log(w)
-    if len(w[0]) >= 1:
-        x = fsc[:, 0][w]
-        return 1 / x[0]
-    else:
-        return 2
-
-
-def natural_sort_key(s):
-    # Convert the string to a list of text and numbers
-    parts = re.split("([0-9]+)", s)
-
-    # Convert numeric parts to integers for proper numeric comparison
-    parts[1::2] = map(int, parts[1::2])
-
-    return parts
 
 
 def main(args):
@@ -103,7 +81,7 @@ def main(args):
 
     file_pattern = "*.mrc"
     files = glob.glob(os.path.join(args.gt_dir, file_pattern))
-    gt_dir = sorted(files, key=natural_sort_key)
+    gt_dir = sorted(files, key=utils.numfile_sort)
     # Generate volumes
     if not os.path.exists("{}/{}/per_conf_fsc/vols".format(args.o, args.method)):
         os.makedirs("{}/{}/per_conf_fsc/vols".format(args.o, args.method))
@@ -127,7 +105,7 @@ def main(args):
     mrc_files = glob.glob(
         os.path.join(args.o, args.method, "per_conf_fsc", "vols", file_pattern)
     )
-    sorted_mrc_files = sorted(mrc_files, key=natural_sort_key)
+    sorted_mrc_files = sorted(mrc_files, key=utils.numfile_sort)
 
     for mrc_file in sorted_mrc_files:
         v, header = mrc.parse_mrc(mrc_file)
@@ -197,8 +175,8 @@ def main(args):
             )
         ]
 
-    fsc143 = [get_cutoff(x, 0.143) for x in fsc]
-    fsc5 = [get_cutoff(x, 0.5) for x in fsc]
+    fsc143 = [utils.get_cutoff(x, 0.143) for x in fsc]
+    fsc5 = [utils.get_cutoff(x, 0.5) for x in fsc]
     log("cryoDRGN FSC=0.143")
     log("Mean: {}".format(np.mean(fsc143)))
     log("Median: {}".format(np.median(fsc143)))

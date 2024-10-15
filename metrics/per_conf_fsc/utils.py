@@ -76,13 +76,16 @@ def pad_mrc_vols(mrc_volfiles: Iterable[str], new_D: int) -> None:
 def get_fsc_curves(
     outdir: str,
     gt_dir: str,
+    vol_dir: Optional[str] = None,
     mask_file: Optional[str] = None,
     fast: int = 1,
     overwrite: bool = False,
     vol_fl_function: Callable[[int], str] = lambda i: f"vol_{i:03d}.mrc",
 ) -> None:
     gt_volfiles = sorted(glob(os.path.join(gt_dir, "*.mrc")), key=numfile_sort)
-    os.makedirs(os.path.join(outdir, "vols"), exist_ok=True)
+
+    if vol_dir is None:
+        vol_dir = os.path.join(outdir, "vols")
 
     outlbl = "fsc" if mask_file is not None else "fsc_no_mask"
     os.makedirs(os.path.join(outdir, outlbl), exist_ok=True)
@@ -93,7 +96,7 @@ def get_fsc_curves(
             continue
 
         out_fsc = os.path.join(outdir, outlbl, f"{ii}.txt")
-        vol_file = os.path.join(outdir, "vols", vol_fl_function(ii))
+        vol_file = os.path.join(vol_dir, vol_fl_function(ii))
         vol1 = torch.tensor(mrcfile.parse_mrc(gt_volfile)[0])
         vol2 = torch.tensor(mrcfile.parse_mrc(vol_file)[0])
         maskvol = None

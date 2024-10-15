@@ -3,7 +3,7 @@ import re
 from glob import glob
 from collections.abc import Iterable
 import logging
-from typing import Optional
+from typing import Optional, Callable
 import numpy as np
 import pandas as pd
 import torch
@@ -58,11 +58,9 @@ def pad_mrc_vols(mrc_volfiles: Iterable[str], new_D: int) -> None:
         assert new_D >= z
 
         new = np.zeros((new_D, new_D, new_D), dtype=np.float32)
-
         i = (new_D - x) // 2
         j = (new_D - y) // 2
         k = (new_D - z) // 2
-
         new[i : (i + x), j : (j + y), k : (k + z)] = v
 
         # adjust origin
@@ -81,6 +79,7 @@ def get_fsc_curves(
     mask_file: Optional[str] = None,
     fast: int = 1,
     overwrite: bool = False,
+    vol_fl_function: Callable[[int], str] = lambda i: f"vol_{i:03d}.mrc",
 ) -> None:
     gt_volfiles = sorted(glob(os.path.join(gt_dir, "*.mrc")), key=numfile_sort)
     os.makedirs(os.path.join(outdir, "vols"), exist_ok=True)
@@ -94,7 +93,7 @@ def get_fsc_curves(
             continue
 
         out_fsc = os.path.join(outdir, outlbl, f"{ii}.txt")
-        vol_file = os.path.join(outdir, "vols", f"vol_{ii:03d}.mrc")
+        vol_file = os.path.join(outdir, "vols", vol_fl_function(ii))
         vol1 = torch.tensor(mrcfile.parse_mrc(gt_volfile)[0])
         vol2 = torch.tensor(mrcfile.parse_mrc(vol_file)[0])
         maskvol = None

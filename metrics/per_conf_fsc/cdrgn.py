@@ -68,7 +68,7 @@ def main(args: argparse.Namespace) -> None:
             subprocess.check_call(cmd, shell=True)
 
     if args.calc_fsc_vals:
-        utils.get_fsc_curves(outdir, args)
+        utils.get_fsc_curves(outdir, args.gt_dir, args.mask, args.fast, args.overwrite)
 
 
 if __name__ == "__main__":

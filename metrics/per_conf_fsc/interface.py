@@ -1,8 +1,12 @@
+"""Command-line interfaces shared across FSC per conformation commands."""
+
 import argparse
 import os
 
 
 def add_calc_args() -> argparse.ArgumentParser:
+    """Command-line interface used in commands calculating FSCs per conformation."""
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("input_dir", help="dir contains weights, config, z")
     parser.add_argument("-o", help="Output directory")

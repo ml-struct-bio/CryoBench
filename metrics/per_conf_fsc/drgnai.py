@@ -13,6 +13,7 @@ import os
 import subprocess
 import logging
 import numpy as np
+import interface
 import utils
 import cryodrgn.utils
 
@@ -60,8 +61,9 @@ def main(args: argparse.Namespace) -> None:
             np.savetxt(out_zfile, nearest_z_array)
             subprocess.check_call(cmd, shell=True)
 
-    utils.get_fsc_curves(args)
+    if args.calc_fsc_vals:
+        utils.get_fsc_curves(outdir, args)
 
 
 if __name__ == "__main__":
-    main(utils.add_calc_args().parse_args())
+    main(interface.add_calc_args().parse_args())

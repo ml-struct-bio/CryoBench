@@ -1,11 +1,10 @@
-import recovar.config
+import os
+import sys
+import argparse
 import logging
-import numpy as np
-from recovar import output as o
-from recovar import dataset, utils, latent_density, embedding
-from scipy.spatial import distance_matrix
-import pickle
-import os, argparse
+
+sys.path.append("recovar")
+import recovar
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +56,7 @@ def add_args(parser: argparse.ArgumentParser):
 
 def compute_state(args):
 
-    po = o.PipelineOutput(args.result_dir + "/")
+    po = recovar.output.PipelineOutput(args.result_dir + "/")
     # target_zs = np.loadtxt(args.latent_points)
     output_folder = args.outdir
 
@@ -73,19 +72,19 @@ def compute_state(args):
     # if zdim not in po.get('zs'):
     #     logger.error("z-dim not found in results. Options are:" + ','.join(str(e) for e in po.get('zs').keys()))
     cryos = po.get("dataset")
-    embedding.set_contrasts_in_cryos(cryos, po.get("contrasts")[args.zdim])
+    recovar.embedding.set_contrasts_in_cryos(cryos, po.get("contrasts")[args.zdim])
     zs = po.get("zs")[args.zdim]
     cov_zs = po.get("cov_zs")[args.zdim]
     noise_variance = po.get("noise_var_used")
     n_bins = args.n_bins
-    zs_reordered = dataset.reorder_to_original_indexing(zs, cryos)
+    zs_reordered = recovar.dataset.reorder_to_original_indexing(zs, cryos)
     z = zs_reordered[args.vol_num * args.num_imgs : (args.vol_num + 1) * args.num_imgs]
     target_zs = z.mean(axis=0)
     target_zs = target_zs.reshape(1, -1)
-    o.mkdir_safe(output_folder)
+    recovar.output.mkdir_safe(output_folder)
     logger.addHandler(logging.FileHandler(f"{output_folder}/run.log"))
     logger.info(args)
-    o.compute_and_save_reweighted(
+    recovar.output.compute_and_save_reweighted(
         cryos,
         target_zs,
         zs,

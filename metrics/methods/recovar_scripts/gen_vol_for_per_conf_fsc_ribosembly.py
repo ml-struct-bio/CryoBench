@@ -1,13 +1,12 @@
-import recovar.config
 import logging
 import numpy as np
 from recovar import output as o
-from recovar import dataset, utils, latent_density, embedding
-from scipy.spatial import distance_matrix
-import pickle
-import os, argparse
+from recovar import dataset, embedding
+import os
+import argparse
 
 logger = logging.getLogger(__name__)
+from cryodrgn import analysis
 
 
 def add_args(parser: argparse.ArgumentParser):
@@ -26,12 +25,6 @@ def add_args(parser: argparse.ArgumentParser):
         help="Output directory to save model",
     )
 
-    # parser.add_argument(
-    #     "--latent-points", type=os.path.abspath,
-    #     required=True,
-    #     help="path to latent points (.txt file)",
-    # )
-
     parser.add_argument("--Bfactor", type=float, default=0, help="0")
 
     parser.add_argument(
@@ -46,10 +39,7 @@ def add_args(parser: argparse.ArgumentParser):
         "--zdim", type=int, default=20, help="z dim of the latent space"
     )
     parser.add_argument(
-        "--num-imgs", type=int, default=1000, help="z dim of the latent space"
-    )
-    parser.add_argument(
-        "--vol-num", default=0, type=int, help="n-th vol to reconstruct"
+        "--num-vols", default=100, type=int, help="number of G.T Volumes"
     )
 
     return parser
@@ -58,20 +48,7 @@ def add_args(parser: argparse.ArgumentParser):
 def compute_state(args):
 
     po = o.PipelineOutput(args.result_dir + "/")
-    # target_zs = np.loadtxt(args.latent_points)
     output_folder = args.outdir
-
-    # if args.zdim1:
-    #     zdim =1
-    #     target_zs = target_zs[:,None]
-    # else:
-    #     zdim = target_zs.shape[-1]
-    #     if target_zs.ndim ==1:
-    #         logger.warning("Did you mean to use --zdim1?")
-    #         target_zs = target_zs[None]
-
-    # if zdim not in po.get('zs'):
-    #     logger.error("z-dim not found in results. Options are:" + ','.join(str(e) for e in po.get('zs').keys()))
     cryos = po.get("dataset")
     embedding.set_contrasts_in_cryos(cryos, po.get("contrasts")[args.zdim])
     zs = po.get("zs")[args.zdim]
@@ -79,10 +56,48 @@ def compute_state(args):
     noise_variance = po.get("noise_var_used")
     n_bins = args.n_bins
     zs_reordered = dataset.reorder_to_original_indexing(zs, cryos)
-    z = zs_reordered[args.vol_num * args.num_imgs : (args.vol_num + 1) * args.num_imgs]
-    # target_zs = z.mean(axis=0)
-    target_zs = np.median(z, axis=0)
-    target_zs = target_zs.reshape(1, -1)
+
+    num_imgs = [
+        9076,
+        14378,
+        23547,
+        44366,
+        30647,
+        38500,
+        3915,
+        3980,
+        12740,
+        11975,
+        17988,
+        5001,
+        35367,
+        37448,
+        40540,
+        5772,
+    ]
+
+    z_lst = []
+    z_mean_lst = []
+    for i in range(args.num_vols):
+        z_nth = zs_reordered[sum(num_imgs[:i]) : sum(num_imgs[: i + 1])]
+        z_nth_avg = z_nth.mean(axis=0)
+        z_nth_avg = z_nth_avg.reshape(1, -1)
+        z_lst.append(z_nth)
+        z_mean_lst.append(z_nth_avg)
+    nearest_z_lst = []
+    centers_ind_lst = []
+
+    num_img_for_centers = 0
+    for i in range(args.num_vols):
+        nearest_z, centers_ind = analysis.get_nearest_point(z_lst[i], z_mean_lst[i])
+        nearest_z_lst.append(nearest_z.reshape(nearest_z.shape[-1]))
+        centers_ind_lst.append(centers_ind + num_img_for_centers)
+        num_img_for_centers += num_imgs[i]
+    centers_ind_array = np.array(centers_ind_lst)
+    target_zs = zs_reordered[centers_ind_array].reshape(
+        len(centers_ind_array), zs_reordered.shape[-1]
+    )
+
     o.mkdir_safe(output_folder)
     logger.addHandler(logging.FileHandler(f"{output_folder}/run.log"))
     logger.info(args)

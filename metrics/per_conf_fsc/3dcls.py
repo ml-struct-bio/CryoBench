@@ -1,6 +1,7 @@
 import argparse
-import numpy as np
 import os
+import json
+import numpy as np
 from glob import glob
 import logging
 import utils
@@ -15,10 +16,33 @@ def add_args(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
     return parser
 
 
-def main(args):
+def main(args: argparse.Namespace) -> None:
+    cfg_file = os.path.join(args.input_dir, "job.json")
+    if not os.path.exists(cfg_file):
+        raise ValueError(
+            f"Could not find cryoSPARC job info file `job.json` in given folder "
+            f"{args.input_dir=} — did a cryoSPARC job use this as the output path?"
+        )
+    with open(cfg_file) as f:
+        configs = json.load(f)
+
+    import pdb
+
+    pdb.set_trace()
+
+    if configs["type"] == "class_3D":
+        sparc_method = "3dcls_fixed"
+    elif configs["type"] == "homo_abinit":
+        sparc_method = "3dcls_abinit"
+    else:
+        raise ValueError(
+            f"Unrecognized cryoSPARC job type `{configs['type']}` "
+            f"not in {{'class_3D', 'homo_abinit'}}"
+        )
+
     if args.method is None:
-        logger.info('No method label specified, using "3Dcls" as default...')
-        method_lbl = "3Dcls"
+        logger.info(f"No method label specified, using '{sparc_method}' as default...")
+        method_lbl = str(sparc_method)
     else:
         method_lbl = str(args.method)
 

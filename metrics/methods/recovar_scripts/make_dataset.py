@@ -1,20 +1,11 @@
-# import recovar.config
 from importlib import reload
 import numpy as np
-from cryodrgn import analysis
-from cryodrgn import utils
-from cryodrgn import ctf
-from recovar import plot_utils
-from recovar import output, dataset
-import matplotlib.pyplot as plt
-import seaborn as sns
-import plotly.graph_objs as go
-import plotly.offline as py
+from scipy.stats import norm
+from recovar import output
 from recovar import simulator
 
 reload(simulator)
-import jax
-import warnings
+
 
 # warnings.filterwarnings("error")
 grid_size = 128
@@ -32,10 +23,7 @@ for log_n in [6]:
     first_k = 300
     volume_distribution[:first_k] = 1 / first_k
 
-    ## Triple bump
-    import numpy as np
-    from scipy.stats import norm
-
+    # Triple bump
     grid = np.linspace(0, 1, 300)
     means = [0.25, 0.5, 0.75]
     std_used = 0.05

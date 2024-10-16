@@ -1,3 +1,5 @@
+"""Utility functions used across pipelines for calculating FSCs across conformations."""
+
 import os
 import re
 from glob import glob
@@ -19,11 +21,12 @@ def get_fsc_cutoff(fsc_curve: pd.DataFrame, t: float) -> float:
     return fsc_curve.pixres[fsc_indx[0]] ** -1 if len(fsc_indx) > 0 else 2.0
 
 
-def numfile_sort(s):
-    # Convert the string to a list of text and numbers
-    parts = re.split("([0-9]+)", s)
+def numfile_sortkey(s):
+    """Get the numeric part of a filepath that contains an integer in the file name."""
 
-    # Convert numeric parts to integers for proper numeric comparison
+    # Split the filepath according to before, after, and the numeric part itself, and
+    # then convert the numeric part to an integer object for proper numeric comparison
+    parts = re.split("([0-9]+)", s)
     parts[1::2] = map(int, parts[1::2])
 
     return parts
@@ -33,7 +36,7 @@ def get_nearest_z_array(zmat: np.ndarray, num_vols: int, num_imgs: int) -> np.nd
     z_lst = []
     z_mean_lst = []
     for i in range(num_vols):
-        z_nth = zmat[i * num_imgs : (i + 1) * num_imgs]
+        z_nth = zmat[(i * num_imgs) : ((i + 1) * num_imgs)]
         z_nth_avg = z_nth.mean(axis=0)
         z_nth_avg = z_nth_avg.reshape(1, -1)
         z_lst.append(z_nth)
@@ -82,7 +85,7 @@ def get_fsc_curves(
     overwrite: bool = False,
     vol_fl_function: Callable[[int], str] = lambda i: f"vol_{i:03d}.mrc",
 ) -> None:
-    gt_volfiles = sorted(glob(os.path.join(gt_dir, "*.mrc")), key=numfile_sort)
+    gt_volfiles = sorted(glob(os.path.join(gt_dir, "*.mrc")), key=numfile_sortkey)
 
     if vol_dir is None:
         vol_dir = os.path.join(outdir, "vols")

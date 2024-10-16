@@ -20,7 +20,7 @@ def main():
 
     # If in the original indexing, things are sorted by the ground truth labels, and you want to sample every 100 in the ground truth label, then you can run this:
 
-    ### NOTE that since imports recovar and it is not pip installed, you should recovar this file to recovar folder to run it.
+    # NOTE that since imports recovar and it is not pip installed, you should recovar this file to recovar folder to run it.
 
     # from recovar import output, dataset
     # pipeline_output = output.PipelineOutput(recovar_result_dir + '/')

@@ -5,12 +5,11 @@ import re
 from glob import glob
 from collections.abc import Iterable
 import logging
-from typing import Optional, Callable
+from typing import Optional, Callable, Union
 import numpy as np
 import pandas as pd
 import torch
-from cryodrgn import analysis, mrcfile
-from cryodrgn.commands_utils.fsc import get_fsc_curve
+from cryodrgn import analysis, fft, mrc
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +53,7 @@ def get_nearest_z_array(zmat: np.ndarray, num_vols: int, num_imgs: int) -> np.nd
 
 def pad_mrc_vols(mrc_volfiles: Iterable[str], new_D: int) -> None:
     for mrc_file in mrc_volfiles:
-        v, header = mrcfile.parse_mrc(mrc_file)
+        v, header = mrc.parse_mrc(mrc_file)
         x, y, z = v.shape
         assert new_D >= x
         assert new_D >= y
@@ -73,7 +72,64 @@ def pad_mrc_vols(mrc_volfiles: Iterable[str], new_D: int) -> None:
         yorg -= apix * j
         zorg -= apix * i
 
-        mrcfile.write_mrc(mrc_file, new)
+        mrc.write(mrc_file, new, header)
+
+
+# These functions for calculating FSCs were originally copied from cryoDRGN v3.4.1
+# CryoBench methods depend on older versions of cryoDRGN that don't have these methods!
+
+
+def get_fftn_center_dists(box_size: int) -> np.array:
+    """Get distances from the center (and hence the resolution) for FFT co-ordinates."""
+
+    x = np.arange(-box_size // 2, box_size // 2)
+    x2, x1, x0 = np.meshgrid(x, x, x, indexing="ij")
+    coords = np.stack((x0, x1, x2), -1)
+    dists = (coords**2).sum(-1) ** 0.5
+    assert dists[box_size // 2, box_size // 2, box_size // 2] == 0.0
+
+    return dists
+
+
+def calculate_fsc(
+    v1: Union[np.ndarray, torch.Tensor], v2: Union[np.ndarray, torch.Tensor]
+) -> float:
+    """Calculate the Fourier Shell Correlation between two complex vectors."""
+    var = (np.vdot(v1, v1) * np.vdot(v2, v2)) ** 0.5
+
+    return float((np.vdot(v1, v2) / var).real) if var else 1.0
+
+
+def get_fsc_curve(
+    vol1: torch.Tensor,
+    vol2: torch.Tensor,
+    mask_file: Optional[str] = None,
+) -> pd.DataFrame:
+    """Calculate the FSCs between two volumes across all available resolutions."""
+
+    maskvol = None
+    if mask_file is not None:
+        maskvol = torch.tensor(mrc.parse_mrc(mask_file)[0])
+
+    # Apply the given mask before applying the Fourier transform
+    maskvol1 = vol1 * maskvol if maskvol is not None else vol1.clone()
+    maskvol2 = vol2 * maskvol if maskvol is not None else vol2.clone()
+    box_size = vol1.shape[0]
+    dists = get_fftn_center_dists(box_size)
+    maskvol1 = fft.fftn_center(maskvol1)
+    maskvol2 = fft.fftn_center(maskvol2)
+
+    prev_mask = np.zeros((box_size, box_size, box_size), dtype=bool)
+    fsc = [1.0]
+    for i in range(1, box_size // 2):
+        mask = dists < i
+        shell = np.where(mask & np.logical_not(prev_mask))
+        fsc.append(calculate_fsc(maskvol1[shell], maskvol2[shell]))
+        prev_mask = mask
+
+    return pd.DataFrame(
+        dict(pixres=np.arange(box_size // 2) / box_size, fsc=fsc), dtype=float
+    )
 
 
 def get_fsc_curves(
@@ -85,8 +141,9 @@ def get_fsc_curves(
     overwrite: bool = False,
     vol_fl_function: Callable[[int], str] = lambda i: f"vol_{i:03d}.mrc",
 ) -> None:
-    gt_volfiles = sorted(glob(os.path.join(gt_dir, "*.mrc")), key=numfile_sortkey)
+    """Calculate FSC curves across conformations compared to ground truth volumes."""
 
+    gt_volfiles = sorted(glob(os.path.join(gt_dir, "*.mrc")), key=numfile_sortkey)
     if vol_dir is None:
         vol_dir = os.path.join(outdir, "vols")
 
@@ -100,17 +157,18 @@ def get_fsc_curves(
 
         out_fsc = os.path.join(outdir, outlbl, f"{ii}.txt")
         vol_file = os.path.join(vol_dir, vol_fl_function(ii))
-        vol1 = torch.tensor(mrcfile.parse_mrc(gt_volfile)[0])
-        vol2 = torch.tensor(mrcfile.parse_mrc(vol_file)[0])
-        maskvol = None
-        if mask_file is not None:
-            maskvol = torch.tensor(mrcfile.parse_mrc(mask_file)[0])
+        vol1 = torch.tensor(mrc.parse_mrc(gt_volfile)[0])
+        vol2 = torch.tensor(mrc.parse_mrc(vol_file)[0])
 
         if os.path.exists(out_fsc) and not overwrite:
-            logger.info("FSC exists, loading from file...")
+            if ii % 20 == 0:
+                logger.info(f"FSC {ii} exists, loading from file...")
             fsc_curves[ii] = pd.read_csv(out_fsc, sep=" ")
         else:
-            fsc_curves[ii] = get_fsc_curve(vol1, vol2, maskvol, out_file=out_fsc)
+            fsc_curves[ii] = get_fsc_curve(vol1, vol2, mask_file)
+            if ii % 20 == 0:
+                logger.info(f"Saving FSC {ii} values to {out_fsc}")
+            fsc_curves[ii].to_csv(out_fsc, sep=" ", header=True, index=False)
 
     # Summary statistics
     fsc143 = [get_fsc_cutoff(x, 0.143) for x in fsc_curves.values()]

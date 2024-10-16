@@ -1,0 +1,9 @@
+[submodule "metrics/methods/recovar"]
+	path = metrics/methods/recovar
+	url = git@github.com:ma-gilles/recovar.git
+[submodule "metrics/methods/opusDSD"]
+	path = metrics/methods/opusDSD
+	url = git@github.com:alncat/opusDSD.git
+[submodule "metrics/methods/drgnai"]
+	path = metrics/methods/drgnai
+	url = git@github.com:ml-struct-bio/drgnai.git

@@ -9,7 +9,13 @@ def add_calc_args() -> argparse.ArgumentParser:
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("input_dir", help="dir contains weights, config, z")
-    parser.add_argument("-o", help="Output directory")
+    parser.add_argument(
+        "-o",
+        "--outdir",
+        default="output_fsc",
+        type=os.path.abspath,
+        help="Output directory",
+    )
     parser.add_argument(
         "--epoch", default=19, type=int, help="Number of training epochs"
     )

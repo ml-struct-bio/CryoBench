@@ -7,10 +7,26 @@ import utils
 import numpy as np
 from cryodrgn import analysis
 
-sys.path.append(os.path.join("methods", "recovar"))
-import recovar
+sys.path.append(
+    os.path.join(os.path.dirname(os.path.dirname(__file__)), "methods", "recovar")
+)
+from recovar import dataset, embedding, output
 
 logger = logging.getLogger(__name__)
+
+
+def add_args(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
+    parser.add_argument("--zdim", default=10, type=int)
+    parser.add_argument(
+        "--n-bins",
+        type=float,
+        default=50,
+        dest="n_bins",
+        help="number of bins for reweighting",
+    )
+    parser.add_argument("--Bfactor", type=float, default=0, help="0")
+
+    return parser
 
 
 def main(args: argparse.Namespace) -> None:
@@ -20,35 +36,30 @@ def main(args: argparse.Namespace) -> None:
     else:
         method_lbl = str(args.method)
 
-    pipeline_output = recovar.output.PipelineOutput(args.input_dir)
+    pipeline_output = output.PipelineOutput(args.input_dir)
     cryos = pipeline_output.get("lazy_dataset")
     zs = pipeline_output.get("zs")[args.zdim]
-    zs_reordered = recovar.dataset.reorder_to_original_indexing(zs, cryos)
+    zs_reordered = dataset.reorder_to_original_indexing(zs, cryos)
 
-    latent_path = os.path.join(args.recovar_result_dir, "reordered_z.npy")
-    umap_path = os.path.join(args.recovar_result_dir, "reordered_z_umap.npy")
+    latent_path = os.path.join(args.input_dir, "reordered_z.npy")
+    umap_path = os.path.join(args.input_dir, "reordered_z_umap.npy")
     if os.path.exists(latent_path) and not args.overwrite:
-        print("latent exists, skipping...")
+        logger.info("latent coordinates file already exists, skipping...")
     else:
         np.save(latent_path, zs_reordered)
 
     if os.path.exists(umap_path) and not args.overwrite:
-        print("latent exists, skipping...")
+        logger.info("latent UMAP clustering already exists, skipping...")
     else:
         umap_pkl = analysis.run_umap(zs_reordered)
         np.save(umap_path, umap_pkl)
 
-    output_folder = args.outdir
-
     cryos = pipeline_output.get("dataset")
-    recovar.embedding.set_contrasts_in_cryos(
-        cryos, pipeline_output.get("contrasts")[args.zdim]
-    )
+    embedding.set_contrasts_in_cryos(cryos, pipeline_output.get("contrasts")[args.zdim])
     zs = pipeline_output.get("zs")[args.zdim]
     cov_zs = pipeline_output.get("cov_zs")[args.zdim]
     noise_variance = pipeline_output.get("noise_var_used")
-    n_bins = args.n_bins
-    zs_reordered = recovar.dataset.reorder_to_original_indexing(zs, cryos)
+    zs_reordered = dataset.reorder_to_original_indexing(zs, cryos)
 
     z_lst = []
     z_mean_lst = []
@@ -66,21 +77,21 @@ def main(args: argparse.Namespace) -> None:
         centers_ind_lst.append(centers_ind)
     target_zs = np.array(nearest_z_lst)
 
-    recovar.output.mkdir_safe(output_folder)
-    logger.addHandler(logging.FileHandler(f"{output_folder}/run.log"))
+    output.mkdir_safe(args.outdir)
+    logger.addHandler(logging.FileHandler(os.path.join(args.outdir, "run.log")))
     logger.info(args)
-    recovar.output.compute_and_save_reweighted(
+
+    output.compute_and_save_reweighted(
         cryos,
         target_zs,
         zs,
         cov_zs,
         noise_variance,
-        output_folder,
+        args.outdir,
         args.Bfactor,
-        n_bins,
+        args.n_bins,
     )
-
-    outdir = str(os.path.join(args.o, method_lbl, "per_conf_fsc"))
+    outdir = str(os.path.join(args.outdir, method_lbl, "per_conf_fsc"))
     logger.info(f"Putting output under: {outdir} ...")
 
     if args.calc_fsc_vals:
@@ -99,4 +110,4 @@ def main(args: argparse.Namespace) -> None:
 
 
 if __name__ == "__main__":
-    main(interface.add_calc_args().parse_args())
+    main(add_args(interface.add_calc_args()).parse_args())

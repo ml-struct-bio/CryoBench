@@ -1,3 +1,20 @@
+"""Calculate FSCs between conformations matched across opusDSD model latent spaces.
+
+See github.com/alncat/opusDSD for the source code for this method, and
+www.nature.com/articles/s41592-023-02031-6 for its publication.
+
+Example usage
+-------------
+$ python metrics/per_conf_fsc/opusdsd.py results/opusdsd \
+            --epoch 19 --Apix 3.0 -o output --gt-dir ./gt_vols --mask ./mask.mrc \
+            --num-imgs 1000 --num-vols 100
+
+# We sometimes need to pad the opusDSD volumes to a larger box size
+$ python metrics/per_conf_fsc/opusdsd.py results/opusdsd \
+            --epoch 19 --Apix 3.0 -o output --gt-dir ./gt_vols --mask ./mask.mrc \
+            --num-imgs 1000 --num-vols 100 -D 256
+
+"""
 import argparse
 import os
 import subprocess
@@ -53,10 +70,9 @@ def main(args: argparse.Namespace) -> None:
 
     out_zfile = os.path.join(outdir, "zfile.txt")
     logger.info(out_zfile)
-    cmd = f"CUDA_VISIBLE_DEVICES={args.cuda_device}; pip uninstall -y cryodrgn; "
+    cmd = f"CUDA_VISIBLE_DEVICES={args.cuda_device}; "
     cmd += f"dsd eval_vol --load {weights} -c {config} --zfile {out_zfile} "
     cmd += f"-o {os.path.join(outdir, 'vols')} --Apix {args.Apix}; "
-    cmd += "pip install cryodrgn; "
 
     logger.info(cmd)
     if os.path.exists(out_zfile) and not args.overwrite:
@@ -69,17 +85,13 @@ def main(args: argparse.Namespace) -> None:
     utils.pad_mrc_vols(sorted(glob(os.path.join(outdir, "vols", "*.mrc"))), args.D)
 
     if args.calc_fsc_vals:
-
-        def vol_fl_function(i: int):
-            return f"reference{i}.mrc"
-
         utils.get_fsc_curves(
             outdir,
             args.gt_dir,
             mask_file=args.mask,
             fast=args.fast,
             overwrite=args.overwrite,
-            vol_fl_function=vol_fl_function,
+            vol_fl_function=lambda i: f"reference{i}.mrc",
         )
 
 

@@ -26,10 +26,6 @@ def main(args: argparse.Namespace) -> None:
     with open(cfg_file) as f:
         configs = json.load(f)
 
-    import pdb
-
-    pdb.set_trace()
-
     if configs["type"] == "class_3D":
         sparc_method = "3dcls_fixed"
     elif configs["type"] == "homo_abinit":

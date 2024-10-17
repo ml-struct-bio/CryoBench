@@ -33,12 +33,6 @@ def add_calc_args() -> argparse.ArgumentParser:
         help="Number of images per model (structure)",
     )
     parser.add_argument(
-        "--method",
-        type=str,
-        default=None,
-        help="override auto label for type of method, used for output subfolder",
-    )
-    parser.add_argument(
         "--mask",
         default=None,
         type=os.path.abspath,

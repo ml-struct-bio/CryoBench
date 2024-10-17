@@ -3,37 +3,38 @@
 Example usage
 -------------
 $ python metrics/per_conf_fsc/drgnai.py results/drgnai_fixed \
-            --epoch 19 --Apix 3.0 -o output --gt-dir ./gt_vols --mask ./mask.mrc \
-            --num-imgs 1000 --num-vols 100
+            --epoch 19 --Apix 3.0 -o output/drgnai_fixed --gt-dir ./gt_vols \
+            --mask ./mask.mrc --num-imgs 1000 --num-vols 100
 
 """
 import argparse
 import os
-import subprocess
 import logging
 import numpy as np
+import torch
 import interface
 import utils
 import cryodrgn.utils
+from cryodrgnai.analyze import VolumeGenerator
+from cryodrgnai.lattice import Lattice
+from cryodrgnai import models
 
 logger = logging.getLogger(__name__)
 
 
 def main(args: argparse.Namespace) -> None:
-    cfg_file = os.path.join(args.input_dir, "out", "config.pkl")
+    cfg_file = os.path.join(args.input_dir, "out", "drgnai-configs.yaml")
     if not os.path.exists(cfg_file):
         raise ValueError(
-            f"Could not find cryoDRGN configuration parameter file 'out/config.pkl' "
+            f"Could not find DRGN-AI configuration parameter file 'out/config.pkl' "
             f"in given folder {args.input_dir=} — is this a DRGN-AI output folder?"
         )
-    configs = cryodrgn.utils.load_pkl(cfg_file)
-
-    if args.method is None:
-        method_lbl = f"drgnai_{configs['cmd'][1]}"
-        logger.info(f"No method label specified, using '{method_lbl}' as default...")
-    else:
-        method_lbl = str(args.method)
-
+    weights_fl = os.path.join(args.input_dir, "out", f"weights.{args.epoch}.pkl")
+    if not os.path.exists(weights_fl):
+        raise ValueError(
+            f"Could not find DRGN-AI model weights for epoch {args.epoch} "
+            f"in output folder {args.input_dir=} — did the model finishing running?"
+        )
     z_path = os.path.join(args.input_dir, "out", f"conf.{args.epoch}.pkl")
     if not os.path.exists(z_path):
         raise ValueError(
@@ -41,32 +42,51 @@ def main(args: argparse.Namespace) -> None:
             f"in output folder {args.input_dir=} — did model finishing running?"
         )
 
-    outdir = str(os.path.join(args.o, method_lbl, "per_conf_fsc"))
-    os.makedirs(os.path.join(outdir, "vols"), exist_ok=True)
-    logger.info(f"Putting output under: {outdir} ...")
+    voldir = os.path.join(args.outdir, "vols")
+    os.makedirs(voldir, exist_ok=True)
+    logger.info(f"Putting output under: {args.outdir} ...")
     z = cryodrgn.utils.load_pkl(z_path)
-    gt = np.repeat(np.arange(0, args.num_vols), args.num_imgs)
-    assert len(gt) == len(z)
-    nearest_z_array = utils.get_nearest_z_array(z, args.num_vols, args.num_imgs)
+    num_imgs = int(args.num_imgs) if z.shape[0] == 100000 else "ribo"
+    nearest_z_array = utils.get_nearest_z_array(z, args.num_vols, num_imgs)
 
-    out_zfile = os.path.join(outdir, "zfile.txt")
+    configs = cryodrgn.utils.load_yaml(cfg_file)
+    checkpoint = torch.load(weights_fl)
+    hypervolume_params = checkpoint["hypervolume_params"]
+    hypervolume = models.HyperVolume(**hypervolume_params)
+    hypervolume.load_state_dict(checkpoint["hypervolume_state_dict"])
+    hypervolume.eval()
+    hypervolume.to(args.cuda_device)
+
+    lattice = Lattice(
+        checkpoint["hypervolume_params"]["resolution"],
+        extent=0.5,
+        device=args.cuda_device,
+    )
+    z_dim = checkpoint["hypervolume_params"]["z_dim"]
+    radius_mask = (
+        checkpoint["output_mask_radius"] if "output_mask_radius" in checkpoint else None
+    )
+    vol_generator = VolumeGenerator(
+        hypervolume,
+        lattice,
+        z_dim,
+        True,
+        radius_mask,
+        data_norm=(configs["data_norm_mean"], configs["data_norm_std"]),
+    )
+
+    out_zfile = os.path.join(args.outdir, "zfile.txt")
     logger.info(out_zfile)
-    cmd = f"CUDA_VISIBLE_DEVICES={args.cuda_device}; "
-    cmd += f"drgnai analyze {args.input_dir} --volume-metrics "
-    cmd += f"--z-values-txt {out_zfile} --epoch {args.epoch} "
-    cmd += f"-o {os.path.join(outdir, 'vols')} --Apix {args.Apix} "
-
-    logger.info(cmd)
     if os.path.exists(out_zfile) and not args.overwrite:
         logger.info("Z file exists, skipping...")
     else:
         if not args.dry_run:
             np.savetxt(out_zfile, nearest_z_array)
-            subprocess.check_call(cmd, shell=True)
+            vol_generator.gen_volumes(voldir, nearest_z_array)
 
     if args.calc_fsc_vals:
         utils.get_fsc_curves(
-            outdir,
+            args.outdir,
             args.gt_dir,
             mask_file=args.mask,
             fast=args.fast,

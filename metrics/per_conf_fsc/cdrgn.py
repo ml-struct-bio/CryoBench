@@ -20,18 +20,20 @@ logger = logging.getLogger(__name__)
 
 
 def main(args: argparse.Namespace) -> None:
+    cfg_file = os.path.join(args.input_dir, "config.yaml")
+    if not os.path.exists(cfg_file):
+        raise ValueError(
+            f"Could not find cryoDRGN config file {cfg_file} "
+            f"— is {args.input_dir=} a folder cryoDRGN output folder?"
+        )
+    configs = cryodrgn.utils.load_yaml(cfg_file)
+
     if args.method is None:
-        logger.info('No method label specified, using "cryodrgn" as default...')
-        method_lbl = "cryodrgn"
+        method_lbl = f"cryodrgn_{configs['cmd'][1]}"
+        logger.info(f"No method label specified, using '{method_lbl}' as default...")
     else:
         method_lbl = str(args.method)
 
-    config = os.path.join(args.input_dir, "config.yaml")
-    if not os.path.exists(config):
-        raise ValueError(
-            f"Could not find cryoDRGN config file {config} "
-            f"— is {args.input_dir=} a folder cryoDRGN output folder?"
-        )
     weights = os.path.join(args.input_dir, f"weights.{args.epoch}.pkl")
     if not os.path.exists(weights):
         raise ValueError(
@@ -45,20 +47,21 @@ def main(args: argparse.Namespace) -> None:
             f"in output folder {args.input_dir=} — did model finishing running?"
         )
 
-    outdir = str(os.path.join(args.o, method_lbl, "per_conf_fsc"))
+    outdir = str(os.path.join(args.outdir, method_lbl, "per_conf_fsc"))
+    os.makedirs(os.path.join(outdir, "vols"), exist_ok=True)
     logger.info(f"Putting output under: {outdir} ...")
     z = cryodrgn.utils.load_pkl(z_path)
     gt = np.repeat(np.arange(0, args.num_vols), args.num_imgs)
     assert len(gt) == len(z)
-    os.makedirs(os.path.join(outdir, "vols"), exist_ok=True)
     nearest_z_array = utils.get_nearest_z_array(z, args.num_vols, args.num_imgs)
 
     # Generate cdrgn volumes
     out_zfile = os.path.join(outdir, "zfile.txt")
     logger.info(out_zfile)
-    cmd = "CUDA_VISIBLE_DEVICES={} cryodrgn eval_vol {} -c {} --zfile {} -o {}/{}/per_conf_fsc/vols --Apix {}".format(
-        args.cuda_device, weights, config, out_zfile, args.o, method_lbl, args.Apix
-    )
+    cmd = f"CUDA_VISIBLE_DEVICES={args.cuda_device}; "
+    cmd += f"cryodrgn eval_vol {weights} -c {cfg_file} --zfile {out_zfile} "
+    cmd += f"-o {os.path.join(outdir, 'vols')} --Apix {args.Apix} "
+
     logger.info(cmd)
     if os.path.exists(out_zfile) and not args.overwrite:
         logger.info("Z file exists, skipping...")

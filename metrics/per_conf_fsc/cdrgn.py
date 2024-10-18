@@ -20,47 +20,39 @@ logger = logging.getLogger(__name__)
 
 
 def main(args: argparse.Namespace) -> None:
+    """Running the script to get FSCs across conformations produced by cryoDRGN."""
+
     cfg_file = os.path.join(args.input_dir, "config.yaml")
     if not os.path.exists(cfg_file):
         raise ValueError(
             f"Could not find cryoDRGN config file {cfg_file} "
             f"— is {args.input_dir=} a folder cryoDRGN output folder?"
         )
-    configs = cryodrgn.utils.load_yaml(cfg_file)
-
-    if args.method is None:
-        method_lbl = f"cryodrgn_{configs['cmd'][1]}"
-        logger.info(f"No method label specified, using '{method_lbl}' as default...")
-    else:
-        method_lbl = str(args.method)
-
-    weights = os.path.join(args.input_dir, f"weights.{args.epoch}.pkl")
-    if not os.path.exists(weights):
+    weights_fl = os.path.join(args.input_dir, f"weights.{args.epoch}.pkl")
+    if not os.path.exists(weights_fl):
         raise ValueError(
             f"Could not find cryoDRGN model weights for epoch {args.epoch} "
-            f"in output folder {args.input_dir=} — did model finishing running?"
+            f"in output folder {args.input_dir=} — did the model finishing running?"
         )
     z_path = os.path.join(args.input_dir, f"z.{args.epoch}.pkl")
     if not os.path.exists(z_path):
         raise ValueError(
             f"Could not find cryoDRGN latent space coordinates for epoch {args.epoch} "
-            f"in output folder {args.input_dir=} — did model finishing running?"
+            f"in output folder {args.input_dir=} — did the model finishing running?"
         )
 
-    outdir = str(os.path.join(args.outdir, method_lbl, "per_conf_fsc"))
-    os.makedirs(os.path.join(outdir, "vols"), exist_ok=True)
-    logger.info(f"Putting output under: {outdir} ...")
+    logger.info(f"Putting output under: {args.outdir} ...")
+    voldir = os.path.join(args.outdir, "vols")
+    os.makedirs(voldir, exist_ok=True)
     z = cryodrgn.utils.load_pkl(z_path)
-    gt = np.repeat(np.arange(0, args.num_vols), args.num_imgs)
-    assert len(gt) == len(z)
-    nearest_z_array = utils.get_nearest_z_array(z, args.num_vols, args.num_imgs)
+    num_imgs = int(args.num_imgs) if z.shape[0] == 100000 else "ribo"
+    nearest_z_array = utils.get_nearest_z_array(z, args.num_vols, num_imgs)
 
     # Generate cdrgn volumes
-    out_zfile = os.path.join(outdir, "zfile.txt")
+    out_zfile = os.path.join(args.outdir, "zfile.txt")
     logger.info(out_zfile)
-    cmd = f"CUDA_VISIBLE_DEVICES={args.cuda_device}; "
-    cmd += f"cryodrgn eval_vol {weights} -c {cfg_file} --zfile {out_zfile} "
-    cmd += f"-o {os.path.join(outdir, 'vols')} --Apix {args.Apix} "
+    cmd = f"CUDA_VISIBLE_DEVICES={args.cuda_device}; cryodrgn eval_vol {weights_fl} "
+    cmd += f"-c {cfg_file} --zfile {out_zfile} -o {voldir} --Apix {args.Apix} "
 
     logger.info(cmd)
     if os.path.exists(out_zfile) and not args.overwrite:
@@ -72,7 +64,7 @@ def main(args: argparse.Namespace) -> None:
 
     if args.calc_fsc_vals:
         utils.get_fsc_curves(
-            outdir,
+            args.outdir,
             args.gt_dir,
             mask_file=args.mask,
             fast=args.fast,

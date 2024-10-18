@@ -35,44 +35,47 @@ def add_args(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
 
 
 def main(args: argparse.Namespace) -> None:
-    if args.method is None:
-        logger.info('No method label specified, using "opusDSD" as default...')
-        method_lbl = "opusDSD"
-    else:
-        method_lbl = str(args.method)
+    """Running the script to get FSCs across conformations produced by opusDSD."""
 
-    config = os.path.join(args.input_dir, "config.pkl")
-    if not os.path.exists(config):
+    cfg_file = os.path.join(args.input_dir, "config.pkl")
+    if not os.path.exists(cfg_file):
         raise ValueError(
-            f"Could not find opusDSD config file {config} "
+            f"Could not find opusDSD config file {cfg_file} "
             f"— is {args.input_dir=} a folder opusDSD output folder?"
         )
-    weights = os.path.join(args.input_dir, f"weights.{args.epoch}.pkl")
-    if not os.path.exists(weights):
+    weights_fl = os.path.join(args.input_dir, f"weights.{args.epoch}.pkl")
+    if not os.path.exists(weights_fl):
         raise ValueError(
             f"Could not find opusDSD model weights for epoch {args.epoch} "
-            f"in output folder {args.input_dir=} — did model finishing running?"
+            f"in output folder {args.input_dir=} — did the model finishing running?"
         )
     z_path = os.path.join(args.input_dir, f"z.{args.epoch}.pkl")
     if not os.path.exists(z_path):
         raise ValueError(
             f"Could not find opusDSD latent space coordinates for epoch {args.epoch} "
-            f"in output folder {args.input_dir=} — did model finishing running?"
+            f"in output folder {args.input_dir=} — did the model finishing running?"
         )
 
-    outdir = str(os.path.join(args.o, method_lbl, "per_conf_fsc"))
-    logger.info(f"Putting output under: {outdir} ...")
+    logger.info(f"Putting output under: {args.outdir} ...")
+    voldir = os.path.join(args.outdir, "vols")
+    os.makedirs(voldir, exist_ok=True)
     z = torch.load(z_path)["mu"].cpu().numpy()
-    gt = np.repeat(np.arange(0, args.num_vols), args.num_imgs)
-    assert len(gt) == len(z)
-    os.makedirs(os.path.join(outdir, "vols"), exist_ok=True)
-    nearest_z_array = utils.get_nearest_z_array(z, args.num_vols, args.num_imgs)
+    num_imgs = int(args.num_imgs) if z.shape[0] == 100000 else "ribo"
+    nearest_z_array = utils.get_nearest_z_array(z, args.num_vols, num_imgs)
 
-    out_zfile = os.path.join(outdir, "zfile.txt")
+    eval_vol_cmd = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)),
+        "methods",
+        "opusDSD",
+        "cryodrgn",
+        "commands",
+        "eval_vol.py",
+    )
+    out_zfile = os.path.join(args.outdir, "zfile.txt")
     logger.info(out_zfile)
     cmd = f"CUDA_VISIBLE_DEVICES={args.cuda_device}; "
-    cmd += f"dsd eval_vol --load {weights} -c {config} --zfile {out_zfile} "
-    cmd += f"-o {os.path.join(outdir, 'vols')} --Apix {args.Apix}; "
+    cmd += f"python {eval_vol_cmd} --load {weights_fl} -c {cfg_file} "
+    cmd += f"--zfile {out_zfile} -o {voldir} --Apix {args.Apix}; "
 
     logger.info(cmd)
     if os.path.exists(out_zfile) and not args.overwrite:
@@ -82,11 +85,11 @@ def main(args: argparse.Namespace) -> None:
             np.savetxt(out_zfile, nearest_z_array)
             subprocess.check_call(cmd, shell=True)
 
-    utils.pad_mrc_vols(sorted(glob(os.path.join(outdir, "vols", "*.mrc"))), args.D)
+    utils.pad_mrc_vols(sorted(glob(os.path.join(voldir, "*.mrc"))), args.D)
 
     if args.calc_fsc_vals:
         utils.get_fsc_curves(
-            outdir,
+            args.outdir,
             args.gt_dir,
             mask_file=args.mask,
             fast=args.fast,

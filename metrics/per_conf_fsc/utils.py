@@ -107,7 +107,7 @@ def pad_mrc_vols(mrc_volfiles: Iterable[str], new_D: int) -> None:
         yorg -= apix * j
         zorg -= apix * i
 
-        mrc.write(mrc_file, new, header)
+        mrc.write(mrc_file, new, mrc.MRCHeader.make_default_header(new, Apix=apix))
 
 
 # These functions for calculating FSCs were originally copied from cryoDRGN v3.4.1

@@ -30,11 +30,7 @@ def add_args(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
 
 
 def main(args: argparse.Namespace) -> None:
-    if args.method is None:
-        logger.info('No method label specified, using "recovar" as default...')
-        method_lbl = "recovar"
-    else:
-        method_lbl = str(args.method)
+    """Running the script to get FSCs across conformations produced by RECOVAR."""
 
     pipeline_output = output.PipelineOutput(args.input_dir)
     cryos = pipeline_output.get("lazy_dataset")
@@ -63,16 +59,16 @@ def main(args: argparse.Namespace) -> None:
 
     z_lst = []
     z_mean_lst = []
-    for i in range(args.num_vols):
-        z_nth = zs_reordered[i * args.num_imgs : (i + 1) * args.num_imgs]
+    for ii in range(args.num_vols):
+        z_nth = zs_reordered[ii * args.num_imgs : (ii + 1) * args.num_imgs]
         z_nth_avg = z_nth.mean(axis=0)
         z_nth_avg = z_nth_avg.reshape(1, -1)
         z_lst.append(z_nth)
         z_mean_lst.append(z_nth_avg)
     nearest_z_lst = []
     centers_ind_lst = []
-    for i in range(args.num_vols):
-        nearest_z, centers_ind = analysis.get_nearest_point(z_lst[i], z_mean_lst[i])
+    for ii in range(args.num_vols):
+        nearest_z, centers_ind = analysis.get_nearest_point(z_lst[ii], z_mean_lst[ii])
         nearest_z_lst.append(nearest_z.reshape(nearest_z.shape[-1]))
         centers_ind_lst.append(centers_ind)
     target_zs = np.array(nearest_z_lst)
@@ -91,21 +87,19 @@ def main(args: argparse.Namespace) -> None:
         args.Bfactor,
         args.n_bins,
     )
-    outdir = str(os.path.join(args.outdir, method_lbl, "per_conf_fsc"))
+    outdir = str(os.path.join(args.outdir, "per_conf_fsc"))
     logger.info(f"Putting output under: {outdir} ...")
 
     if args.calc_fsc_vals:
-
-        def vol_fl_function(i: int):
-            return os.path.join(format(i, "03d"), "ml_optimized_locres_filtered.mrc")
-
         utils.get_fsc_curves(
             outdir,
             args.gt_dir,
             mask_file=args.mask,
             fast=args.fast,
             overwrite=args.overwrite,
-            vol_fl_function=vol_fl_function,
+            vol_fl_function=lambda i: os.path.join(
+                format(i, "03d"), "ml_optimized_locres_filtered.mrc"
+            ),
         )
 
 

@@ -23,6 +23,8 @@ logger = logging.getLogger(__name__)
 
 
 def main(args: argparse.Namespace) -> None:
+    """Running the script to get FSCs across conformations produced by DRGN-AI."""
+
     cfg_file = os.path.join(args.input_dir, "out", "drgnai-configs.yaml")
     if not os.path.exists(cfg_file):
         raise ValueError(
@@ -39,12 +41,12 @@ def main(args: argparse.Namespace) -> None:
     if not os.path.exists(z_path):
         raise ValueError(
             f"Could not find drgnAI latent space coordinates for epoch {args.epoch} "
-            f"in output folder {args.input_dir=} — did model finishing running?"
+            f"in output folder {args.input_dir=} — did the model finishing running?"
         )
 
+    logger.info(f"Putting output under: {args.outdir} ...")
     voldir = os.path.join(args.outdir, "vols")
     os.makedirs(voldir, exist_ok=True)
-    logger.info(f"Putting output under: {args.outdir} ...")
     z = cryodrgn.utils.load_pkl(z_path)
     num_imgs = int(args.num_imgs) if z.shape[0] == 100000 else "ribo"
     nearest_z_array = utils.get_nearest_z_array(z, args.num_vols, num_imgs)

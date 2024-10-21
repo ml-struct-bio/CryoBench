@@ -1,21 +1,88 @@
-# Per Conformation FSC: Tools for computing per conformation FSC
+# Per Conformation FSC: Tools for comparing models' conformation volumes' similarity to ground truth volumes
+
+This folder contains scripts to calculate Fourier shell correlations between volumes at particular points in a given
+reconstruction method's latent conformation space, as well as to visualize these per conformation FSCs.
+
+We have included here example scripts to perform this analysis for cryoDRGN, DRGN-AI, opusDSD, RECOVAR, as well as four
+cryoSPARC reconstruction methods (3D Classification, Ab-Initio, 3D Variability, and 3D Flex). These are designed to be
+run on the output of these methods when applied to the example datasets found at:
+
 
 ## Installation instructions
-We recommend using `pip` or a conda environment to install the dependencies for calculating these metrics:
 
-### Dependencies
+We recommend using conda environments to install the dependencies for calculating these metrics.
+Shown below are instructions for creating environments that can also be used to run the reconstruction learning methods
+that create the input for the per conformation pipelines.
 
-* cryodrgn version >= 3.4.0
-* drgnai version >= 0.3.1
-
-### Installation using conda
+Start by cloning the CryoBench git repository; note that we also have to fetch the dependency codebases drgnai,
+opusDSD, and RECOVAR through their submodules:
 ```bash
-$ conda create --name cryoBench_env python=3.10
-$ conda activate cryoBench_env
-(cryoBench_env)$ pip install 'cryodrgn>=3.4.0'
+git clone --recurse-submodules git@github.com:ml-struct-bio/CryoBench.git --branch='refactor'
 ```
 
-### Example usage (CryoDRGN):
+We recommend creating a separate environment to install each tested method, as many of the methods have
+overlapping dependencies — especially cryoDRGN, which forms the basis for many of the methods and is also used by
+CryoBench in its own analyses. We install an older version of cryoDRGN that also necessitates specifying versions for
+cryoDRGN dependencies (`pip install 'torch<=2.4.0' 'numpy<1.27' 'matplotlib<3.7' 'cryodrgn<3'`).
+
+### cryoDRGN and cryoSPARC
+
+The simplest installation process is for testing cryoDRGN outputs; we can also use the same environment for testing
+cryoSPARC outputs which requires no additional dependencies:
+```bash
+conda create --name cryoDRGN_env python=3.10
+conda activate cryoDRGN_env
+pip install 'torch<=2.4.0' 'numpy<1.27' 'matplotlib<3.7' 'cryodrgn<3'
+```
+
+### DRGN-AI
+
+Here we have to additionally install DRGN-AI via GitHub using `pip`:
+```bash
+conda create --name drgnai_env python=3.10
+conda activate drgnai_env
+pip install git+https://github.com/ml-struct-bio/drgnai.git
+pip install 'torch<=2.4.0' 'numpy<1.27' 'matplotlib<3.7' 'cryodrgn<3'
+```
+
+### opusDSD
+
+For this package we have to use their custom dependency list, and to install the package from
+the clone repository using `pip install -e`:
+```bash
+conda env create --name opusdsd_env -f CryoBench/metrics/methods/opusDSD/environmentcu11torch11.yml
+conda activate opusdsd_env
+cd CryoBench/metrics/methods/opusDSD
+git checkout 1.0.0
+cd ../../../../
+pip install -e CryoBench/metrics/methods/opusDSD
+pip install 'torch<=2.4.0' 'numpy<1.27' 'matplotlib<3.7' 'cryodrgn<3'
+```
+
+### RECOVAR
+
+In the case of RECOVAR, we have to install a specific version of `jax` on top of their custom requirements list, along
+with setting some bash environment variables and creating a special `ipykernel` installation:
+```bash
+conda create --name recovar_env python=3.11
+conda activate recovar_env
+pip install -U "jax[cuda12_pip]"==0.4.23 -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+pip install --no-deps -r CryoBench/metrics/methods/recovar/recovar_install_requirements.txt
+python -m ipykernel install --user --name=recovar
+
+# can also be added to .bashrc
+export PATH=/usr/local/cuda-12.6/bin:$PATH
+export LD_LIBRARY_PATH=/usr/local/cuda-12.6/lib64:$LD_LIBRARY_PATH
+```
+
+
+## Example usage
+
+Here are some example commands used for each method to create model output, calculate FSCs against ground truth
+conformations, and visualize the results. Additional examples can be found in the documentation in each script.
+
+### cryoDRGN
+
 ```bash
   # Compute per conformation FSC
   (cryoBench_env)$ python metrics/per_conf_fsc/cdrgn.py results/cryodrgn --epoch 19 --Apix 3.0 -o output --method cryodrgn --gt-dir ./gt_vols --mask ./mask.mrc --num-imgs 1000 --num-vols 100

@@ -1,44 +1,26 @@
-"""Utility functions used across pipelines for calculating FSCs across conformations."""
+"""Utility functions used across pipelines for calculating FSCs across conformations.
 
+Many of these functions for calculating FSCs were originally copied from cryoDRGN v3.4.1
+CryoBench methods depend on older versions of cryoDRGN that don't have these methods!
+
+"""
 import os
+import subprocess
+import time
 import re
 from glob import glob
-from collections.abc import Iterable
 import logging
 from typing import Optional, Callable, Union
 import numpy as np
 import pandas as pd
 import torch
-from cryodrgn import analysis, fft, mrc
+from cryodrgn import fft, mrc
 
 logger = logging.getLogger(__name__)
 
 
-# Ribosembly number of images per Ribosembly structure (total 16 structures)
-RIBOSEMBLY_NUM_IMGS = [
-    9076,
-    14378,
-    23547,
-    44366,
-    30647,
-    38500,
-    3915,
-    3980,
-    12740,
-    11975,
-    17988,
-    5001,
-    35367,
-    37448,
-    40540,
-    5772,
-]
-
-
-def get_fsc_cutoff(fsc_curve: pd.DataFrame, t: float) -> float:
-    """Find the resolution at which the FSC curve first crosses a given threshold."""
-    fsc_indx = np.where(fsc_curve.fsc < t)[0]
-    return fsc_curve.pixres[fsc_indx[0]] ** -1 if len(fsc_indx) > 0 else 2.0
+chimerax_path = "/scratch/gpfs/ZHONGE/rraghu/chimerax-1.6.1/bin/ChimeraX"
+root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 def numfile_sortkey(s):
@@ -52,66 +34,52 @@ def numfile_sortkey(s):
     return parts
 
 
-def get_nearest_z_array(
-    zmat: np.ndarray, num_vols: int, num_imgs: Union[int, str]
-) -> np.ndarray:
-    z_lst = []
-    z_mean_lst = []
-    for i in range(num_vols):
-        if isinstance(num_imgs, int):
-            z_nth = zmat[(i * num_imgs) : ((i + 1) * num_imgs)]
-        elif num_imgs == "ribo":
-            z_nth = zmat[
-                sum(RIBOSEMBLY_NUM_IMGS[:i]) : sum(RIBOSEMBLY_NUM_IMGS[: (i + 1)])
-            ]
-        else:
-            raise ValueError(f"{num_imgs=}")
+def align_volumes_multi(vol_dir: str, gt_dir: str) -> None:
+    gt_vols = sorted(glob(os.path.join(gt_dir, "*.mrc")), key=numfile_sortkey)
+    matching_vols = sorted(glob(os.path.join(vol_dir, "*.mrc")), key=numfile_sortkey)
 
-        z_nth_avg = z_nth.mean(axis=0)
-        z_nth_avg = z_nth_avg.reshape(1, -1)
-        z_lst.append(z_nth)
-        z_mean_lst.append(z_nth_avg)
+    os.makedirs(os.path.join(vol_dir, "aligned"), exist_ok=True)
+    os.makedirs(os.path.join(vol_dir, "flipped_aligned"), exist_ok=True)
+    align_jobs = list()
 
-    nearest_z_lst = []
-    centers_ind_lst = []
-    num_img_for_centers = 0
-    for i in range(num_vols):
-        nearest_z, centers_ind = analysis.get_nearest_point(z_lst[i], z_mean_lst[i])
-        nearest_z_lst.append(nearest_z.reshape(nearest_z.shape[-1]))
-        centers_ind_lst.append(centers_ind + num_img_for_centers)
+    for i, file_path in enumerate(matching_vols):
+        base_filename = os.path.splitext(os.path.basename(file_path))[0]
+        new_filename = base_filename + ".mrc"
+        destination_path = os.path.join(vol_dir, "aligned", new_filename)
+        ref_path = gt_vols[i]
+        tmp_file = os.path.join(vol_dir, "aligned", f"temp_{i:03d}.txt")
 
-        if num_imgs == "ribo":
-            num_img_for_centers += RIBOSEMBLY_NUM_IMGS[i]
+        align_cmd = (
+            f"sbatch -t 10 -J align_{i} -o {tmp_file} --wrap='{chimerax_path} --nogui "
+            f"--script \" {os.path.join(root_dir, 'utils', 'align.py')} {ref_path} "
+            f"{os.path.join(vol_dir, new_filename)} -o {destination_path} "
+            f"-f {tmp_file} \" ' "
+        )
+        if i % 20 == 0:
+            print(align_cmd)
 
-    return np.array(nearest_z_lst)
+        align_out = subprocess.run(align_cmd, shell=True, capture_output=True)
+        assert align_out.stderr.decode("utf8") == "", align_out.stderr.decode("utf8")
+        align_out = align_out.stdout.decode("utf8")
+        align_jobs.append(align_out.strip().split("Submitted batch job ")[1])
 
-
-def pad_mrc_vols(mrc_volfiles: Iterable[str], new_D: int) -> None:
-    for mrc_file in mrc_volfiles:
-        v, header = mrc.parse_mrc(mrc_file)
-        x, y, z = v.shape
-        assert new_D >= x
-        assert new_D >= y
-        assert new_D >= z
-
-        new = np.zeros((new_D, new_D, new_D), dtype=np.float32)
-        i = (new_D - x) // 2
-        j = (new_D - y) // 2
-        k = (new_D - z) // 2
-        new[i : (i + x), j : (j + y), k : (k + z)] = v
-
-        # adjust origin
-        apix = header.get_apix()
-        xorg, yorg, zorg = header.get_origin()
-        xorg -= apix * k
-        yorg -= apix * j
-        zorg -= apix * i
-
-        mrc.write(mrc_file, new, mrc.MRCHeader.make_default_header(new, Apix=apix))
+    jobs_left = len(align_jobs)
+    while jobs_left > 0:
+        print(f"Waiting for {jobs_left} jobs to finish...")
+        time.sleep(30)
+        jobs_left = (
+            subprocess.run(
+                f"squeue -h -j {','.join(align_jobs)}", shell=True, capture_output=True
+            )
+            .stdout.decode("utf8")
+            .count("\n")
+        )
 
 
-# These functions for calculating FSCs were originally copied from cryoDRGN v3.4.1
-# CryoBench methods depend on older versions of cryoDRGN that don't have these methods!
+def get_fsc_cutoff(fsc_curve: pd.DataFrame, t: float) -> float:
+    """Find the resolution at which the FSC curve first crosses a given threshold."""
+    fsc_indx = np.where(fsc_curve.fsc < t)[0]
+    return fsc_curve.pixres[fsc_indx[0]] ** -1 if len(fsc_indx) > 0 else 2.0
 
 
 def get_fftn_center_dists(box_size: int) -> np.array:

@@ -6,14 +6,18 @@ $ python metrics/per_conf_fsc/cdrgn.py results/cryodrgn --epoch 19 --Apix 3.0 \
                                        -o output --gt-dir ./gt_vols --mask ./mask.mrc \
                                        --num-imgs 1000 --num-vols 100
 
+# Also align output volumes to grund truth volumes with ChimeraX before computing FSCs
+$ python metrics/per_conf_fsc/cdrgn.py results/cryodrgn --epoch 19 --Apix 3.0 \
+                                       -o output --gt-dir ./gt_vols --mask ./mask.mrc \
+                                       --num-imgs 1000 --num-vols 100
+
 """
 import argparse
 import os
 import subprocess
 import logging
 import numpy as np
-import interface
-import utils
+from utils import volumes, conformations, interface
 import cryodrgn.utils
 
 logger = logging.getLogger(__name__)
@@ -46,9 +50,9 @@ def main(args: argparse.Namespace) -> None:
     os.makedirs(voldir, exist_ok=True)
     z = cryodrgn.utils.load_pkl(z_path)
     num_imgs = int(args.num_imgs) if z.shape[0] == 100000 else "ribo"
-    nearest_z_array = utils.get_nearest_z_array(z, args.num_vols, num_imgs)
+    nearest_z_array = conformations.get_nearest_z_array(z, args.num_vols, num_imgs)
 
-    # Generate cdrgn volumes
+    # Generate volumes at these cryoDRGN latent space coordinates using the model tool
     out_zfile = os.path.join(args.outdir, "zfile.txt")
     logger.info(out_zfile)
     cmd = f"CUDA_VISIBLE_DEVICES={args.cuda_device}; cryodrgn eval_vol {weights_fl} "
@@ -62,14 +66,28 @@ def main(args: argparse.Namespace) -> None:
             np.savetxt(out_zfile, nearest_z_array)
             subprocess.check_call(cmd, shell=True)
 
+    # Align output conformation volumes to ground truth volumes using ChimeraX
+    if args.align_vols:
+        volumes.align_volumes_multi(voldir, args.gt_dir)
+
     if args.calc_fsc_vals:
-        utils.get_fsc_curves(
+        volumes.get_fsc_curves(
             args.outdir,
             args.gt_dir,
             mask_file=args.mask,
             fast=args.fast,
             overwrite=args.overwrite,
         )
+
+        if args.align_vols:
+            volumes.get_fsc_curves(
+                args.outdir,
+                args.gt_dir,
+                vol_dir=os.path.join(voldir, "aligned"),
+                mask_file=args.mask,
+                fast=args.fast,
+                overwrite=args.overwrite,
+            )
 
 
 if __name__ == "__main__":

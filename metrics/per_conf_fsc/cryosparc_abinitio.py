@@ -1,8 +1,8 @@
-"""Calculate FSCs between conformations matched across cryoSPARC 3D classifications.
+"""Calculate FSCs across cryoSPARC 3D Ab-Initio model conformations.
 
 Example usage
 -------------
-$ python metrics/per_conf_fsc/cryosparc_3dcls.py results/CS-cryobench/J5 \
+$ python metrics/per_conf_fsc/cryosparc_abinitio.py results/CS-cryobench/J5 \
             -o cBench/cBench-out_3Dcls/ --gt-dir vols/128_org/ --mask bproj_0.005.mrc \
             --num-classes 10
 
@@ -26,7 +26,7 @@ def add_args(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
 
 
 def main(args: argparse.Namespace) -> None:
-    """Running the script to get FSCs across conformations produced by cryoSPARC."""
+    """Script to get FSCs across conformations produced by cryoSPARC Ab-Initio."""
 
     cfg_file = os.path.join(args.input_dir, "job.json")
     if not os.path.exists(cfg_file):
@@ -37,10 +37,10 @@ def main(args: argparse.Namespace) -> None:
     with open(cfg_file) as f:
         configs = json.load(f)
 
-    if configs["type"] != "class_3D":
+    if configs["type"] != "homo_abinit":
         raise ValueError(
             f"Given folder {args.input_dir=} contains cryoSPARC job type "
-            f"`{configs['type']=}`; this script is for ab-initio jobs (`class_3D`)!"
+            f"`{configs['type']=}`; this script is for ab-initio jobs (`homo_abinit`)!"
         )
 
     outdir = str(os.path.join(args.outdir, "per_conf_fsc"))
@@ -57,7 +57,7 @@ def main(args: argparse.Namespace) -> None:
 
     lst = []
     for cls in range(args.num_classes):
-        class_fl = f"{csparc_job}_passthrough_particles_class_{cls}.cs"
+        class_fl = f"{csparc_job}_class_{cls:02d}_final_particles.cs"
         cs = np.load(os.path.join(args.input_dir, class_fl))
         cs_new = cs[:: args.num_imgs]
         print(f"class {cls}: {len(cs_new)}")
@@ -76,7 +76,7 @@ def main(args: argparse.Namespace) -> None:
             fast=args.fast,
             overwrite=args.overwrite,
             vol_fl_function=(
-                lambda i: f"{csparc_job}_class_{lst[i][0]:02d}_{csparc_num}_volume.mrc"
+                lambda i: f"{csparc_job}_class_{lst[i][0]:02d}_final_volume.mrc"
             ),
         )
 

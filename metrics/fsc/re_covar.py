@@ -2,8 +2,8 @@ import argparse
 import os
 import sys
 import logging
-import interface
-import utils
+from metrics.utils import utils
+from metrics.per_conf_fsc.utils import interface
 import numpy as np
 from cryodrgn import analysis
 

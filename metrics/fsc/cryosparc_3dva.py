@@ -10,9 +10,10 @@ import argparse
 import os
 import json
 import numpy as np
+from glob import glob
 import logging
-import utils
-import interface
+from metrics.utils import utils
+from metrics.fsc.utils import interface
 from cryodrgn import analysis, mrc
 
 logger = logging.getLogger(__name__)
@@ -30,70 +31,68 @@ def main(args: argparse.Namespace) -> None:
     with open(cfg_file) as f:
         configs = json.load(f)
 
-    if configs["type"] != "homo_abinit":
+    if configs["type"] != "var_3D":
         raise ValueError(
             f"Given folder {args.input_dir=} contains cryoSPARC job type "
-            f"`{configs['type']=}`; this script is for ab-initio jobs (`homo_abinit`)!"
+            f"`{configs['type']=}`; this script is for 3D Variability jobs (`var_3D`)!"
         )
 
-    # weights z_ik
-    work_dir = os.path.join(args.cryosparc_dir, args.cryosparc_job)
-    cs_path = os.path.join(work_dir, f"{args.cryosparc_job}_particles.cs")
-    map_mrc_path = os.path.join(work_dir, f"{args.cryosparc_job}_map.mrc")
-    # ref
+    outdir = str(os.path.join(args.outdir, "per_conf_fsc"))
+    os.makedirs(os.path.join(outdir, "vols"), exist_ok=True)
+    file_pattern = "*.mrc"
+    files = [
+        f for f in glob(os.path.join(args.input_dir, file_pattern)) if "mask" not in f
+    ]
+    pred_dir = sorted(files, key=utils.numfile_sortkey)
+    print("pred_dir[0]:", pred_dir[0])
+    csparc_job = pred_dir[0].split("/")[-1].split(".")[0].split("_")[0]
+    print("cryosparc_job:", csparc_job)
 
+    # weights z_ik
+    cs_path = os.path.join(args.input_dir, f"{csparc_job}_particles.cs")
+    map_mrc_path = os.path.join(args.input_dir, f"{csparc_job}_map.mrc")
+
+    # reference
     v_0 = mrc.parse_mrc(map_mrc_path)[0]
     x = np.load(cs_path)
-    component_mrc_path = os.path.join(work_dir, f"{args.cryosparc_job}_component_0.mrc")
+    component_mrc_path = os.path.join(args.input_dir, f"{csparc_job}_component_0.mrc")
     v_k1 = mrc.parse_mrc(component_mrc_path)[0]  # [128 128 128]
-
-    component_mrc_path = os.path.join(work_dir, f"{args.cryosparc_job}_component_1.mrc")
+    component_mrc_path = os.path.join(args.input_dir, f"{csparc_job}_component_1.mrc")
     v_k2 = mrc.parse_mrc(component_mrc_path)[0]  # [128 128 128]
-
-    component_mrc_path = os.path.join(work_dir, f"{args.cryosparc_job}_component_2.mrc")
+    component_mrc_path = os.path.join(args.input_dir, f"{csparc_job}_component_2.mrc")
     v_k3 = mrc.parse_mrc(component_mrc_path)[0]  # [128 128 128]
 
     for i in range(args.num_vols):
-
         components_1 = x["components_mode_0/value"]
         components_2 = x["components_mode_1/value"]
         components_3 = x["components_mode_2/value"]
 
-        z_1 = components_1[i * args.num_imgs : (i + 1) * args.num_imgs].reshape(
-            args.num_imgs, 1
-        )
-        z_2 = components_2[i * args.num_imgs : (i + 1) * args.num_imgs].reshape(
-            args.num_imgs, 1
-        )
-        z_3 = components_3[i * args.num_imgs : (i + 1) * args.num_imgs].reshape(
-            args.num_imgs, 1
-        )
+        start_i, end_i = i * args.num_imgs, (i + 1) * args.num_imgs
+        z_1 = components_1[start_i:end_i].reshape(args.num_imgs, 1)
+        z_2 = components_2[start_i:end_i].reshape(args.num_imgs, 1)
+        z_3 = components_3[start_i:end_i].reshape(args.num_imgs, 1)
 
         z1_nth_avg = z_1.mean(axis=0)
         z1_nth_avg = z1_nth_avg.reshape(1, -1)
-
         z2_nth_avg = z_2.mean(axis=0)
         z2_nth_avg = z2_nth_avg.reshape(1, -1)
-
         z3_nth_avg = z_3.mean(axis=0)
         z3_nth_avg = z3_nth_avg.reshape(1, -1)
+
         nearest_z1, centers_ind1 = analysis.get_nearest_point(z_1, z1_nth_avg)
         nearest_z2, centers_ind2 = analysis.get_nearest_point(z_2, z2_nth_avg)
         nearest_z3, centers_ind3 = analysis.get_nearest_point(z_3, z3_nth_avg)
-
         vol = v_0 + (nearest_z1 * (v_k1) + nearest_z2 * (v_k2) + nearest_z3 * (v_k3))
 
-        vol_name = "vol_{:03d}.mrc".format(i)
         mrc.write(
-            f"{args.o}/{args.method}/per_conf_fsc/vols/{vol_name}",
+            os.path.join(outdir, "vols", f"vol_{i:03d}.mrc"),
             vol.astype(np.float32),
         )
 
     if args.calc_fsc_vals:
         utils.get_fsc_curves(
-            args.outdir,
+            outdir,
             args.gt_dir,
-            vol_dir=args.input_dir,
             mask_file=args.mask,
             fast=args.fast,
             overwrite=args.overwrite,

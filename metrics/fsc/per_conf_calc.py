@@ -9,7 +9,7 @@ $ python metrics/per_conf_fsc/per_conf_calc results/cryodrgn --epoch 19 --Apix 3
 """
 import argparse
 import os
-import utils
+from metrics.utils import utils
 from cdrgn import main as run_cdrgn
 from drgnai import main as run_drgnai
 from opusdsd import main as run_opusdsd

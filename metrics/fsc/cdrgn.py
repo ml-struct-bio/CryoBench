@@ -32,13 +32,15 @@ def main(args: argparse.Namespace) -> None:
             f"Could not find cryoDRGN config file {cfg_file} "
             f"— is {args.input_dir=} a folder cryoDRGN output folder?"
         )
-    weights_fl = os.path.join(args.input_dir, f"weights.{args.epoch}.pkl")
+
+    epoch_str = "" if args.epoch == -1 else f".{args.epoch}"
+    weights_fl = os.path.join(args.input_dir, f"weights{epoch_str}.pkl")
     if not os.path.exists(weights_fl):
         raise ValueError(
             f"Could not find cryoDRGN model weights for epoch {args.epoch} "
             f"in output folder {args.input_dir=} — did the model finishing running?"
         )
-    z_path = os.path.join(args.input_dir, f"z.{args.epoch}.pkl")
+    z_path = os.path.join(args.input_dir, f"z{epoch_str}.pkl")
     if not os.path.exists(z_path):
         raise ValueError(
             f"Could not find cryoDRGN latent space coordinates for epoch {args.epoch} "

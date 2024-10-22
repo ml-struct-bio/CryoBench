@@ -22,8 +22,8 @@ from glob import glob
 import logging
 import numpy as np
 import torch
-import utils
-import interface
+from metrics.utils import utils
+from metrics.per_conf_fsc.utils import interface
 
 logger = logging.getLogger(__name__)
 

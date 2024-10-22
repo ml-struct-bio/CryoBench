@@ -12,8 +12,8 @@ import os
 import logging
 import numpy as np
 import torch
-import interface
-import utils
+from metrics.utils import utils
+from metrics.per_conf_fsc.utils import interface
 import cryodrgn.utils
 from cryodrgnai.analyze import VolumeGenerator
 from cryodrgnai.lattice import Lattice

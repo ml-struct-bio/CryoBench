@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from sklearn.metrics import auc
-import utils
+from metrics.utils import utils
 
 
 def create_args() -> argparse.ArgumentParser:

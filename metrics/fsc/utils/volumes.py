@@ -19,8 +19,8 @@ from cryodrgn import fft, mrc
 logger = logging.getLogger(__name__)
 
 
-chimerax_path = "/scratch/gpfs/ZHONGE/rraghu/chimerax-1.6.1/bin/ChimeraX"
-root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+CHIMERAX_PATH = os.environ["CHIMERAX_PATH"]
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 def numfile_sortkey(s):
@@ -50,8 +50,8 @@ def align_volumes_multi(vol_dir: str, gt_dir: str) -> None:
         tmp_file = os.path.join(vol_dir, "aligned", f"temp_{i:03d}.txt")
 
         align_cmd = (
-            f"sbatch -t 10 -J align_{i} -o {tmp_file} --wrap='{chimerax_path} --nogui "
-            f"--script \" {os.path.join(root_dir, 'utils', 'align.py')} {ref_path} "
+            f"sbatch -t 10 -J align_{i} -o {tmp_file} --wrap='{CHIMERAX_PATH} --nogui "
+            f"--script \" {os.path.join(ROOT_DIR, 'utils', 'align.py')} {ref_path} "
             f"{os.path.join(vol_dir, new_filename)} -o {destination_path} "
             f"-f {tmp_file} \" ' "
         )

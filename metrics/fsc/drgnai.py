@@ -12,8 +12,7 @@ import os
 import logging
 import numpy as np
 import torch
-from metrics.utils import utils
-from metrics.per_conf_fsc.utils import interface
+from utils import volumes, conformations, interface
 import cryodrgn.utils
 from cryodrgnai.analyze import VolumeGenerator
 from cryodrgnai.lattice import Lattice
@@ -31,13 +30,15 @@ def main(args: argparse.Namespace) -> None:
             f"Could not find DRGN-AI configuration parameter file 'out/config.pkl' "
             f"in given folder {args.input_dir=} — is this a DRGN-AI output folder?"
         )
-    weights_fl = os.path.join(args.input_dir, "out", f"weights.{args.epoch}.pkl")
+
+    epoch_str = "" if args.epoch == -1 else f".{args.epoch}"
+    weights_fl = os.path.join(args.input_dir, "out", f"weights{epoch_str}.pkl")
     if not os.path.exists(weights_fl):
         raise ValueError(
             f"Could not find DRGN-AI model weights for epoch {args.epoch} "
             f"in output folder {args.input_dir=} — did the model finishing running?"
         )
-    z_path = os.path.join(args.input_dir, "out", f"conf.{args.epoch}.pkl")
+    z_path = os.path.join(args.input_dir, "out", f"conf{epoch_str}.pkl")
     if not os.path.exists(z_path):
         raise ValueError(
             f"Could not find drgnAI latent space coordinates for epoch {args.epoch} "
@@ -49,7 +50,7 @@ def main(args: argparse.Namespace) -> None:
     os.makedirs(voldir, exist_ok=True)
     z = cryodrgn.utils.load_pkl(z_path)
     num_imgs = int(args.num_imgs) if z.shape[0] == 100000 else "ribo"
-    nearest_z_array = utils.get_nearest_z_array(z, args.num_vols, num_imgs)
+    nearest_z_array = conformations.get_nearest_z_array(z, args.num_vols, num_imgs)
 
     configs = cryodrgn.utils.load_yaml(cfg_file)
     checkpoint = torch.load(weights_fl)
@@ -86,14 +87,27 @@ def main(args: argparse.Namespace) -> None:
             np.savetxt(out_zfile, nearest_z_array)
             vol_generator.gen_volumes(voldir, nearest_z_array)
 
+    # Align output conformation volumes to ground truth volumes using ChimeraX
+    if args.align_vols:
+        volumes.align_volumes_multi(voldir, args.gt_dir)
+
     if args.calc_fsc_vals:
-        utils.get_fsc_curves(
-            args.outdir,
+        volumes.get_fsc_curves(
             args.gt_dir,
+            voldir,
             mask_file=args.mask,
             fast=args.fast,
             overwrite=args.overwrite,
         )
+
+        if args.align_vols:
+            volumes.get_fsc_curves(
+                args.gt_dir,
+                vol_dir=os.path.join(voldir, "aligned"),
+                mask_file=args.mask,
+                fast=args.fast,
+                overwrite=args.overwrite,
+            )
 
 
 if __name__ == "__main__":

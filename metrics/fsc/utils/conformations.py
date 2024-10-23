@@ -2,6 +2,7 @@
 
 from collections.abc import Iterable
 import logging
+from glob import glob
 from typing import Union
 import numpy as np
 from cryodrgn import analysis, mrc
@@ -86,3 +87,26 @@ def pad_mrc_vols(mrc_volfiles: Iterable[str], new_D: int) -> None:
         zorg -= apix * i
 
         mrc.write(mrc_file, new, mrc.MRCHeader.make_default_header(new, Apix=apix))
+
+
+def parse_csparc_dir(workdir):
+    x = glob("{}/*particles.cs".format(workdir))
+    y = [xx for xx in x if "class" not in xx]
+    y = sorted(y)
+    cs_info = y[-1].split("_")
+    it = cs_info[-2]
+    cs_job = cs_info[-3]
+    cs_proj = cs_info[-4]
+    logger.info("Found alignments files: {}".format(y))
+    logger.info("Using {} {} iteration {}".format(cs_proj, cs_job, it))
+
+    return y[-1], cs_proj, cs_job, it
+
+
+def get_csparc_pi(particles_cs, K):
+    p = np.load(particles_cs)
+    post = [p["alignments_class_{}/class_posterior".format(i)] for i in range(K)]
+    post = np.asarray(post)
+    post = post.T
+
+    return post

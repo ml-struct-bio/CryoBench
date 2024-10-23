@@ -136,9 +136,9 @@ def get_fsc_curve(
 
 
 def get_fsc_curves(
-    outdir: str,
     gt_dir: str,
-    vol_dir: Optional[str] = None,
+    vol_dir: str,
+    outdir: Optional[str] = None,
     mask_file: Optional[str] = None,
     fast: int = 1,
     overwrite: bool = False,
@@ -147,13 +147,12 @@ def get_fsc_curves(
     """Calculate FSC curves across conformations compared to ground truth volumes."""
 
     gt_volfiles = sorted(glob(os.path.join(gt_dir, "*.mrc")), key=numfile_sortkey)
-    if vol_dir is None:
-        vol_dir = os.path.join(outdir, "vols")
-
     outlbl = "fsc" if mask_file is not None else "fsc_no_mask"
+    if outdir is None:
+        outdir = str(vol_dir)
+
     os.makedirs(os.path.join(outdir, outlbl), exist_ok=True)
     fsc_curves = dict()
-
     for ii, gt_volfile in enumerate(gt_volfiles):
         if ii % fast != 0:
             continue
@@ -173,12 +172,14 @@ def get_fsc_curves(
                 logger.info(f"Saving FSC {ii} values to {out_fsc}")
             fsc_curves[ii].to_csv(out_fsc, sep=" ", header=True, index=False)
 
-    # Summary statistics
+    # Print summary statistics on max resolutions satisfying particular FSC thresholds
     fsc143 = [get_fsc_cutoff(x, 0.143) for x in fsc_curves.values()]
+    logger.info(
+        f"cryoDRGN FSC=0.143  —  "
+        f"Mean: {np.mean(fsc143):.4g} \t Median {np.median(fsc143):.4g}"
+    )
     fsc5 = [get_fsc_cutoff(x, 0.5) for x in fsc_curves.values()]
-    logger.info("cryoDRGN FSC=0.143")
-    logger.info("Mean: {}".format(np.mean(fsc143)))
-    logger.info("Median: {}".format(np.median(fsc143)))
-    logger.info("cryoDRGN FSC=0.5")
-    logger.info("Mean: {}".format(np.mean(fsc5)))
-    logger.info("Median: {}".format(np.median(fsc5)))
+    logger.info(
+        f"cryoDRGN FSC=0.5    —  "
+        f"Mean: {np.mean(fsc5):.4g} \t Median {np.median(fsc5):.4g}"
+    )

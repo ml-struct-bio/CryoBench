@@ -1,18 +1,17 @@
-"""Calculate FSCs between conformations matched across opusDSD model latent spaces.
+"""Calculate FSCs between conformations matched across an OPUS-DSD model latent space.
 
 See github.com/alncat/opusDSD for the source code for this method, and
 www.nature.com/articles/s41592-023-02031-6 for its publication.
 
 Example usage
 -------------
-$ python metrics/per_conf_fsc/opusdsd.py results/opusdsd \
-            --epoch 19 --Apix 3.0 -o output --gt-dir ./gt_vols --mask ./mask.mrc \
-            --num-imgs 1000 --num-vols 100
+$ python metrics/fsc/opusdsd.py results/opusdsd --epoch 19 --Apix 3.0 -o output \
+                                --gt-dir ./gt_vols --mask ./mask.mrc --num-imgs 1000
 
 # We sometimes need to pad the opusDSD volumes to a larger box size
-$ python metrics/per_conf_fsc/opusdsd.py results/opusdsd \
-            --epoch 19 --Apix 3.0 -o output --gt-dir ./gt_vols --mask ./mask.mrc \
-            --num-imgs 1000 --num-vols 100 -D 256
+$ python metrics/fsc/opusdsd.py results/opusdsd --epoch 19 --Apix 3.0 -o output \
+                                --gt-dir ./gt_vols --mask ./mask.mrc --num-imgs 1000 \
+                                -D 256
 
 """
 import argparse
@@ -22,8 +21,7 @@ from glob import glob
 import logging
 import numpy as np
 import torch
-from metrics.utils import utils
-from metrics.per_conf_fsc.utils import interface
+from utils import volumes, conformations, interface
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +33,7 @@ def add_args(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
 
 
 def main(args: argparse.Namespace) -> None:
-    """Running the script to get FSCs across conformations produced by opusDSD."""
+    """Running the script to get FSCs across conformations produced by OPUS-DSD."""
 
     cfg_file = os.path.join(args.input_dir, "config.pkl")
     if not os.path.exists(cfg_file):
@@ -43,13 +41,15 @@ def main(args: argparse.Namespace) -> None:
             f"Could not find opusDSD config file {cfg_file} "
             f"— is {args.input_dir=} a folder opusDSD output folder?"
         )
-    weights_fl = os.path.join(args.input_dir, f"weights.{args.epoch}.pkl")
+
+    epoch_str = "" if args.epoch == -1 else f".{args.epoch}"
+    weights_fl = os.path.join(args.input_dir, f"weights{epoch_str}.pkl")
     if not os.path.exists(weights_fl):
         raise ValueError(
             f"Could not find opusDSD model weights for epoch {args.epoch} "
             f"in output folder {args.input_dir=} — did the model finishing running?"
         )
-    z_path = os.path.join(args.input_dir, f"z.{args.epoch}.pkl")
+    z_path = os.path.join(args.input_dir, f"z{epoch_str}.pkl")
     if not os.path.exists(z_path):
         raise ValueError(
             f"Could not find opusDSD latent space coordinates for epoch {args.epoch} "
@@ -61,7 +61,7 @@ def main(args: argparse.Namespace) -> None:
     os.makedirs(voldir, exist_ok=True)
     z = torch.load(z_path)["mu"].cpu().numpy()
     num_imgs = int(args.num_imgs) if z.shape[0] == 100000 else "ribo"
-    nearest_z_array = utils.get_nearest_z_array(z, args.num_vols, num_imgs)
+    nearest_z_array = conformations.get_nearest_z_array(z, args.num_vols, num_imgs)
 
     eval_vol_cmd = os.path.join(
         os.path.dirname(os.path.dirname(__file__)),
@@ -77,6 +77,7 @@ def main(args: argparse.Namespace) -> None:
     cmd += f"python {eval_vol_cmd} --load {weights_fl} -c {cfg_file} "
     cmd += f"--zfile {out_zfile} -o {voldir} --Apix {args.Apix}; "
 
+    logging.basicConfig(level=logging.INFO)
     logger.info(cmd)
     if os.path.exists(out_zfile) and not args.overwrite:
         logger.info("Z file exists, skipping...")
@@ -85,17 +86,35 @@ def main(args: argparse.Namespace) -> None:
             np.savetxt(out_zfile, nearest_z_array)
             subprocess.check_call(cmd, shell=True)
 
-    utils.pad_mrc_vols(sorted(glob(os.path.join(voldir, "*.mrc"))), args.D)
+    # Align output conformation volumes to ground truth volumes using ChimeraX
+    if args.align_vols:
+        volumes.align_volumes_multi(voldir, args.gt_dir)
+
+    conformations.pad_mrc_vols(sorted(glob(os.path.join(voldir, "*.mrc"))), args.D)
+    if args.align_vols:
+        conformations.pad_mrc_vols(
+            sorted(glob(os.path.join(voldir, "aligned", "*.mrc"))), args.D
+        )
 
     if args.calc_fsc_vals:
-        utils.get_fsc_curves(
-            args.outdir,
+        volumes.get_fsc_curves(
             args.gt_dir,
+            voldir,
             mask_file=args.mask,
             fast=args.fast,
             overwrite=args.overwrite,
             vol_fl_function=lambda i: f"reference{i}.mrc",
         )
+
+        if args.align_vols:
+            volumes.get_fsc_curves(
+                args.gt_dir,
+                vol_dir=os.path.join(voldir, "aligned"),
+                mask_file=args.mask,
+                fast=args.fast,
+                overwrite=args.overwrite,
+                vol_fl_function=lambda i: f"reference{i}.mrc",
+            )
 
 
 if __name__ == "__main__":

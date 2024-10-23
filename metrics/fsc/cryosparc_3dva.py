@@ -2,8 +2,8 @@
 
 Example usage
 -------------
-$ python metrics/per_conf_fsc/cryosparc_3dva.py results/CS-cryobench/J5 \
-            -o cBench/cBench-out_3Dcls/ --gt-dir vols/128_org/ --mask bproj_0.005.mrc
+$ python metrics/fsc/cryosparc_3dva.py results/CS-cryobench/J11 \
+            -o cBench/cBench-out_3Dvar/ --gt-dir vols/128_org/ --mask bproj_0.005.mrc
 
 """
 import argparse
@@ -12,8 +12,7 @@ import json
 import numpy as np
 from glob import glob
 import logging
-from metrics.utils import utils
-from metrics.fsc.utils import interface
+from utils import volumes, interface
 from cryodrgn import analysis, mrc
 
 logger = logging.getLogger(__name__)
@@ -37,13 +36,13 @@ def main(args: argparse.Namespace) -> None:
             f"`{configs['type']=}`; this script is for 3D Variability jobs (`var_3D`)!"
         )
 
-    outdir = str(os.path.join(args.outdir, "per_conf_fsc"))
-    os.makedirs(os.path.join(outdir, "vols"), exist_ok=True)
+    voldir = os.path.join(args.outdir, "vols")
+    os.makedirs(voldir, exist_ok=True)
     file_pattern = "*.mrc"
     files = [
         f for f in glob(os.path.join(args.input_dir, file_pattern)) if "mask" not in f
     ]
-    pred_dir = sorted(files, key=utils.numfile_sortkey)
+    pred_dir = sorted(files, key=volumes.numfile_sortkey)
     print("pred_dir[0]:", pred_dir[0])
     csparc_job = pred_dir[0].split("/")[-1].split(".")[0].split("_")[0]
     print("cryosparc_job:", csparc_job)
@@ -83,20 +82,29 @@ def main(args: argparse.Namespace) -> None:
         nearest_z2, centers_ind2 = analysis.get_nearest_point(z_2, z2_nth_avg)
         nearest_z3, centers_ind3 = analysis.get_nearest_point(z_3, z3_nth_avg)
         vol = v_0 + (nearest_z1 * (v_k1) + nearest_z2 * (v_k2) + nearest_z3 * (v_k3))
+        mrc.write(os.path.join(voldir, f"vol_{i:03d}.mrc"), vol.astype(np.float32))
 
-        mrc.write(
-            os.path.join(outdir, "vols", f"vol_{i:03d}.mrc"),
-            vol.astype(np.float32),
-        )
+    # Align output conformation volumes to ground truth volumes using ChimeraX
+    if args.align_vols:
+        volumes.align_volumes_multi(voldir, args.gt_dir)
 
     if args.calc_fsc_vals:
-        utils.get_fsc_curves(
-            outdir,
+        volumes.get_fsc_curves(
             args.gt_dir,
+            voldir,
             mask_file=args.mask,
             fast=args.fast,
             overwrite=args.overwrite,
         )
+
+        if args.align_vols:
+            volumes.get_fsc_curves(
+                args.gt_dir,
+                vol_dir=os.path.join(voldir, "aligned"),
+                mask_file=args.mask,
+                fast=args.fast,
+                overwrite=args.overwrite,
+            )
 
 
 if __name__ == "__main__":

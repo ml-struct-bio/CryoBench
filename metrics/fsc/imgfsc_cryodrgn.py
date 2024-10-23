@@ -1,3 +1,13 @@
+"""Calculate FSCs between volumes from images' mappings in a cryoDRGN latent space.
+
+Example usage
+-------------
+$ python metrics/fsc/imgfsc_cryodrgn.py \
+    CryoBench/001_IgG-1D/ data/2024/cryobench/IgG-1D/gt_latents.pkl \
+    --gt_dir=data/2024/cryobench/IgG-1D/vols/128_org/ \
+    -o cBench-output_test/cdrgn-imgfsc_001 -n 100 --apix 3.0
+
+"""
 import os
 import argparse
 import subprocess
@@ -9,7 +19,7 @@ from utils import volumes
 import numpy as np
 import torch
 from sklearn.metrics import auc
-from cryodrgn import config, mrc, models
+from cryodrgn import config, mrc, models, utils
 
 logger = logging.getLogger(__name__)
 CHIMERAX_PATH = os.environ["CHIMERAX_PATH"]
@@ -18,8 +28,13 @@ ALIGN_PATH = os.path.join(ROOT_DIR, "utils", "align.py")
 
 
 def parse_args() -> argparse.Namespace:
+    """Create and parse command line arguments for this script (see `main` below)."""
+
     parser = argparse.ArgumentParser()
-    parser.add_argument("traindir")
+    parser.add_argument(
+        "traindir",
+        help="Path to folder with output from a cryoDRGN train_vae or abinit_het model",
+    )
     parser.add_argument("-o", required=True)
 
     parser.add_argument(
@@ -40,6 +55,7 @@ def parse_args() -> argparse.Namespace:
         dest="align_volumes",
         help="Skip alignment of volumes, in the case of fixed pose reconstruction",
     )
+    parser.add_argument("--no-fscs", action="store_false", dest="calc_fsc_vals")
 
     return parser.parse_args()
 
@@ -72,6 +88,14 @@ def align(vol_path: str, ref_path: str, apix: float = 1.0, flip: bool = True) ->
 
 
 def main(args: argparse.Namespace) -> None:
+    cfg_file = os.path.join(args.traindir, "config.yaml")
+    if not os.path.exists(cfg_file):
+        raise ValueError(
+            f"Could not find cryoDRGN config file {cfg_file} "
+            f"— is {args.traindir=} a folder cryoDRGN output folder?"
+        )
+    cfg = os.path.join(args.traindir, "config.yaml")
+
     if not (args.gt_paths is None) ^ (args.gt_dir is None):
         raise ValueError("Must provide exactly one of --gt_paths or --gt_dir!")
 
@@ -92,20 +116,31 @@ def main(args: argparse.Namespace) -> None:
     particle_idxs = np.arange(0, N, N // args.n)
     os.makedirs(args.o, exist_ok=True)
 
-    if args.epoch == -1:
-        z = pickle.load(open(os.path.join(args.traindir, "z.pkl"), "rb"))
-        checkpoint = os.path.join(args.traindir, "weights.pkl")
-    else:
-        z = pickle.load(open(os.path.join(args.traindir, f"z.{args.epoch}.pkl"), "rb"))
-        checkpoint = os.path.join(args.traindir, f"weights.{args.epoch}.pkl")
+    epoch_str = "" if args.epoch == -1 else f".{args.epoch}"
+    checkpoint = os.path.join(args.traindir, f"weights{epoch_str}.pkl")
+    if not os.path.exists(checkpoint):
+        raise ValueError(
+            f"Could not find cryoDRGN model weights for epoch {args.epoch} "
+            f"in output folder {args.traindir=} — did the model finishing running?"
+        )
+    z_path = os.path.join(args.traindir, f"z{epoch_str}.pkl")
+    if not os.path.exists(z_path):
+        raise ValueError(
+            f"Could not find cryoDRGN latent space coordinates for epoch {args.epoch} "
+            f"in output folder {args.traindir=} — did the model finishing running?"
+        )
 
-    cfg = os.path.join(args.traindir, "config.yaml")
+    z = utils.load_pkl(z_path)
     generator = prep_generator(cfg, checkpoint)
     aucs = {class_idx: [] for class_idx in np.unique(labels)}
+    log_interval = max(round((len(particle_idxs) // 1000), -2), 5)
 
     for vol_i, particle_i in enumerate(particle_idxs):
-        if vol_i % 20 == 0:
-            logger.info(f"Generating volume #{vol_i:03d} ...")
+        if vol_i % log_interval == 0:
+            logger.info(
+                f"Generating volume {vol_i + 1}/{len(particle_idxs)}  "
+                f"(vol_{vol_i:03d}.mrc) ..."
+            )
 
         gen_path = os.path.join(args.o, f"vol_{vol_i:03d}.mrc")
         gen_vol = generator(z[particle_i, :])
@@ -117,31 +152,38 @@ def main(args: argparse.Namespace) -> None:
             gt_path = os.path.join(os.path.dirname(args.gt_paths), gt_path)
 
         if args.align_volumes:
-            if vol_i % 20 == 0:
+            if vol_i % log_interval == 0:
                 logger.info(f"Aligning volume #{vol_i:03d} ...")
             align(gen_path, gt_path, args.apix)
 
-        gt_vol = mrc.parse_mrc(gt_path)[0]
-        fsc_df = volumes.get_fsc_curve(torch.tensor(gt_vol), torch.tensor(gen_vol))
-        auc_val = auc(fsc_df.pixres, fsc_df.fsc.abs())
-        aucs[labels[particle_i]].append(auc_val)
-        np.savetxt(fsc_path, fsc_df.values)
+        if args.calc_fsc_vals:
+            gt_vol = mrc.parse_mrc(gt_path)[0]
+            fsc_df = volumes.get_fsc_curve(torch.tensor(gt_vol), torch.tensor(gen_vol))
+            auc_val = auc(fsc_df.pixres, fsc_df.fsc.abs())
+            aucs[labels[particle_i]].append(auc_val)
+            np.savetxt(fsc_path, fsc_df.values)
 
-    for class_idx, class_aucs in aucs.items():
+    if args.calc_fsc_vals:
         logger.info(
-            f"Num Images Class {class_idx}: {len(class_aucs)} \n"
-            f"AUC Class {class_idx}: "
-            f"{np.mean(class_aucs):05f} +/- {np.std(class_aucs):05f}"
+            "\n".join(
+                [
+                    f"No Images in Class {class_idx} "
+                    if len(class_aucs) == 0
+                    else f"Num Images Class {class_idx}: {len(class_aucs)} \n"
+                    f"AU-FSC Class {class_idx}: "
+                    f"{np.mean(class_aucs):.5f} +/- {np.std(class_aucs):.3f}"
+                    for class_idx, class_aucs in aucs.items()
+                ]
+            )
         )
-
-    logger.info(
-        f"AUC Overall: {np.mean(np.concatenate(list(aucs.values())))} "
-        f"+/- {np.std(np.concatenate(list(aucs.values())))}"
-    )
+        all_aucs = [a for auc_list in aucs.values() for a in auc_list]
+        logger.info(
+            f"AU-FSC Overall: {np.mean(all_aucs):.5f} +/- {np.std(all_aucs):.3f}"
+        )
 
 
 if __name__ == "__main__":
     args = parse_args()
     s = time()
     main(args)
-    print(f"Completed in {(time()-s):.5g} seconds")
+    logger.info(f"Completed in {(time()-s):.5g} seconds")

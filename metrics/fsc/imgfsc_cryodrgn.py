@@ -12,6 +12,7 @@ import os
 import argparse
 import subprocess
 import pickle
+from glob import glob
 from time import time
 import logging
 from typing import Callable
@@ -54,6 +55,11 @@ def parse_args() -> argparse.Namespace:
         action="store_false",
         dest="align_volumes",
         help="Skip alignment of volumes, in the case of fixed pose reconstruction",
+    )
+    parser.add_argument(
+        "--multi-align",
+        action="store_true",
+        help="Align volumes in parallel using a compute cluster",
     )
     parser.add_argument("--no-fscs", action="store_false", dest="calc_fsc_vals")
 
@@ -98,6 +104,10 @@ def main(args: argparse.Namespace) -> None:
 
     if not (args.gt_paths is None) ^ (args.gt_dir is None):
         raise ValueError("Must provide exactly one of --gt_paths or --gt_dir!")
+    if not args.align_volumes and args.multi_align:
+        raise ValueError(
+            "Cannot use parallelized volume alignment when using --no-align!"
+        )
 
     labels = pickle.load(open(args.labels, "rb"))
     if args.gt_paths is not None:
@@ -110,7 +120,10 @@ def main(args: argparse.Namespace) -> None:
             )
 
     else:
-        gt_paths = [os.path.join(args.gt_dir, f"{i:03d}.mrc") for i in labels]
+        gt_files = sorted(
+            glob(os.path.join(args.gt_dir, "*.mrc")), key=volumes.numfile_sortkey
+        )
+        gt_paths = [gt_files[i] for i in labels]
 
     N = len(labels)
     particle_idxs = np.arange(0, N, N // args.n)
@@ -132,8 +145,8 @@ def main(args: argparse.Namespace) -> None:
 
     z = utils.load_pkl(z_path)
     generator = prep_generator(cfg, checkpoint)
-    aucs = {class_idx: [] for class_idx in np.unique(labels)}
     log_interval = max(round((len(particle_idxs) // 1000), -2), 5)
+    gen_paths = list()
 
     for vol_i, particle_i in enumerate(particle_idxs):
         if vol_i % log_interval == 0:
@@ -142,31 +155,36 @@ def main(args: argparse.Namespace) -> None:
                 f"(vol_{vol_i:03d}.mrc) ..."
             )
 
-        gen_path = os.path.join(args.o, f"vol_{vol_i:03d}.mrc")
-        gen_vol = generator(z[particle_i, :])
-        mrc.write(gen_path, gen_vol.astype(np.float32))
-
-        fsc_path = os.path.join(args.o, f"fsc_{vol_i:03d}.txt")
         gt_path = gt_paths[particle_i]
+        gen_paths.append(os.path.join(args.o, f"vol_{vol_i:03d}.mrc"))
+        gen_vol = generator(z[particle_i, :])
+        mrc.write(gen_paths[-1], gen_vol.astype(np.float32))
         if not os.path.isabs(gt_path) and args.gt_paths is not None:
             gt_path = os.path.join(os.path.dirname(args.gt_paths), gt_path)
 
-        if args.align_volumes:
+        if args.align_volumes and not args.multi_align:
             if vol_i % log_interval == 0:
-                logger.info(f"Aligning volume #{vol_i:03d} ...")
-            align(gen_path, gt_path, args.apix)
+                logger.info(f"Aligning volume (vol_{vol_i:03d} ...")
+            align(gen_paths[-1], gt_path, args.apix)
 
-        if args.calc_fsc_vals:
-            gt_vol = mrc.parse_mrc(gt_path)[0]
-            fsc_df = volumes.get_fsc_curve(torch.tensor(gt_vol), torch.tensor(gen_vol))
-            auc_val = auc(fsc_df.pixres, fsc_df.fsc.abs())
-            aucs[labels[particle_i]].append(auc_val)
-            np.savetxt(fsc_path, fsc_df.values)
+    if args.multi_align:
+        volumes.align_volumes_multi(gen_paths, gt_paths)
 
     if args.calc_fsc_vals:
+        fsc_curves = volumes.get_fsc_curves(gt_paths, gen_paths, outdir=args.o)
+
+        auc_vals = {
+            particle_idxs[i]: auc(fsc_df.pixres, fsc_df.fsc.abs())
+            for i, fsc_df in fsc_curves.items()
+        }
+        aucs = {class_idx: [] for class_idx in np.unique(labels)}
+        for i, auc_val in auc_vals.items():
+            aucs[labels[i]].append(auc_val)
+
         logger.info(
             "\n".join(
-                [
+                [""]
+                + [
                     f"No Images in Class {class_idx} "
                     if len(class_aucs) == 0
                     else f"Num Images Class {class_idx}: {len(class_aucs)} \n"

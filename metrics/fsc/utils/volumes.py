@@ -34,25 +34,66 @@ def numfile_sortkey(s):
     return parts
 
 
-def align_volumes_multi(vol_dir: str, gt_dir: str) -> None:
-    gt_vols = sorted(glob(os.path.join(gt_dir, "*.mrc")), key=numfile_sortkey)
-    matching_vols = sorted(glob(os.path.join(vol_dir, "*.mrc")), key=numfile_sortkey)
+def align_volumes_multi(
+    vol_paths: Union[str, list[str]],
+    gt_paths: Union[str, list[str]],
+    outdir: Optional[str] = None,
+) -> None:
+    if isinstance(vol_paths, str):
+        if os.path.isdir(vol_paths):
+            matching_vols = sorted(
+                glob(os.path.join(vol_paths, "*.mrc")), key=numfile_sortkey
+            )
+        else:
+            raise ValueError(
+                "Single value given for `vol_paths` must be a path to a directory "
+                "containing .mrc volumes to be aligned!"
+            )
+    elif isinstance(vol_paths, list):
+        matching_vols = vol_paths
+    else:
+        raise ValueError(
+            f"Unrecognized type given for argument "
+            f"`vol_paths`: {type(vol_paths).__name__} !"
+        )
 
-    os.makedirs(os.path.join(vol_dir, "aligned"), exist_ok=True)
-    os.makedirs(os.path.join(vol_dir, "flipped_aligned"), exist_ok=True)
+    if isinstance(gt_paths, str):
+        if os.path.isdir(gt_paths):
+            gt_vols = sorted(glob(os.path.join(gt_paths, "*.mrc")), key=numfile_sortkey)
+        else:
+            raise ValueError(
+                "Single value given for `gt_paths` must be a path to a directory "
+                "containing .mrc volumes to be aligned against!"
+            )
+    elif isinstance(gt_paths, list):
+        gt_vols = gt_paths
+    else:
+        raise ValueError(
+            f"Unrecognized type given for argument "
+            f"`gt_paths`: {type(gt_paths).__name__} !"
+        )
+
+    if outdir is None:
+        if isinstance(vol_paths, str):
+            outdir = vol_paths
+        else:
+            outdir = os.path.dirname(vol_paths[0])
+
+    os.makedirs(os.path.join(outdir, "aligned"), exist_ok=True)
+    os.makedirs(os.path.join(outdir, "flipped_aligned"), exist_ok=True)
     align_jobs = list()
 
     for i, file_path in enumerate(matching_vols):
         base_filename = os.path.splitext(os.path.basename(file_path))[0]
         new_filename = base_filename + ".mrc"
-        destination_path = os.path.join(vol_dir, "aligned", new_filename)
+        destination_path = os.path.join(outdir, "aligned", new_filename)
         ref_path = gt_vols[i]
-        tmp_file = os.path.join(vol_dir, "aligned", f"temp_{i:03d}.txt")
+        tmp_file = os.path.join(outdir, "aligned", f"temp_{i:03d}.txt")
 
         align_cmd = (
-            f"sbatch -t 10 -J align_{i} -o {tmp_file} --wrap='{CHIMERAX_PATH} --nogui "
+            f"sbatch -t 61 -J align_{i} -o {tmp_file} --wrap='{CHIMERAX_PATH} --nogui "
             f"--script \" {os.path.join(ROOT_DIR, 'utils', 'align.py')} {ref_path} "
-            f"{os.path.join(vol_dir, new_filename)} -o {destination_path} "
+            f"{os.path.join(outdir, new_filename)} -o {destination_path} "
             f"-f {tmp_file} \" ' "
         )
         if i % 20 == 0:
@@ -65,8 +106,15 @@ def align_volumes_multi(vol_dir: str, gt_dir: str) -> None:
 
     jobs_left = len(align_jobs)
     while jobs_left > 0:
-        print(f"Waiting for {jobs_left} jobs to finish...")
-        time.sleep(30)
+        if jobs_left > 1:
+            print(f"Waiting for {jobs_left} volume alignment jobs to finish...")
+        else:
+            print(
+                f"Waiting for one volume alignment job "
+                f"(Slurm ID: {align_jobs[0]}) to finish..."
+            )
+
+        time.sleep(max(10, jobs_left / 1.7))
         jobs_left = (
             subprocess.run(
                 f"squeue -h -j {','.join(align_jobs)}", shell=True, capture_output=True
@@ -136,31 +184,67 @@ def get_fsc_curve(
 
 
 def get_fsc_curves(
-    gt_dir: str,
-    vol_dir: str,
+    vol_paths: Union[str, list[str]],
+    gt_paths: Union[str, list[str]],
     outdir: Optional[str] = None,
     mask_file: Optional[str] = None,
     fast: int = 1,
     overwrite: bool = False,
-    vol_fl_function: Callable[[int], str] = lambda i: f"vol_{i:03d}.mrc",
-) -> None:
+    vol_fl_function: Callable[[int], str] = lambda i: f"vol_{i:03d}",
+) -> dict[int, pd.DataFrame]:
     """Calculate FSC curves across conformations compared to ground truth volumes."""
 
-    gt_volfiles = sorted(glob(os.path.join(gt_dir, "*.mrc")), key=numfile_sortkey)
+    if isinstance(gt_paths, str):
+        if os.path.isdir(gt_paths):
+            gt_vols = sorted(glob(os.path.join(gt_paths, "*.mrc")), key=numfile_sortkey)
+        else:
+            raise ValueError(
+                "Single value given for `gt_paths` must be a path to a directory "
+                "containing .mrc volumes to be aligned against!"
+            )
+    elif isinstance(gt_paths, list):
+        gt_vols = gt_paths
+    else:
+        raise ValueError(
+            f"Unrecognized type given for argument "
+            f"`gt_paths`: {type(gt_paths).__name__} !"
+        )
+
+    if isinstance(vol_paths, str):
+        if os.path.isdir(vol_paths):
+            vol_files = [
+                os.path.join(vol_paths, f"{vol_fl_function(i)}.mrc")
+                for i in range(len(gt_vols))
+            ]
+        else:
+            raise ValueError(
+                "Single value given for `vol_paths` must be a path to a directory "
+                "containing .mrc volumes to be aligned!"
+            )
+    elif isinstance(vol_paths, list):
+        vol_files = vol_paths
+    else:
+        raise ValueError(
+            f"Unrecognized type given for argument "
+            f"`vol_paths`: {type(vol_paths).__name__} !"
+        )
+
     outlbl = "fsc" if mask_file is not None else "fsc_no_mask"
     if outdir is None:
-        outdir = str(vol_dir)
+        if isinstance(vol_paths, str):
+            outdir = vol_paths
+        else:
+            outdir = os.path.dirname(vol_paths[0])
 
     os.makedirs(os.path.join(outdir, outlbl), exist_ok=True)
     fsc_curves = dict()
-    for ii, gt_volfile in enumerate(gt_volfiles):
+    for ii, gt_volfile in enumerate(gt_vols):
         if ii % fast != 0:
             continue
 
-        out_fsc = os.path.join(outdir, outlbl, f"{ii}.txt")
-        vol_file = os.path.join(vol_dir, vol_fl_function(ii))
+        out_fsc = os.path.join(outdir, outlbl, f"{vol_fl_function(ii)}.txt")
         vol1 = torch.tensor(mrc.parse_mrc(gt_volfile)[0])
-        vol2 = torch.tensor(mrc.parse_mrc(vol_file)[0])
+        vol2 = torch.tensor(mrc.parse_mrc(vol_files[ii])[0])
 
         if os.path.exists(out_fsc) and not overwrite:
             if ii % 20 == 0:
@@ -183,3 +267,5 @@ def get_fsc_curves(
         f"cryoDRGN FSC=0.5    —  "
         f"Mean: {np.mean(fsc5):.4g} \t Median {np.median(fsc5):.4g}"
     )
+
+    return fsc_curves

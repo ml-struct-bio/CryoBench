@@ -92,9 +92,7 @@ def main(args: argparse.Namespace) -> None:
 
     conformations.pad_mrc_vols(sorted(glob(os.path.join(voldir, "*.mrc"))), args.D)
     if args.align_vols:
-        conformations.pad_mrc_vols(
-            sorted(glob(os.path.join(voldir, "aligned", "*.mrc"))), args.D
-        )
+        volumes.align_volumes_multi(voldir, args.gt_dir)
 
     if args.calc_fsc_vals:
         volumes.get_fsc_curves(

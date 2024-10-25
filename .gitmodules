@@ -7,3 +7,6 @@
 [submodule "metrics/methods/drgnai"]
 	path = metrics/methods/drgnai
 	url = git@github.com:ml-struct-bio/drgnai.git
+[submodule "metrics/methods/cryodrgn"]
+	path = metrics/methods/cryodrgn
+	url = git@github.com:ml-struct-bio/cryodrgn.git

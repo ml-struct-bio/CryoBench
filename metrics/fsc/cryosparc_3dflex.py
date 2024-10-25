@@ -9,7 +9,7 @@ $ python metrics/per_conf_fsc/cryosparc_3dflex.py results/CS-cryobench/J9 \
 import os
 import json
 from metrics.utils import utils
-from metrics.per_conf_fsc.utils import interface
+from metrics.fsc.utils import interface
 
 
 def main(args):

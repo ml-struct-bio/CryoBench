@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from sklearn.metrics import auc
-from metrics.utils import utils
+from utils import volumes
 
 
 def create_args() -> argparse.ArgumentParser:
@@ -29,7 +29,7 @@ def main(args: argparse.Namespace) -> None:
             continue
 
         fsc_files = sorted(
-            glob(os.path.join(subdir, "*.txt")), key=utils.numfile_sortkey
+            glob(os.path.join(subdir, "*.txt")), key=volumes.numfile_sortkey
         )
         freq = np.arange(1, 6) * 0.1
         res = ["1/{:.1f}".format(val) for val in ((1 / freq) * args.Apix)]

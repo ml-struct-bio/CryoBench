@@ -21,9 +21,8 @@ def add_calc_args() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--num-vols",
-        default=100,
         type=int,
-        help="Number of total reconstructed volumes",
+        help="Use first <x> reconstructed volumes instead of all of them",
     )
     parser.add_argument("--Apix", default=3.0, type=float)
     parser.add_argument(

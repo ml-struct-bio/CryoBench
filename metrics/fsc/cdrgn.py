@@ -1,15 +1,13 @@
-"""Calculate FSCs between conformations matched across cryoDRGN model latent spaces.
+"""Calculate FSCs between conformations matched across a cryoDRGN model latent space.
 
 Example usage
 -------------
-$ python metrics/per_conf_fsc/cdrgn.py results/cryodrgn --epoch 19 --Apix 3.0 \
-                                       -o output --gt-dir ./gt_vols --mask ./mask.mrc \
-                                       --num-imgs 1000 --num-vols 100
+$ python metrics/fsc/cdrgn.py results/cryodrgn --epoch 19 --Apix 3.0 \
+                              -o output --gt-dir ./gt_vols --mask ./mask.mrc
 
 # Also align output volumes to grund truth volumes with ChimeraX before computing FSCs
-$ python metrics/per_conf_fsc/cdrgn.py results/cryodrgn --epoch 19 --Apix 3.0 \
-                                       -o output --gt-dir ./gt_vols --mask ./mask.mrc \
-                                       --num-imgs 1000 --num-vols 100
+$ python metrics/fsc/cdrgn.py results/cryodrgn --epoch 19 --Apix 3.0 \
+                              -o output --gt-dir ./gt_vols --mask ./mask.mrc
 
 """
 import argparse
@@ -74,8 +72,8 @@ def main(args: argparse.Namespace) -> None:
 
     if args.calc_fsc_vals:
         volumes.get_fsc_curves(
-            args.gt_dir,
             voldir,
+            args.gt_dir,
             mask_file=args.mask,
             fast=args.fast,
             overwrite=args.overwrite,
@@ -83,8 +81,8 @@ def main(args: argparse.Namespace) -> None:
 
         if args.align_vols:
             volumes.get_fsc_curves(
+                os.path.join(voldir, "aligned"),
                 args.gt_dir,
-                vol_dir=os.path.join(voldir, "aligned"),
                 mask_file=args.mask,
                 fast=args.fast,
                 overwrite=args.overwrite,

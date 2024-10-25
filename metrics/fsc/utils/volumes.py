@@ -242,7 +242,7 @@ def get_fsc_curves(
         if ii % fast != 0:
             continue
 
-        out_fsc = os.path.join(outdir, outlbl, f"{vol_fl_function(ii)}.txt")
+        out_fsc = os.path.join(outdir, outlbl, f"{ii:03d}.txt")
         vol1 = torch.tensor(mrc.parse_mrc(gt_volfile)[0])
         vol2 = torch.tensor(mrc.parse_mrc(vol_files[ii])[0])
 

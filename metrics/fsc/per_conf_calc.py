@@ -1,20 +1,23 @@
-"""Calculate FSCs between conformations matched across a model's latent spaces.
+"""Calculate FSCs between conformations matched across a volume model's latent space.
 
 Example usage
 -------------
-$ python metrics/per_conf_fsc/per_conf_calc results/cryodrgn --epoch 19 --Apix 3.0 \
-                                       -o output --gt-dir ./gt_vols --mask ./mask.mrc \
-                                       --num-imgs 1000 --num-vols 100
+$ python metrics/fsc/per_conf_calc results/cryodrgn --epoch 19 --Apix 3.0 \
+                                   -o output --gt-dir ./gt_vols --mask ./mask.mrc
 
 """
 import argparse
 import os
-from metrics.utils import utils
+import json
+from utils import interface
 from cdrgn import main as run_cdrgn
 from drgnai import main as run_drgnai
 from opusdsd import main as run_opusdsd
 from re_covar import main as run_recovar
 from cryosparc_3dcls import main as run_cryosparc_3dcls
+from cryosparc_abinitio import main as run_cryosparc_abinitio
+from cryosparc_3dva import main as run_cryosparc_3dva
+from cryosparc_3dflex import main as run_cryosparc_3dflex
 
 
 def main(args: argparse.Namespace):
@@ -26,14 +29,29 @@ def main(args: argparse.Namespace):
         run_opusdsd(args)
     elif "reordered_z.npy" in input_files:
         run_recovar(args)
+
     elif "job.json" in input_files:
-        run_cryosparc_3dcls(args)
+        with open(os.path.join(args.input_dir, "job.json")) as f:
+            configs = json.load(f)
+
+        if configs["type"] == "var_3D":
+            run_cryosparc_3dva(args)
+        elif configs["type"] == "homo_abinit":
+            run_cryosparc_abinitio(args)
+        elif configs["type"] == "flex_test":
+            run_cryosparc_3dflex(args)
+        elif configs["type"] == "class_3D":
+            run_cryosparc_3dcls(args)
+        else:
+            raise RuntimeError(f"Unrecognized cryoSPARC job type `{configs['type']}` !")
+
     elif (
         "out" in input_files
         and os.path.isdir(os.path.join(args.input_dir, "out"))
         and "config.yaml" in os.listdir(os.path.join(args.input_dir, "out"))
     ):
         run_drgnai(args)
+
     else:
         raise ValueError(
             f"Unrecognized output folder format found in `{args.input_dir}`!"
@@ -43,4 +61,4 @@ def main(args: argparse.Namespace):
 
 
 if __name__ == "__main__":
-    main(utils.add_calc_args().parse_args())
+    main(interface.add_calc_args().parse_args())

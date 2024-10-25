@@ -14,7 +14,7 @@ import numpy as np
 from glob import glob
 import logging
 from metrics.utils import utils
-from metrics.per_conf_fsc.utils import interface
+from metrics.fsc.utils import interface
 
 logger = logging.getLogger(__name__)
 

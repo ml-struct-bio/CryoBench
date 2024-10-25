@@ -2,8 +2,7 @@ import argparse
 import os
 import sys
 import logging
-from metrics.utils import utils
-from metrics.per_conf_fsc.utils import interface
+from utils import volumes, conformations, interface
 import numpy as np
 from cryodrgn import analysis
 
@@ -56,30 +55,17 @@ def main(args: argparse.Namespace) -> None:
     cov_zs = pipeline_output.get("cov_zs")[args.zdim]
     noise_variance = pipeline_output.get("noise_var_used")
     zs_reordered = dataset.reorder_to_original_indexing(zs, cryos)
-
-    z_lst = []
-    z_mean_lst = []
-    for ii in range(args.num_vols):
-        z_nth = zs_reordered[ii * args.num_imgs : (ii + 1) * args.num_imgs]
-        z_nth_avg = z_nth.mean(axis=0)
-        z_nth_avg = z_nth_avg.reshape(1, -1)
-        z_lst.append(z_nth)
-        z_mean_lst.append(z_nth_avg)
-    nearest_z_lst = []
-    centers_ind_lst = []
-    for ii in range(args.num_vols):
-        nearest_z, centers_ind = analysis.get_nearest_point(z_lst[ii], z_mean_lst[ii])
-        nearest_z_lst.append(nearest_z.reshape(nearest_z.shape[-1]))
-        centers_ind_lst.append(centers_ind)
-    target_zs = np.array(nearest_z_lst)
+    num_imgs = int(args.num_imgs) if zs.shape[0] == 100000 else "ribo"
+    nearest_z_array = conformations.get_nearest_z_array(
+        zs_reordered, args.num_vols, num_imgs
+    )
 
     output.mkdir_safe(args.outdir)
     logger.addHandler(logging.FileHandler(os.path.join(args.outdir, "run.log")))
     logger.info(args)
-
     output.compute_and_save_reweighted(
         cryos,
-        target_zs,
+        nearest_z_array,
         zs,
         cov_zs,
         noise_variance,
@@ -87,12 +73,13 @@ def main(args: argparse.Namespace) -> None:
         args.Bfactor,
         args.n_bins,
     )
-    outdir = str(os.path.join(args.outdir, "per_conf_fsc"))
-    logger.info(f"Putting output under: {outdir} ...")
+
+    if args.align_vols:
+        volumes.align_volumes_multi(args.outdir, args.gt_dir)
 
     if args.calc_fsc_vals:
-        utils.get_fsc_curves(
-            outdir,
+        volumes.get_fsc_curves(
+            args.outdir,
             args.gt_dir,
             mask_file=args.mask,
             fast=args.fast,
@@ -101,6 +88,18 @@ def main(args: argparse.Namespace) -> None:
                 format(i, "03d"), "ml_optimized_locres_filtered.mrc"
             ),
         )
+
+        if args.align_vols:
+            volumes.get_fsc_curves(
+                args.outdir,
+                args.gt_dir,
+                mask_file=args.mask,
+                fast=args.fast,
+                overwrite=args.overwrite,
+                vol_fl_function=lambda i: os.path.join(
+                    format(i, "03d"), "ml_optimized_locres_filtered.mrc"
+                ),
+            )
 
 
 if __name__ == "__main__":

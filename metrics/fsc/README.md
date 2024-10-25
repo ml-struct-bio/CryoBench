@@ -1,10 +1,13 @@
-# Per Conformation FSCs: Tools for comparing models' conformation volumes' similarity to ground truth volumes
+# FSCs: Tools for comparing models' conformation volumes' similarity to ground truth volumes
 
 This folder contains scripts to calculate Fourier shell correlations between volumes at particular points in a given
 reconstruction method's latent conformation space, as well as to visualize these FSC results.
 
-We have included here example scripts to perform this analysis for cryoDRGN, DRGN-AI, opusDSD, RECOVAR, as well as four
-cryoSPARC reconstruction methods (3D Classification, Ab-Initio, 3D Variability, and 3D Flex).
+We have included here example scripts to perform this analysis for
+[cryoDRGN](https://github.com/ml-struct-bio/cryodrgn), [DRGN-AI](https://github.com/ml-struct-bio/drgnai),
+[OPUS-DSD](https://github.com/alncat/opusDSD), [RECOVAR](https://github.com/ma-gilles/recovar),
+as well as four [cryoSPARC](https://guide.cryosparc.com/)
+reconstruction methods (3D Classification, Ab-Initio, 3D Variability, and 3D Flex).
 These are designed to be run on the output of these methods when applied to the example datasets
 found at [https://zenodo.org/records/11629428](https://zenodo.org/records/11629428).
 

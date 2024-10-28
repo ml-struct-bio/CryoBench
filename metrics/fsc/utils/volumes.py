@@ -5,7 +5,6 @@ CryoBench methods depend on older versions of cryoDRGN that don't have these met
 
 """
 import os
-import sys
 import subprocess
 import time
 import re
@@ -15,10 +14,7 @@ from typing import Optional, Callable, Union
 import numpy as np
 import pandas as pd
 import torch
-
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.append(os.path.join(ROOT_DIR, "methods", "cryodrgn"))
-from cryodrgn import fft, mrcfile
+from cryodrgn import fft, mrc
 
 logger = logging.getLogger(__name__)
 
@@ -164,7 +160,7 @@ def get_fsc_curve(
 
     maskvol = None
     if mask_file is not None:
-        maskvol = torch.tensor(mrcfile.parse_mrc(mask_file)[0])
+        maskvol = torch.tensor(mrc.parse_mrc(mask_file)[0])
 
     # Apply the given mask before applying the Fourier transform
     maskvol1 = vol1 * maskvol if maskvol is not None else vol1.clone()
@@ -247,8 +243,8 @@ def get_fsc_curves(
             continue
 
         out_fsc = os.path.join(outdir, outlbl, f"{ii:03d}.txt")
-        vol1 = torch.tensor(mrcfile.parse_mrc(gt_volfile)[0])
-        vol2 = torch.tensor(mrcfile.parse_mrc(vol_files[ii])[0])
+        vol1 = torch.tensor(mrc.parse_mrc(gt_volfile)[0])
+        vol2 = torch.tensor(mrc.parse_mrc(vol_files[ii])[0])
 
         if os.path.exists(out_fsc) and not overwrite:
             if ii % 20 == 0:

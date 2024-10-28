@@ -1,94 +1,59 @@
-# FSCs: Tools for comparing models' conformation volumes' similarity to ground truth volumes
+# FSCs: Tools for comparing similarity of models' latent conformation volumes to ground truth
 
 This folder contains scripts to calculate Fourier shell correlations between volumes at particular points in a given
 reconstruction method's latent conformation space, as well as to visualize these FSC results.
 
-We have included here example scripts to perform this analysis for
-[cryoDRGN](https://github.com/ml-struct-bio/cryodrgn), [DRGN-AI](https://github.com/ml-struct-bio/drgnai),
-[OPUS-DSD](https://github.com/alncat/opusDSD), [RECOVAR](https://github.com/ma-gilles/recovar),
-as well as four [cryoSPARC](https://guide.cryosparc.com/)
-reconstruction methods (3D Classification, Ab-Initio, 3D Variability, and 3D Flex).
-These are designed to be run on the output of these methods when applied to the example datasets
-found at [https://zenodo.org/records/11629428](https://zenodo.org/records/11629428).
-
 
 ## Installation instructions
 
-We recommend using conda environments to install the dependencies for calculating these metrics.
-Shown below are instructions for creating environments that can also be used to run the reconstruction learning methods
-that create the input for the per conformation pipelines.
+We recommend using conda environments to install the dependencies for calculating these metrics, and to use a separate
+environment for each method **as well as for running the reconstruction model and for CryoBench analyses**.
+This is necessary as many of the methods have overlapping dependencies — especially cryoDRGN, which forms
+the basis for several of the example methods and is also used by CryoBench itself.
 
-Start by cloning the CryoBench git repository; note that we also have to fetch the dependency codebases drgnai,
-opusDSD, and RECOVAR through their submodules:
+We show here how to install these environments for becnhmarking cryoDRGN; instructions for the other example methods
+can be found at
+[our manual](https://app.gitbook.com/o/gYlX75MBAfjzRuXIYbKH/s/QwtxcduDAIdbCB0vBNnT/getting-started/installation-instructions).
+
+Start by cloning the CryoBench git repository; note that we also have to fetch the codebases for the
+example methods through their submodules:
 ```bash
-git clone --recurse-submodules git@github.com:ml-struct-bio/CryoBench.git --branch='refactor'
+$ git clone --recurse-submodules git@github.com:ml-struct-bio/CryoBench.git --branch='refactor' --recurse-submodules
 ```
 
-We recommend creating a separate environment to install each tested method, as many of the methods have
-overlapping dependencies — especially cryoDRGN, which forms the basis for many of the methods and is also used by
-CryoBench in its own analyses. We install an older version of cryoDRGN that also necessitates specifying versions for
-cryoDRGN dependencies (`pip install 'torch<=2.4.0' 'numpy<1.27' 'matplotlib<3.7' 'cryodrgn<3'`).
-
-### cryoDRGN and cryoSPARC
-
-The simplest installation process is for testing cryoDRGN outputs; we can also use the same environment for testing
-cryoSPARC outputs which requires no additional dependencies:
+You will also have to install ChimeraX, which can be done by downloading the correct version for your operating system
+from [their website](https://www.cgl.ucsf.edu/chimerax/download.html). Also create an environment variable pointing to
+this installation:
 ```bash
-conda create --name cryoDRGN_env python=3.10
-conda activate cryoDRGN_env
-pip install 'torch<=2.4.0' 'numpy<1.27' 'matplotlib<3.7' 'cryodrgn<3'
+$ export CHIMERAX_PATH="/myhome/software/chimerax-1.6.1/bin/ChimeraX"
 ```
 
-### DRGN-AI
-
-Here we have to additionally install DRGN-AI via GitHub using `pip`:
+Create an environment for running cryoDRGN models. Here we specify a recent version:
 ```bash
-conda create --name drgnai_env python=3.10
-conda activate drgnai_env
-pip install git+https://github.com/ml-struct-bio/drgnai.git
-pip install 'torch<=2.4.0' 'numpy<1.27' 'matplotlib<3.7' 'cryodrgn<3'
+$ conda create --name cryodrgn_model python=3.10
+$ conda activate cryodrgn_model
+(cryodrgn_model)$ pip install 'cryodrgn==3.4.1'
 ```
 
-### opusDSD
-
-For this package we have to use their custom dependency list, and to install the package from
-the clone repository using `pip install -e`:
+Next, create an environment for running CryoBench analyses on cryoDRGN output. Here we instead install an older version
+of cryoDRGN used by CryoBench through the git submodule:
 ```bash
-conda env create --name opusdsd_env -f CryoBench/metrics/methods/opusDSD/environmentcu11torch11.yml
-conda activate opusdsd_env
-cd CryoBench/metrics/methods/opusDSD
-git checkout 1.0.0
-cd ../../../../
-pip install -e CryoBench/metrics/methods/opusDSD
-pip install 'torch<=2.4.0' 'numpy<1.27' 'matplotlib<3.7' 'cryodrgn<3'
-```
-
-### RECOVAR
-
-In the case of RECOVAR, we have to install a specific version of `jax` on top of their custom requirements list, along
-with setting some bash environment variables and creating a special `ipykernel` installation:
-```bash
-conda create --name recovar_env python=3.11
-conda activate recovar_env
-pip install -U "jax[cuda12_pip]"==0.4.23 -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
-pip install --no-deps -r CryoBench/metrics/methods/recovar/recovar_install_requirements.txt
-python -m ipykernel install --user --name=recovar
-
-# can also be added to .bashrc
-export PATH=/usr/local/cuda-12.6/bin:$PATH
-export LD_LIBRARY_PATH=/usr/local/cuda-12.6/lib64:$LD_LIBRARY_PATH
+$ conda create --name cryodrgn_bench python=3.10
+$ conda activate cryoDRGN_bench
+(cryodrgn_bench)$ 'cryodrgn==3.4.1'
 ```
 
 
 ## Generating conformations, calculating FSCs, and plotting results
 
-For our example methods we show here how to run the corresponding model on CryoBench datasets to generate
-reconstructions, and then apply our set of CryoBench tools to calculate FSCs across model conformation volumes and
-visualize the results. Additional examples can be found in the documentation in the scripts within this folder.
+For cryoDRGN we show here how to run both the fixed-pose and ab-inition version of the reconstruction model on
+CryoBench datasets to generate volumes, and then apply our set of CryoBench tools to calculate FSCs across model
+conformation volumes and visualize the results.
 
-Each set of analyses should be run in the same conda environment that was created for each method as described above.
-Note that we use ChimeraX throughout these analyses; you must first install ChimeraX locally and then create a bash
-environment variable pointing to the installation location as shown in the examples below.
+Corresponding instructions for the other example methods can be found at
+[our manual](https://app.gitbook.com/o/gYlX75MBAfjzRuXIYbKH/s/QwtxcduDAIdbCB0vBNnT/~/changes/3/getting-started/running-reconstruction-models)
+
+Take special care to make sure you are running each step in the correct conda environment as described above!
 
 ### cryoDRGN: fixed poses
 

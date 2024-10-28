@@ -1,16 +1,11 @@
 """Utility functions used across FSC pipelines for handling conformation outputs."""
 
-import os
-import sys
 from collections.abc import Iterable
 import logging
 from glob import glob
 from typing import Union
 import numpy as np
-
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.append(os.path.join(ROOT_DIR, "methods", "cryodrgn"))
-from cryodrgn import analysis, mrcfile
+from cryodrgn import analysis, mrc
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +67,7 @@ def get_nearest_z_array(
 
 def pad_mrc_vols(mrc_volfiles: Iterable[str], new_D: int) -> None:
     for mrc_file in mrc_volfiles:
-        v, header = mrcfile.parse_mrc(mrc_file)
+        v, header = mrc.parse_mrc(mrc_file)
         x, y, z = v.shape
         assert new_D >= x
         assert new_D >= y
@@ -91,9 +86,7 @@ def pad_mrc_vols(mrc_volfiles: Iterable[str], new_D: int) -> None:
         yorg -= apix * j
         zorg -= apix * i
 
-        mrcfile.write_mrc(
-            mrc_file, new, mrcfile.MRCHeader.make_default_header(new, Apix=apix)
-        )
+        mrc.write(mrc_file, new, mrc.MRCHeader.make_default_header(new, Apix=apix))
 
 
 def parse_csparc_dir(workdir):

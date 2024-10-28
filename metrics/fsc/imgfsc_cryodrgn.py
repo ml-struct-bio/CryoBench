@@ -12,6 +12,7 @@ import os
 import argparse
 import subprocess
 import pickle
+import yaml
 from glob import glob
 from time import time
 import logging
@@ -20,7 +21,7 @@ from utils import volumes
 import numpy as np
 import torch
 from sklearn.metrics import auc
-from cryodrgn import config, mrc, models, utils
+from cryodrgn import mrc, models, utils
 
 logger = logging.getLogger(__name__)
 CHIMERAX_PATH = os.environ["CHIMERAX_PATH"]
@@ -69,7 +70,9 @@ def parse_args() -> argparse.Namespace:
 def prep_generator(
     config_path: str, checkpoint_path: str
 ) -> Callable[[torch.Tensor], np.ndarray]:
-    cfg = config.load(config_path)
+    with open(config_path, "r") as f:
+        cfg = yaml.safe_load(f)
+
     norm = [float(x) for x in cfg["dataset_args"]["norm"]]
     model, lattice = models.HetOnlyVAE.load(cfg, checkpoint_path, device="cuda:0")
     model.eval()
@@ -94,6 +97,8 @@ def align(vol_path: str, ref_path: str, apix: float = 1.0, flip: bool = True) ->
 
 
 def main(args: argparse.Namespace) -> None:
+    """Running the script to get FSCs across cryoDRGN image-wise conformations."""
+
     cfg_file = os.path.join(args.traindir, "config.yaml")
     if not os.path.exists(cfg_file):
         raise ValueError(

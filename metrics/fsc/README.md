@@ -49,13 +49,24 @@ $ conda activate cryodrgn_bench
 
 ## Generating conformations, calculating FSCs, and plotting results
 
-For cryoDRGN we show here how to run both the fixed-pose and ab-inition versions of the reconstruction model on
-CryoBench datasets to generate volumes, and then how to apply the CryoBench tools to calculate FSCs across model
-conformation volumes and visualize the results.
+For CryoDRGN, we show here how to:
+1) Download the Spike-MD CryoBench dataset
+2) Run both the fixed-pose and ab-inition versions of the CryoDRGN reconstruction model on the Spike-MD dataset
+2) Apply the CryoBench tools to calculate FSCs across CryoDRGN model conformation volumes
+3) Visualize the results of the FSC analysis
 
 Corresponding instructions for the other example methods can be found at
 [our manual](https://app.gitbook.com/o/gYlX75MBAfjzRuXIYbKH/s/QwtxcduDAIdbCB0vBNnT/~/changes/3/getting-started/running-reconstruction-models)
 
+
+### Downloading a CryoBench dataset
+Although you can also download the Spike-MD dataset through e.g. a web browser by navigating to the
+[Zenodo portal](https://zenodo.org/records/12528784), the below demonstrates how to download the data via the
+command-line:
+```bash
+$ curl "https://zenodo.org/records/12528784/files/Spike-MD.zip?download=1" --output Spike-MD.zip
+$ unzip Spike-MD.zip
+```
 
 ### cryoDRGN with fixed poses
 
@@ -68,7 +79,7 @@ Corresponding instructions for the other example methods can be found at
 
   (cryodrgn_model)$ conda activate cryodrgn_bench
 
-  # Compute per conformation FSC
+  # Compute per image FSC
   (cryodrgn_bench)$ python metrics/fsc/cdrgn.py cBench-input/cryodrgn_fixed/IgG-1D/ --epoch 49 --Apix 3.0 \
                                                 --gt-dir IgG-1D/vols/128_org/ \
                                                 --mask IgG-1D/init_mask/backproj_0.005.mrc \
@@ -87,7 +98,7 @@ Corresponding instructions for the other example methods can be found at
 
   (cryodrgn_model)$ conda activate cryodrgn_bench
 
-  # Compute per conformation FSC
+  # Compute per image FSC
   (cryodrgn_bench)$ python metrics/fsc/cdrgn.py cBench-input/cryodrgn_abinit/IgG-1D/ --epoch 49 --Apix 3.0 \
                                                 --gt-dir IgG-1D/vols/128_org/ \
                                                 --mask IgG-1D/init_mask/backproj_0.005.mrc \

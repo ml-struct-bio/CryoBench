@@ -1,3 +1,10 @@
+"""Visualize FSCs between conformations matched across a volume model's latent space.
+
+Example usage
+-------------
+$ python metrics/fsc/plot_fsc.py cryobench_output/
+
+"""
 import os
 import argparse
 from glob import glob
@@ -11,7 +18,7 @@ from utils import volumes
 def create_args() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "fscdir",
+        "outdir",
         type=os.path.abspath,
         help="Input directory containing outputs of FSC per conformation analysis.",
     )
@@ -21,16 +28,19 @@ def create_args() -> argparse.ArgumentParser:
 
 
 def main(args: argparse.Namespace) -> None:
-    auc_lst = []
+    fsc_dirs = [
+        d
+        for d in os.listdir(args.outdir)
+        if d.startswith("fsc_") and os.path.isdir(os.path.join(args.outdir, d))
+    ]
 
-    for sublbl in ["fsc", "fsc_flipped", "fsc_no_mask", "fsc_flipped_no_mask"]:
-        subdir = os.path.join(args.fscdir, sublbl)
-        if not os.path.isdir(subdir):
-            continue
-
+    for fsc_lbl in fsc_dirs:
+        subdir = os.path.join(args.outdir, fsc_lbl)
         fsc_files = sorted(
             glob(os.path.join(subdir, "*.txt")), key=volumes.numfile_sortkey
         )
+        auc_lst = list()
+
         freq = np.arange(1, 6) * 0.1
         res = ["1/{:.1f}".format(val) for val in ((1 / freq) * args.Apix)]
         res_text = res
@@ -64,12 +74,9 @@ def main(args: argparse.Namespace) -> None:
         print(f"AUC_avg: {auc_avg_np}, std: {auc_std_np}, AUC_med: {auc_med_np}")
 
         plt.tight_layout()
-        plt.savefig(
-            os.path.join(args.fscdir, f"fsc_{sublbl}.png"),
-            dpi=1200,
-            bbox_inches="tight",
-        )
-        print("plot saved!")
+        pltfile = os.path.join(args.outdir, f"{fsc_lbl}.png")
+        plt.savefig(pltfile, dpi=1200, bbox_inches="tight")
+        print(f"{fsc_lbl} plot saved!")
 
 
 if __name__ == "__main__":

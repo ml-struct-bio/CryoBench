@@ -19,7 +19,7 @@ To run the metrics, you have to install `cryodrgn`.
 
 More installation instructions are found in the [documentation](https://ez-lab.gitbook.io/cryodrgn/installation).
 
-Datasets are available for download at Zenodo.  
+Datasets are available for download at Zenodo.
 
 1. Conf-het: [https://zenodo.org/records/11629428](https://zenodo.org/records/11629428).
 2. Comp-het: [https://zenodo.org/records/12528292](https://zenodo.org/records/12528292).
@@ -30,8 +30,8 @@ Look at the repo [cryosim](https://github.com/ml-struct-bio/CryoBench/tree/main/
 
 ## Metrics
 
-### 1. Per-Conformation FSC
-Look at the repo [metrics/per_conf_fsc](https://github.com/ml-struct-bio/CryoBench/tree/main/metrics/per_conf_fsc) and [metrics/per_conf_fsc/Ribosembly](https://github.com/ml-struct-bio/CryoBench/tree/main/metrics/per_conf_fsc_Ribosembly).
+### 1. Per-image FSCs
+Look at the repo [metrics/fsc](https://github.com/ml-struct-bio/CryoBench/tree/main/metrics/fsc)
 
 ### 2. UMAP visualization
 Look at the repo [metrics/visualization](https://github.com/ml-struct-bio/CryoBench/tree/main/metrics/visualization)

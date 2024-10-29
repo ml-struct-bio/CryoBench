@@ -29,6 +29,7 @@ this installation:
 ```bash
 $ export CHIMERAX_PATH="/myhome/software/chimerax-1.6.1/bin/ChimeraX"
 ```
+This variable has to be re-defined every time the environment is loaded unless it is e.g. saved in your `.bashrc` file.
 
 Create an environment for running cryoDRGN models.
 Here we specify a recent version to use for producing reconstruction output:

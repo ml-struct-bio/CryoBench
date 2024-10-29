@@ -2,10 +2,18 @@
 
 Example usage
 -------------
-$ python metrics/fsc/imgfsc_cryodrgn.py \
-    CryoBench/001_IgG-1D/ data/2024/cryobench/IgG-1D/gt_latents.pkl \
-    --gt_dir=data/2024/cryobench/IgG-1D/vols/128_org/ \
-    -o cBench-output_test/cdrgn-imgfsc_001 -n 100 --apix 3.0
+# See zenodo.org/records/11629428 for the Conf-het dataset used in these examples
+
+$ python metrics/fsc/cdrgn.py cryodrgn_output/train_vae/001_IgG-1D/ \
+                              IgG-1D/gt_latents.pkl --gt_dir=IgG-1D/vols/128_org/ \
+                              -o cryobench_output/cdrgn_train-vae_001/ \
+                              -n 100 --apix 3.0
+
+# Sample more volumes and align before computing FSCs in parallel using compute cluster
+$ python metrics/fsc/cdrgn.py cryodrgn_output/abinit_het/001_IgG-1D/ \
+                              IgG-1D/gt_latents.pkl --gt_dir=IgG-1D/vols/128_org/ \
+                              -o cryobench_output/cdrgn_abinit-het_001/ \
+                              -n 1000 --apix 3.0 --parallel-align
 
 """
 import os
@@ -49,20 +57,20 @@ def parse_args() -> argparse.Namespace:
         "--gt_dir", help="path to folder with ground truth .mrc volumes per particle"
     )
     parser.add_argument("-n", required=True, type=int, help="Number of vols to sample")
-    parser.add_argument("--apix", required=True, type=float)
+    parser.add_argument("--Apix", required=True, type=float)
     parser.add_argument("--epoch", type=int, default=-1, help="epoch (default: last)")
+    parser.add_argument("--no-fscs", action="store_false", dest="calc_fsc_vals")
+
     parser.add_argument(
-        "--no-align",
-        action="store_false",
-        dest="align_volumes",
-        help="Skip alignment of volumes, in the case of fixed pose reconstruction",
+        "--serial-align",
+        action="store_true",
+        help="Align volumes in one after the other on the local compute.",
     )
     parser.add_argument(
-        "--multi-align",
+        "--parallel-align",
         action="store_true",
         help="Align volumes in parallel using a compute cluster",
     )
-    parser.add_argument("--no-fscs", action="store_false", dest="calc_fsc_vals")
 
     return parser.parse_args()
 
@@ -109,9 +117,9 @@ def main(args: argparse.Namespace) -> None:
 
     if not (args.gt_paths is None) ^ (args.gt_dir is None):
         raise ValueError("Must provide exactly one of --gt_paths or --gt_dir!")
-    if not args.align_volumes and args.multi_align:
+    if args.serial_align and args.parallel_align:
         raise ValueError(
-            "Cannot use parallelized volume alignment when using --no-align!"
+            "Cannot use parallelized volume alignment when using --serial-align!"
         )
 
     labels = pickle.load(open(args.labels, "rb"))
@@ -167,12 +175,12 @@ def main(args: argparse.Namespace) -> None:
         if not os.path.isabs(gt_path) and args.gt_paths is not None:
             gt_path = os.path.join(os.path.dirname(args.gt_paths), gt_path)
 
-        if args.align_volumes and not args.multi_align:
+        if args.serial_align:
             if vol_i % log_interval == 0:
                 logger.info(f"Aligning volume (vol_{vol_i:03d} ...")
-            align(gen_paths[-1], gt_path, args.apix)
+            align(gen_paths[-1], gt_path, args.Apix)
 
-    if args.multi_align:
+    if args.parallel_align:
         volumes.align_volumes_multi(gen_paths, gt_paths)
 
     if args.calc_fsc_vals:

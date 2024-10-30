@@ -7,13 +7,13 @@ Example usage
 $ python metrics/fsc/cdrgn.py cryodrgn_output/train_vae/001_IgG-1D/ \
                               IgG-1D/gt_latents.pkl --gt_dir=IgG-1D/vols/128_org/ \
                               -o cryobench_output/cdrgn_train-vae_001/ \
-                              -n 100 --apix 3.0
+                              -n 100 --Apix 3.0
 
 # Sample more volumes and align before computing FSCs in parallel using compute cluster
 $ python metrics/fsc/cdrgn.py cryodrgn_output/abinit_het/001_IgG-1D/ \
                               IgG-1D/gt_latents.pkl --gt_dir=IgG-1D/vols/128_org/ \
                               -o cryobench_output/cdrgn_abinit-het_001/ \
-                              -n 1000 --apix 3.0 --parallel-align
+                              -n 1000 --Apix 3.0 --parallel-align
 
 """
 import os
@@ -39,26 +39,47 @@ ALIGN_PATH = os.path.join(ROOT_DIR, "utils", "align.py")
 
 def parse_args() -> argparse.Namespace:
     """Create and parse command line arguments for this script (see `main` below)."""
-
     parser = argparse.ArgumentParser()
+
     parser.add_argument(
         "traindir",
         help="Path to folder with output from a cryoDRGN train_vae or abinit_het model",
     )
-    parser.add_argument("-o", required=True)
-
     parser.add_argument(
-        "labels", help=".pkl file with ground truth class index per particle"
+        "labels",
+        type=os.path.abspath,
+        help=".pkl file with ground truth class index per particle",
     )
     parser.add_argument(
-        "--gt_paths", help=".pkl file with path to ground truth volume per particle"
-    )
-    parser.add_argument(
-        "--gt_dir", help="path to folder with ground truth .mrc volumes per particle"
+        "-o",
+        type=os.path.abspath,
+        required=True,
+        help="Path to folder where output will be saved",
     )
     parser.add_argument("-n", required=True, type=int, help="Number of vols to sample")
     parser.add_argument("--Apix", required=True, type=float)
+
+    parser.add_argument(
+        "--gt-paths", help=".pkl file with path to ground truth volume per particle"
+    )
+    parser.add_argument(
+        "--gt-dir", help="path to folder with ground truth .mrc volumes per particle"
+    )
+
+    parser.add_argument(
+        "--mask",
+        default=None,
+        type=os.path.abspath,
+        help="Path to mask .mrc to compute the masked metric",
+    )
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Overwrite already-generated volumes instead of reusing them",
+    )
+
     parser.add_argument("--epoch", type=int, default=-1, help="epoch (default: last)")
+    parser.add_argument("--cuda-device", default=0, type=int)
     parser.add_argument("--no-fscs", action="store_false", dest="calc_fsc_vals")
 
     parser.add_argument(
@@ -159,9 +180,16 @@ def main(args: argparse.Namespace) -> None:
     z = utils.load_pkl(z_path)
     generator = prep_generator(cfg, checkpoint)
     log_interval = max(round((len(particle_idxs) // 1000), -2), 5)
+    logger.setLevel(logging.INFO)
     gen_paths = list()
 
     for vol_i, particle_i in enumerate(particle_idxs):
+        gen_file = os.path.join(args.o, f"vol_{vol_i:03d}.mrc")
+        gen_paths.append(gen_file)
+
+        if os.path.exists(gen_file) and not args.overwrite:
+            continue
+
         if vol_i % log_interval == 0:
             logger.info(
                 f"Generating volume {vol_i + 1}/{len(particle_idxs)}  "
@@ -169,7 +197,6 @@ def main(args: argparse.Namespace) -> None:
             )
 
         gt_path = gt_paths[particle_i]
-        gen_paths.append(os.path.join(args.o, f"vol_{vol_i:03d}.mrc"))
         gen_vol = generator(z[particle_i, :])
         mrc.write(gen_paths[-1], gen_vol.astype(np.float32))
         if not os.path.isabs(gt_path) and args.gt_paths is not None:
@@ -184,7 +211,9 @@ def main(args: argparse.Namespace) -> None:
         volumes.align_volumes_multi(gen_paths, gt_paths)
 
     if args.calc_fsc_vals:
-        fsc_curves = volumes.get_fsc_curves(gt_paths, gen_paths, outdir=args.o)
+        fsc_curves = volumes.get_fsc_curves(
+            gt_paths, gen_paths, mask_file=args.mask, outdir=args.o
+        )
 
         auc_vals = {
             particle_idxs[i]: auc(fsc_df.pixres, fsc_df.fsc.abs())

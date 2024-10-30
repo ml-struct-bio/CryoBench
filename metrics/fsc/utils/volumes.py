@@ -229,7 +229,11 @@ def get_fsc_curves(
             f"`vol_paths`: {type(vol_paths).__name__} !"
         )
 
-    outlbl = "fsc" if mask_file is not None else "fsc_no_mask"
+    if mask_file is not None:
+        outlbl = f"fsc_{os.path.splitext(os.path.basename(mask_file))[0]}"
+    else:
+        outlbl = "fsc_no_mask"
+
     if outdir is None:
         if isinstance(vol_paths, str):
             outdir = vol_paths

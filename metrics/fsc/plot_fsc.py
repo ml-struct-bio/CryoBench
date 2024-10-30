@@ -60,12 +60,7 @@ def main(args: argparse.Namespace) -> None:
         auc_std_np = np.nanstd(auc_total_np)
         auc_med_np = np.nanmedian(auc_total_np, 0)
         plt.title(
-            "auc:"
-            + str(round(auc_avg_np, 3))
-            + "+-"
-            + str(round(auc_std_np, 3))
-            + "/med:"
-            + str(round(auc_med_np, 3)),
+            f"AUC: {auc_avg_np:.3f}\u00B1{auc_std_np:.3f}; median: {auc_med_np:.3f}",
             fontsize=15,
         )
 

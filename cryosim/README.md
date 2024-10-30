@@ -39,7 +39,7 @@ This repository is built upon https://github.com/ml-struct-bio/cryosim/tree/main
 ### Add gaussian noise to SNR of 0.01
 ```
   # Add gaussian noise to SNR of 0.01
-  $ python add_noise.py --mrcs input_noiseless_particles.mrcs -o output_noisy_particles.mrcs --snr 0.01
+  $ python add_noise.py input_noiseless_particles.mrcs -o output_noisy_particles.mrcs --snr 0.01
 
   # Or generate 100 noise added mrcs files
   $ for i in {0..99}; do python add_noise.py input_noiseless_particles.${i}.mrcs -o output_noisy_particles.mrcs --snr 0.01; done 

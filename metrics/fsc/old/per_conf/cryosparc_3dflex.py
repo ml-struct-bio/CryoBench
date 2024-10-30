@@ -2,14 +2,18 @@
 
 Example usage
 -------------
-$ python metrics/per_conf_fsc/cryosparc_3dflex.py results/CS-cryobench/J9 \
+$ python metrics/fsc/old/per_conf/cryosparc_3dflex.py results/CS-cryobench/J9 \
             -o cBench/cBench-out_3Dflex/ --gt-dir vols/128_org/ --mask bproj_0.005.mrc
 
 """
 import os
+import sys
 import json
-from metrics.utils import utils
-from metrics.fsc.utils import interface
+
+sys.path.append(
+    os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+)
+from utils import volumes, interface
 
 
 def main(args):
@@ -33,7 +37,7 @@ def main(args):
     os.makedirs(os.path.join(outdir, "vols"), exist_ok=True)
 
     if args.calc_fsc_vals:
-        utils.get_fsc_curves(
+        volumes.get_fsc_curves(
             args.outdir,
             args.gt_dir,
             mask_file=args.mask,

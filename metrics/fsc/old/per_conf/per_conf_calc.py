@@ -2,14 +2,14 @@
 
 Example usage
 -------------
-$ python metrics/fsc/per_conf_calc results/cryodrgn --epoch 19 --Apix 3.0 \
-                                   -o output --gt-dir ./gt_vols --mask ./mask.mrc
+$ python metrics/fsc/old/per_conf/per_conf_calc results/cryodrgn \
+                --epoch 19 --Apix 3.0 -o output --gt-dir ./gt_vols --mask ./mask.mrc
 
 """
-import argparse
 import os
+import sys
+import argparse
 import json
-from utils import interface
 from cdrgn import main as run_cdrgn
 from drgnai import main as run_drgnai
 from opusdsd import main as run_opusdsd
@@ -18,6 +18,11 @@ from cryosparc_3dcls import main as run_cryosparc_3dcls
 from cryosparc_abinitio import main as run_cryosparc_abinitio
 from cryosparc_3dva import main as run_cryosparc_3dva
 from cryosparc_3dflex import main as run_cryosparc_3dflex
+
+sys.path.append(
+    os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+)
+from utils import interface
 
 
 def main(args: argparse.Namespace):

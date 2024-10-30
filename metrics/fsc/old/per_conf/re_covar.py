@@ -1,15 +1,16 @@
-import argparse
 import os
 import sys
+import argparse
 import logging
-from utils import volumes, conformations, interface
 import numpy as np
 from cryodrgn import analysis
 
-sys.path.append(
-    os.path.join(os.path.dirname(os.path.dirname(__file__)), "methods", "recovar")
-)
+ROOTDIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+sys.path.append(os.path.join(ROOTDIR, "methods", "recovar"))
 from recovar import dataset, embedding, output
+
+sys.path.append(os.path.join(ROOTDIR, "fsc"))
+from utils import volumes, conformations, interface
 
 logger = logging.getLogger(__name__)
 

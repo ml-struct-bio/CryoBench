@@ -2,18 +2,23 @@
 
 Example usage
 -------------
-$ python metrics/fsc/cryosparc_3dva.py results/CS-cryobench/J11 \
+$ python metrics/fsc/old/per_conf/cryosparc_3dva.py results/CS-cryobench/J11 \
             -o cBench/cBench-out_3Dvar/ --gt-dir vols/128_org/ --mask bproj_0.005.mrc
 
 """
-import argparse
 import os
+import sys
+import argparse
 import json
 import numpy as np
 from glob import glob
 import logging
-from utils import volumes, interface
 from cryodrgn import analysis, mrc
+
+sys.path.append(
+    os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+)
+from utils import volumes, interface
 
 logger = logging.getLogger(__name__)
 

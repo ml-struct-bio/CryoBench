@@ -10,13 +10,18 @@ $ python metrics/fsc/cdrgn.py results/cryodrgn --epoch 19 --Apix 3.0 \
                               -o output --gt-dir ./gt_vols --mask ./mask.mrc
 
 """
-import argparse
 import os
+import sys
+import argparse
 import subprocess
 import logging
 import numpy as np
-from utils import volumes, conformations, interface
 import cryodrgn.utils
+
+sys.path.append(
+    os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+)
+from utils import volumes, conformations, interface
 
 logger = logging.getLogger(__name__)
 

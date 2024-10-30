@@ -72,6 +72,7 @@ def main(args: argparse.Namespace) -> None:
         pltfile = os.path.join(args.outdir, f"{fsc_lbl}.png")
         plt.savefig(pltfile, dpi=1200, bbox_inches="tight")
         print(f"{fsc_lbl} plot saved!")
+        plt.clf()
 
 
 if __name__ == "__main__":

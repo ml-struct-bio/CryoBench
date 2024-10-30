@@ -2,19 +2,23 @@
 
 Example usage
 -------------
-$ python metrics/per_conf_fsc/cryosparc_abinitio.py results/CS-cryobench/J5 \
+$ python metrics/fsc/old/per_conf/cryosparc_abinitio.py results/CS-cryobench/J5 \
             -o cBench/cBench-out_3Dcls/ --gt-dir vols/128_org/ --mask bproj_0.005.mrc \
             --num-classes 10
 
 """
-import argparse
 import os
+import sys
+import argparse
 import json
 import numpy as np
 from glob import glob
 import logging
-from metrics.utils import utils
-from metrics.fsc.utils import interface
+
+sys.path.append(
+    os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+)
+from utils import volumes, interface
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +52,7 @@ def main(args: argparse.Namespace) -> None:
     files = [
         f for f in glob(os.path.join(args.input_dir, file_pattern)) if "mask" not in f
     ]
-    pred_dir = sorted(files, key=utils.numfile_sortkey)
+    pred_dir = sorted(files, key=volumes.numfile_sortkey)
     print("pred_dir[0]:", pred_dir[0])
     csparc_num = pred_dir[0].split("/")[-1].split(".")[0].split("_")[3]
     csparc_job = pred_dir[0].split("/")[-1].split(".")[0].split("_")[0]
@@ -68,7 +72,7 @@ def main(args: argparse.Namespace) -> None:
             lst.append((int(cls), int(gt)))
 
     if args.calc_fsc_vals:
-        utils.get_fsc_curves(
+        volumes.get_fsc_curves(
             outdir,
             args.gt_dir,
             vol_dir=args.input_dir,

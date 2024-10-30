@@ -7,16 +7,21 @@ $ python metrics/per_conf_fsc/drgnai.py results/drgnai_fixed \
             --mask ./mask.mrc --num-imgs 1000 --num-vols 100
 
 """
-import argparse
 import os
+import sys
+import argparse
 import logging
 import numpy as np
 import torch
-from utils import volumes, conformations, interface
 import cryodrgn.utils
 from cryodrgnai.analyze import VolumeGenerator
 from cryodrgnai.lattice import Lattice
 from cryodrgnai import models
+
+sys.path.append(
+    os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+)
+from utils import volumes, conformations, interface
 
 logger = logging.getLogger(__name__)
 

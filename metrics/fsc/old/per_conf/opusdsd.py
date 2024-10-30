@@ -14,13 +14,17 @@ $ python metrics/fsc/opusdsd.py results/opusdsd --epoch 19 --Apix 3.0 -o output 
                                 -D 256
 
 """
-import argparse
 import os
+import sys
+import argparse
 import subprocess
 from glob import glob
 import logging
 import numpy as np
 import torch
+
+ROOTDIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+sys.path.append(os.path.join(ROOTDIR, "fsc"))
 from utils import volumes, conformations, interface
 
 logger = logging.getLogger(__name__)
@@ -64,7 +68,7 @@ def main(args: argparse.Namespace) -> None:
     nearest_z_array = conformations.get_nearest_z_array(z, args.num_vols, num_imgs)
 
     eval_vol_cmd = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)),
+        ROOTDIR,
         "methods",
         "opusDSD",
         "cryodrgn",

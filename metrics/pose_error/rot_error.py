@@ -1,4 +1,12 @@
-"""Align and compute distance between two series of rotation matrices."""
+"""Align and compute distance between two series of rotation matrices.
+
+Example usage
+-------------
+$ python metrics/pose_error/rot_error.py cryobench_input/003_IgG-1D_cdrgn2/ \
+            datasets/IgG-1D/combined_poses.pkl --labels datasets/IgG-1D/gt_latents.pkl \
+            --save-err cryobench_output/cdrgn2_003_rot-error/
+
+"""
 import os
 import argparse
 import logging
@@ -16,9 +24,6 @@ def parse_args() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
 
     parser.add_argument("traindir", help="Results directory")
-    parser.add_argument(
-        "method", choices=["drgnai", "cryodrgn", "cryosparc", "3dcls_ribosembly", "pkl"]
-    )
     parser.add_argument("true_poses", help=".pkl file with GT poses")
     parser.add_argument("--save-err", help="save error with .npy")
     parser.add_argument("--epoch", type=int, default=-1, help="epoch (default: last)")
@@ -131,15 +136,19 @@ def main(args: argparse.Namespace) -> None:
         os.makedirs(os.path.join(args.save_err))
 
     t1 = dt.now()
-    if args.method == "cryosparc":
-        job = args.traindir.split("/")[-1]
-        particle_info = np.load(
-            os.path.join(args.traindir, f"{job}_final_particles.cs")
-        )
-        highest_prob, rot1 = np.zeros(len(particle_info)), np.zeros(
-            (len(particle_info), 3)
-        )
+
+    basedir, job = os.path.split(os.path.normpath(args.traindir))
+
+    def train_path(f: str) -> str:
+        return os.path.join(args.traindir, f)
+
+    if os.path.exists(train_path(f"{job}_final_particles.cs")):
+        method = "cryosparc"
+        particle_info = np.load(train_path(f"{job}_final_particles.cs"))
+        highest_prob = np.zeros(len(particle_info))
+        rot1 = np.zeros((len(particle_info), 3))
         cl_idx = 0
+
         while f"alignments_class_{cl_idx}/class_posterior" in particle_info.dtype.names:
             new_best = (
                 particle_info[f"alignments_class_{cl_idx}/class_posterior"]
@@ -150,19 +159,25 @@ def main(args: argparse.Namespace) -> None:
             ][new_best]
             rot1[new_best] = particle_info[f"alignments_class_{cl_idx}/pose"][new_best]
             cl_idx += 1
+
         rot1 = lie_tools.expmap(torch.tensor(rot1))
         rot1 = rot1.cpu().numpy()
         rot1 = np.array([x.T for x in rot1])
 
-    elif args.method == "pkl":
+    elif os.path.isfile(args.traindir) and os.path.splitext(args.traindir)[1] == ".pkl":
+        method = ".pkl"
         rot1 = cryodrgn.utils.load_pkl(args.traindir)
 
     else:
         # if args.data == "Tomotwin-100":
         #     rot1 = load_pkl(args.traindir)
         # else:
-        if args.method == "drgnai":
+        if os.path.isdir(train_path("out")):
+            method = "drgnai"
             args.traindir = os.path.join(args.traindir, "out")
+        else:
+            method = "cryodrgn"
+
         if args.epoch == -1:
             args.epoch = max(
                 int(f.split(".")[1])
@@ -170,9 +185,7 @@ def main(args: argparse.Namespace) -> None:
                 if f.startswith("pose.") and len(f.split(".")) == 3
             )
 
-        rot1 = cryodrgn.utils.load_pkl(
-            os.path.join(args.traindir, f"pose.{args.epoch}.pkl")
-        )
+        rot1 = cryodrgn.utils.load_pkl(train_path(f"pose.{args.epoch}.pkl"))
 
     rot2 = cryodrgn.utils.load_pkl(args.true_poses)
 
@@ -189,7 +202,7 @@ def main(args: argparse.Namespace) -> None:
         rot2 = rot2[ind]
 
     assert rot1.shape == rot2.shape
-    logger.info(f"data and method: {args.data}, {args.method}")
+    logger.info(f"data and method: {args.data}, {method}")
     errors_lst = []
 
     if args.labels:
@@ -250,14 +263,15 @@ def main(args: argparse.Namespace) -> None:
         logger.info(f"Median Geodesic: {med}")
         errors_lst.append(ang_dists)
 
-    npy_name = f"errs_{args.method}_rot.npy"
+    npy_name = f"errs_{method}_rot.npy"
     err_np_path = os.path.join(args.save_err, npy_name)
     errors_npy = np.array(errors_lst)
 
     with open(err_np_path, "wb") as f:
         np.save(f, errors_npy)
 
-    logger.info("Finished in {}".format(dt.now() - t1))
+    tottime = dt.now() - t1
+    logger.info(f"Finished in {tottime}  ({tottime / args.N} per particle) ")
 
 
 if __name__ == "__main__":

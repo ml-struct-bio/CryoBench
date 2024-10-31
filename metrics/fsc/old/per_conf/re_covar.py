@@ -86,7 +86,7 @@ def main(args: argparse.Namespace) -> None:
             fast=args.fast,
             overwrite=args.overwrite,
             vol_fl_function=lambda i: os.path.join(
-                format(i, "03d"), "ml_optimized_locres_filtered.mrc"
+                format(i, "03d"), "ml_optimized_locres_filtered"
             ),
         )
 
@@ -98,7 +98,7 @@ def main(args: argparse.Namespace) -> None:
                 fast=args.fast,
                 overwrite=args.overwrite,
                 vol_fl_function=lambda i: os.path.join(
-                    format(i, "03d"), "ml_optimized_locres_filtered.mrc"
+                    format(i, "03d"), "ml_optimized_locres_filtered"
                 ),
             )
 

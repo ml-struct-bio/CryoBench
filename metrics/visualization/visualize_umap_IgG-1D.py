@@ -1,53 +1,38 @@
+import os
+import sys
+import argparse
+import pickle
+import json
+import glob
 import numpy as np
 from cryodrgn import analysis
-
-import pickle
-import os
-import re
-import argparse
+import matplotlib
 import matplotlib.pyplot as plt
 
-log = print
-
-from matplotlib import colors
-import glob, re
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(__file__)), "fsc"))
+from utils import volumes
 
 
-def parse_args():
+def parse_args() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--method", type=str, help="type of methods")
-    parser.add_argument("--is_cryosparc", action="store_true", help="cryosparc or not")
-    parser.add_argument("--num_imgs", type=int, help="number of images")
-    parser.add_argument("--num_classes", type=int, default=20, help="number of classes")
-    parser.add_argument("--num_vols", type=int, default=100, help="number of classes")
+
+    parser.add_argument(
+        "result_path",
+        type=os.path.abspath,
+        help="umap & latent folder before method name (e.g. /scratch/gpfs/ZHONGE/mj7341/CryoBench/results/IgG-1D/snr0.01)",
+    )
     parser.add_argument(
         "-o",
         type=os.path.abspath,
         required=True,
         help="Output folder to save the UMAP plot",
     )
-    parser.add_argument(
-        "--result-path",
-        type=os.path.abspath,
-        required=True,
-        help="umap & latent folder before method name (e.g. /scratch/gpfs/ZHONGE/mj7341/CryoBench/results/IgG-1D/snr0.01)",
-    )
-    parser.add_argument(
-        "--cryosparc_path", type=os.path.abspath, help="cryosparc folder path"
-    )
-    parser.add_argument("--cryosparc_job_num", type=str, help="cryosparc job number")
+
+    parser.add_argument("--num_imgs", type=int, help="number of images")
+    parser.add_argument("--num_classes", type=int, default=20, help="number of classes")
+    parser.add_argument("--num_vols", type=int, default=100, help="number of classes")
 
     return parser
-
-
-def natural_sort_key(s):
-    # Convert the string to a list of text and numbers
-    parts = re.split("([0-9]+)", s)
-
-    # Convert numeric parts to integers for proper numeric comparison
-    parts[1::2] = map(int, parts[1::2])
-
-    return parts
 
 
 def parse_class_assignments(path_for_label, path_for_model, K):
@@ -114,7 +99,7 @@ def plot_3dcls(args, dihedral_angles, labels_3dcls, jitter=0.04):
     yy_jittered = yy + np.random.randn(len(yy)) * jitter
 
     colorList = plt.cm.tab20.colors
-    cmap = colors.ListedColormap(colorList[: args.num_classes])
+    cmap = matplotlib.colors.ListedColormap(colorList[: args.num_classes])
 
     plt.scatter(
         xx_jittered,
@@ -141,7 +126,7 @@ def plt_umap_labels():
     plt.yticks([])
 
 
-def plot_methods(args, v, dihedral_angles, is_umap=True, use_axis=False):
+def plot_methods(args, method, v, dihedral_angles, is_umap=True, use_axis=False):
     fig, ax = plt.subplots(figsize=(4, 4))
     # Whole
     plot_dim = (0, 1)
@@ -149,37 +134,70 @@ def plot_methods(args, v, dihedral_angles, is_umap=True, use_axis=False):
     c_all = np.repeat(dihedral_angles, args.num_imgs)
     c = c_all
     plot_args = dict(alpha=0.1, s=1, cmap="gist_rainbow", vmin=0, vmax=356.4)
-    plt.scatter(v[:, plot_dim[0]], v[:, plot_dim[1]], c=c, rasterized=True, **plot_args)
+    ax.scatter(v[:, plot_dim[0]], v[:, plot_dim[1]], c=c, rasterized=True, **plot_args)
+
     if is_umap:
         if use_axis:
-            plt.savefig(
-                f"{args.o}/{args.method}/{args.method}_umap.pdf", bbox_inches="tight"
-            )
+            fig.savefig(os.path.join(args.o, f"{method}_umap.pdf"), bbox_inches="tight")
         else:
             plt_umap_labels()
-            plt.savefig(
-                f"{args.o}/{args.method}/{args.method}_umap_no_axis.pdf",
+            fig.savefig(
+                os.path.join(args.o, f"{method}_umap_no_axis.pdf"),
                 bbox_inches="tight",
             )
+
     else:
         if use_axis:
-            plt.savefig(
-                f"{args.o}/{args.method}/{args.method}_latent.pdf", bbox_inches="tight"
+            fig.savefig(
+                os.path.join(args.o, f"{method}_latent.pdf"), bbox_inches="tight"
             )
         else:
             plt_umap_labels()
-            plt.savefig(
-                f"{args.o}/{args.method}/{args.method}_latent_no_axis.pdf",
+            fig.savefig(
+                os.path.join(args.o, f"{method}_latent_no_axis.pdf"),
                 bbox_inches="tight",
             )
+
     plt.close()
 
 
 def main(args):
     dihedral_angles = np.linspace(0, 356.4, 100)
+    input_files = os.listdir(args.result_path)
+    os.makedirs(args.o, exist_ok=True)
 
-    if args.is_cryosparc:
-        if args.method == "3dcls":
+    if "config.yaml" in input_files:
+        umap_pkl = os.path.join(args.result_path, "analyze.19", "umap.pkl")
+        umap_pkl = open(umap_pkl, "rb")
+        umap_pkl = pickle.load(umap_pkl)
+        plot_methods(args, "cryoDRGN", umap_pkl, dihedral_angles, is_umap=True)
+
+    elif "config.pkl" in input_files:
+        umap_pkl = f"{args.result_path}/{args.method}/analyze.19/umap.pkl"
+
+        umap_pkl = open(umap_pkl, "rb")
+        umap_pkl = pickle.load(umap_pkl)
+        # UMap
+        plot_methods(args, "OPUS-DSD", umap_pkl, dihedral_angles, is_umap=True)
+
+    elif "reordered_z.npy" in input_files:
+        latent_path = os.path.join(args.result_path, args.method, "reordered_z.npy")
+        latent_z = np.load(latent_path)
+
+        umap_path = f"{args.result_path}/{args.method}/reordered_z_umap.npy"
+        umap_pkl = analysis.run_umap(latent_z)  # v: latent space
+        np.save(umap_path, umap_pkl)
+
+        plot_methods(args, "RECOVAR", umap_pkl, dihedral_angles, is_umap=True)
+
+    elif "job.json" in input_files:
+        cryosparc_path, cryosparc_job = os.path.split(
+            os.path.normpath(args.result_path)
+        )
+        with open(os.path.join(args.input_dir, "job.json")) as f:
+            configs = json.load(f)
+
+        if configs["type"] == "class_3D":
             file_pattern = "*.mrc"
             files = glob.glob(
                 os.path.join(
@@ -189,13 +207,14 @@ def main(args):
                     file_pattern,
                 )
             )
-            pred_dir = sorted(files, key=natural_sort_key)
-            cryosparc_num = pred_dir[0].split("/")[-1].split(".")[0].split("_")[3]
-            cryosparc_job = pred_dir[0].split("/")[-1].split(".")[0].split("_")[0]
+            pred_dir = sorted(files, key=volumes.natural_sort_key)
+            cryosparc_num = os.path.split(pred_dir[0])[-1].split(".")[0].split("_")[3]
             print("cryosparc_num:", cryosparc_num)
             print("cryosparc_job:", cryosparc_job)
-            path_for_label = f"{args.cryosparc_path}/{cryosparc_job}/{cryosparc_job}_{cryosparc_num}_particles.cs"
-            path_for_model = f"{args.cryosparc_path}/{cryosparc_job}/"
+            path_for_label = os.path.join(
+                args.result_path, f"{cryosparc_job}_{cryosparc_num}_particles.cs"
+            )
+            path_for_model = os.path.join(cryosparc_path, cryosparc_job)
             labels_3dcls, models_3dcls = parse_class_assignments(
                 path_for_label, path_for_model, args.num_classes
             )
@@ -211,7 +230,7 @@ def main(args):
                     file_pattern,
                 )
             )
-            pred_dir = sorted(files, key=natural_sort_key)
+            pred_dir = sorted(files, key=volumes.natural_sort_key)
             cryosparc_job = pred_dir[0].split("/")[-1].split(".")[0].split("_")[0]
             print("cryosparc_job:", cryosparc_job)
             path_for_label = f"{args.cryosparc_path}/{cryosparc_job}/{cryosparc_job}_final_particles.cs"
@@ -237,7 +256,7 @@ def main(args):
                 np.save(umap_path, umap_latent)
             else:
                 umap_latent = np.load(umap_path)
-            plot_methods(args, umap_latent, dihedral_angles, is_umap=True)
+            plot_methods(args, "3DVA", umap_latent, dihedral_angles, is_umap=True)
 
         elif args.method == "3dflex":
             path = f"{args.cryosparc_path}/{args.cryosparc_job_num}/{args.cryosparc_job_num}_latents_011200.cs"
@@ -249,69 +268,27 @@ def main(args):
             latent_path = f"{args.o}/{args.method}/{args.method}_latents.npy"
             np.save(latent_path, v)
             # Latent
-            plot_methods(args, v, dihedral_angles, is_umap=True)
+            plot_methods(args, "3DFlex", v, dihedral_angles, is_umap=True)
+
+    elif (
+        "out" in input_files
+        and os.path.isdir(os.path.join(args.input_dir, "out"))
+        and "config.yaml" in os.listdir(os.path.join(args.input_dir, "out"))
+    ):
+        umap_pkl = f"{args.result_path}/{args.method}/out/analysis_100/umap.pkl"
+        umap_pkl = open(umap_pkl, "rb")
+        umap_pkl = pickle.load(umap_pkl)
+        plot_methods(args, "DRGN-AI", umap_pkl, dihedral_angles, is_umap=True)
 
     else:
-        if args.method == "cryodrgn":
-            umap_pkl = f"{args.result_path}/{args.method}/analyze.19/umap.pkl"
-
-            umap_pkl = open(umap_pkl, "rb")
-            umap_pkl = pickle.load(umap_pkl)
-            # UMap
-            plot_methods(args, umap_pkl, dihedral_angles, is_umap=True)
-
-        elif args.method == "cryodrgn2":
-            latent_z = f"{args.result_path}/{args.method}/z.29.pkl"
-            latent_z = open(latent_z, "rb")
-            latent_z = pickle.load(latent_z)
-            # Latent
-
-            umap_pkl = f"{args.result_path}/{args.method}/analyze.29/umap.pkl"
-
-            umap_pkl = open(umap_pkl, "rb")
-            umap_pkl = pickle.load(umap_pkl)
-            # UMap
-            plot_methods(args, umap_pkl, dihedral_angles, is_umap=True)
-
-        elif args.method == "drgnai_fixed":
-            umap_pkl = f"{args.result_path}/{args.method}/out/analysis_100/umap.pkl"
-
-            umap_pkl = open(umap_pkl, "rb")
-            umap_pkl = pickle.load(umap_pkl)
-            # UMap
-            plot_methods(args, umap_pkl, dihedral_angles, is_umap=True)
-
-        elif args.method == "drgnai_abinit":
-            umap_pkl = f"{args.result_path}/{args.method}/out/analysis_100/umap.pkl"
-
-            umap_pkl = open(umap_pkl, "rb")
-            umap_pkl = pickle.load(umap_pkl)
-            # UMap
-            plot_methods(args, umap_pkl, dihedral_angles, is_umap=True)
-
-        elif args.method == "opus-dsd":
-            umap_pkl = f"{args.result_path}/{args.method}/analyze.19/umap.pkl"
-
-            umap_pkl = open(umap_pkl, "rb")
-            umap_pkl = pickle.load(umap_pkl)
-            # UMap
-            plot_methods(args, umap_pkl, dihedral_angles, is_umap=True)
-
-        elif args.method == "recovar":
-            latent_path = os.path.join(args.result_path, args.method, "reordered_z.npy")
-            latent_z = np.load(latent_path)
-
-            umap_path = f"{args.result_path}/{args.method}/reordered_z_umap.npy"
-            umap_pkl = analysis.run_umap(latent_z)  # v: latent space
-            np.save(umap_path, umap_pkl)
-
-            plot_methods(args, umap_pkl, dihedral_angles, is_umap=True)
+        raise ValueError(
+            f"Unrecognized output folder format found in `{args.result_path}`!"
+            f"Does not match for any known methods: "
+            "cryoDRGN, DRGN-AI, OPUS-DSD, 3dflex, 3DVA, RECOVAR"
+        )
 
 
 if __name__ == "__main__":
     args = parse_args().parse_args()
-    if not os.path.exists(args.o + "/" + args.method):
-        os.makedirs(args.o + "/" + args.method)
-
     main(args)
     print("done!")

@@ -1,0 +1,7 @@
+numpy<1.27
+pandas<2
+matplotlib<3.7
+seaborn<0.12
+scitkit-learn
+torch>1.0.0
+cryodrgn @ git+https://github.com/ml-struct-bio/cryodrgn.git@2.0.0-beta

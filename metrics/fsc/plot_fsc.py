@@ -69,7 +69,7 @@ def main(args: argparse.Namespace) -> None:
 
         auc_str = str()
         for i, auc_val in enumerate(auc_lst):
-            auc_str += f"{i:>3}: AUC {auc_val:.4f}\t"
+            auc_str += f"{i:>7}: AUC {auc_val:.4f}"
             if i < (len(auc_lst) - 1) and i % 4 == 3:
                 auc_str += "\n"
 
@@ -90,7 +90,7 @@ def main(args: argparse.Namespace) -> None:
         palette = ["red"] + palette[:-1]
         g = sns.lineplot(data=fsc_df, x="pixres", y="fsc")
         plt.xticks(np.arange(1, 6) * 0.1, res_text, fontsize=15)
-        g.figure.axes[0].set(xlabel="Spatial frequency (1/A)")
+        g.figure.axes[0].set(xlabel="Spatial frequency (1/Å)")
         g.figure.axes[0].set(ylabel="Fourier shell correlation")
         g.figure.axes[0].set(xlim=(0, 0.5))
         g.figure.axes[0].set(ylim=(0, 1.0))

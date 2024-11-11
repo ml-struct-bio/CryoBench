@@ -25,13 +25,19 @@ from glob import glob
 from time import time
 import logging
 from typing import Callable
-from utils import volumes
 import numpy as np
 import torch
 from sklearn.metrics import auc
+from utils import volumes
 from cryodrgn import mrc, models, utils
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="(%(levelname)s) (%(filename)s) (%(asctime)s) %(message)s",
+    datefmt="%d-%b-%y %H:%M:%S",
+)
 logger = logging.getLogger(__name__)
+
 CHIMERAX_PATH = os.environ["CHIMERAX_PATH"]
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ALIGN_PATH = os.path.join(ROOT_DIR, "utils", "align.py")
@@ -96,9 +102,10 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def prep_generator(
+def get_volume_generator(
     config_path: str, checkpoint_path: str
 ) -> Callable[[torch.Tensor], np.ndarray]:
+    """Create a latent space volume generator using a saved cryoDRGN model."""
     with open(config_path, "r") as f:
         cfg = yaml.safe_load(f)
 
@@ -111,7 +118,11 @@ def prep_generator(
     )
 
 
-def align(vol_path: str, ref_path: str, apix: float = 1.0, flip: bool = True) -> None:
+def align_volumes(
+    vol_path: str, ref_path: str, apix: float = 1.0, flip: bool = True
+) -> None:
+    """Align a volume in a .mrc file to another .mrc volume using ChimeraX."""
+
     data, header = mrc.parse_mrc(vol_path)
     header.update_origin(0.0, 0.0, 0.0)
     header.update_apix(apix)
@@ -178,9 +189,8 @@ def main(args: argparse.Namespace) -> None:
         )
 
     z = utils.load_pkl(z_path)
-    generator = prep_generator(cfg, checkpoint)
+    generator = get_volume_generator(cfg, checkpoint)
     log_interval = max(round((len(particle_idxs) // 1000), -2), 5)
-    logger.setLevel(logging.INFO)
     gen_paths = list()
 
     for vol_i, particle_i in enumerate(particle_idxs):
@@ -205,7 +215,7 @@ def main(args: argparse.Namespace) -> None:
         if args.serial_align:
             if vol_i % log_interval == 0:
                 logger.info(f"Aligning volume (vol_{vol_i:03d} ...")
-            align(gen_paths[-1], gt_path, args.Apix)
+            align_volumes(gen_paths[-1], gt_path, args.Apix)
 
     if args.parallel_align:
         volumes.align_volumes_multi(gen_paths, gt_paths)
@@ -229,9 +239,11 @@ def main(args: argparse.Namespace) -> None:
                 + [
                     f"No Images in Class {class_idx} "
                     if len(class_aucs) == 0
-                    else f"Num Images Class {class_idx}: {len(class_aucs)} \n"
-                    f"AU-FSC Class {class_idx}: "
-                    f"{np.mean(class_aucs):.5f} +/- {np.std(class_aucs):.3f}"
+                    else f"Class {class_idx} ({len(class_aucs)} image) — "
+                    f"AU-FSC: {np.mean(class_aucs):.5f}"
+                    if len(class_aucs) == 1
+                    else f"Class {class_idx} ({len(class_aucs)} images) — "
+                    f"AU-FSC: {np.mean(class_aucs):.5f} +/- {np.std(class_aucs):.3f}"
                     for class_idx, class_aucs in aucs.items()
                 ]
             )

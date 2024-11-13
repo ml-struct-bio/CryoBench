@@ -12,6 +12,11 @@ from recovar import dataset, embedding, output
 sys.path.append(os.path.join(ROOTDIR, "fsc"))
 from utils import volumes, conformations, interface
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="(%(levelname)s) (%(filename)s) (%(asctime)s) %(message)s",
+    datefmt="%d-%b-%y %H:%M:%S",
+)
 logger = logging.getLogger(__name__)
 
 

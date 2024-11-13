@@ -2,7 +2,7 @@
 
 Example usage
 -------------
-$ python metrics/per_conf_fsc/drgnai.py results/drgnai_fixed \
+$ python metrics/per_conf/drgnai.py results/drgnai_fixed \
             --epoch 19 --Apix 3.0 -o output/drgnai_fixed --gt-dir ./gt_vols \
             --mask ./mask.mrc --num-imgs 1000 --num-vols 100
 
@@ -10,6 +10,7 @@ $ python metrics/per_conf_fsc/drgnai.py results/drgnai_fixed \
 import os
 import sys
 import argparse
+import yaml
 import logging
 import numpy as np
 import torch
@@ -23,6 +24,11 @@ sys.path.append(
 )
 from utils import volumes, conformations, interface
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="(%(levelname)s) (%(filename)s) (%(asctime)s) %(message)s",
+    datefmt="%d-%b-%y %H:%M:%S",
+)
 logger = logging.getLogger(__name__)
 
 
@@ -46,18 +52,18 @@ def main(args: argparse.Namespace) -> None:
     z_path = os.path.join(args.input_dir, "out", f"conf{epoch_str}.pkl")
     if not os.path.exists(z_path):
         raise ValueError(
-            f"Could not find drgnAI latent space coordinates for epoch {args.epoch} "
+            f"Could not find DRGN-AI latent space coordinates for epoch {args.epoch} "
             f"in output folder {args.input_dir=} — did the model finishing running?"
         )
 
     logger.info(f"Putting output under: {args.outdir} ...")
-    voldir = os.path.join(args.outdir, "vols")
-    os.makedirs(voldir, exist_ok=True)
+    os.makedirs(args.outdir, exist_ok=True)
     z = cryodrgn.utils.load_pkl(z_path)
     num_imgs = int(args.num_imgs) if z.shape[0] == 100000 else "ribo"
     nearest_z_array = conformations.get_nearest_z_array(z, args.num_vols, num_imgs)
 
-    configs = cryodrgn.utils.load_yaml(cfg_file)
+    with open(cfg_file, "r") as f:
+        configs = yaml.safe_load(f)
     checkpoint = torch.load(weights_fl)
     hypervolume_params = checkpoint["hypervolume_params"]
     hypervolume = models.HyperVolume(**hypervolume_params)
@@ -90,16 +96,16 @@ def main(args: argparse.Namespace) -> None:
     else:
         if not args.dry_run:
             np.savetxt(out_zfile, nearest_z_array)
-            vol_generator.gen_volumes(voldir, nearest_z_array)
+            vol_generator.gen_volumes(args.outdir, nearest_z_array)
 
     # Align output conformation volumes to ground truth volumes using ChimeraX
     if args.align_vols:
-        volumes.align_volumes_multi(voldir, args.gt_dir)
+        volumes.align_volumes_multi(args.outdir, args.gt_dir)
 
     if args.calc_fsc_vals:
         volumes.get_fsc_curves(
+            args.outdir,
             args.gt_dir,
-            voldir,
             mask_file=args.mask,
             fast=args.fast,
             overwrite=args.overwrite,
@@ -107,8 +113,8 @@ def main(args: argparse.Namespace) -> None:
 
         if args.align_vols:
             volumes.get_fsc_curves(
+                os.path.join(args.outdir, "aligned"),
                 args.gt_dir,
-                vol_dir=os.path.join(voldir, "aligned"),
                 mask_file=args.mask,
                 fast=args.fast,
                 overwrite=args.overwrite,

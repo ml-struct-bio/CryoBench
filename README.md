@@ -2,7 +2,8 @@
 
 ## Documentation:
 
-The latest documentation for CryoBench is available [homepage](https://cryobench.cs.princeton.edu/).
+The latest documentation for CryoBench is available at our [homepage](https://cryobench.cs.princeton.edu/) and also at
+our [manual](https://ez-lab.gitbook.io/cryobench).
 
 For any feedback, questions, or bugs, please file a Github issue, start a Github discussion, or email.
 

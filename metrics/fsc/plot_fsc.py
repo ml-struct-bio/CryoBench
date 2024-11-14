@@ -40,25 +40,28 @@ def main(args: argparse.Namespace) -> None:
         fsc_files = sorted(
             glob(os.path.join(subdir, "*.txt")), key=volumes.numfile_sortkey
         )
+
         fsc_list = list()
         auc_lst = list()
-
-        freq = np.arange(1, 6) * 0.1
-        res = ["1/{:.1f}".format(val) for val in ((1 / freq) * args.Apix)]
-        res_text = res
-
         for i, fsc_file in enumerate(fsc_files):
             fsc = pd.read_csv(fsc_file, sep=" ")
             plt.plot(fsc.pixres, fsc.fsc, label=i)
-            plt.xticks(np.arange(1, 6) * 0.1, res_text, fontsize=15)
-            plt.yticks(fontsize=15)
-            plt.xlabel("Spatial frequency (1/Å)", fontsize=20)
-            plt.ylabel("Fourier shell correlation", fontsize=20)
-
             fsc_list.append(fsc.assign(vol=i))
             auc_lst.append(auc(fsc.pixres, fsc.fsc))
 
+        freq = np.arange(0, 6) * 0.1
+        res_text = [
+            f"{int(k / (2. * args.Apix) * 1000)/1000. if k > 0 else 'DC'}"
+            for k in np.linspace(0, 1, 6)
+        ]
+        plt.xlim((0, 0.5))
         plt.ylim((0, 1))
+        plt.grid(True, linewidth=0.53)
+        plt.xticks(freq, res_text, fontsize=11)
+        plt.yticks(fontsize=11)
+        plt.xlabel("Spatial frequency (1/Å)", fontsize=14, weight="semibold")
+        plt.ylabel("Fourier shell correlation", fontsize=14, weight="semibold")
+
         auc_avg_np = np.nanmean(auc_lst)
         auc_std_np = np.nanstd(auc_lst)
         auc_med_np = np.nanmedian(auc_lst, 0)
@@ -85,22 +88,18 @@ def main(args: argparse.Namespace) -> None:
 
         fsc_df = pd.concat(fsc_list).reset_index(drop=True)
         sns.set_style("ticks")
-        sns.set_palette(sns.color_palette("muted"))
-        palette = sns.color_palette("GnBu_r", n_colors=100)
-        palette = ["red"] + palette[:-1]
-        g = sns.lineplot(data=fsc_df, x="pixres", y="fsc")
-        plt.xticks(np.arange(1, 6) * 0.1, res_text, fontsize=15)
-        g.figure.axes[0].set(xlabel="Spatial frequency (1/Å)")
-        g.figure.axes[0].set(ylabel="Fourier shell correlation")
+        g = sns.lineplot(data=fsc_df, x="pixres", y="fsc", color="red", ci="sd")
+
+        plt.xticks(freq, res_text, fontsize=11)
+        plt.yticks(fontsize=11)
         g.figure.axes[0].set(xlim=(0, 0.5))
         g.figure.axes[0].set(ylim=(0, 1.0))
-        plt.hlines(xmin=0, xmax=0.5, y=0.5, color="k", linestyle="--", linewidth=1)
-        plt.grid(True)
-        plt.savefig(
-            os.path.join(args.outdir, f"{fsc_lbl}_means.png"),
-            dpi=1200,
-            bbox_inches="tight",
-        )
+        plt.grid(True, linewidth=0.53)
+        plt.xlabel("Spatial frequency (1/Å)", fontsize=14, weight="semibold")
+        plt.ylabel("Fourier shell correlation", fontsize=14, weight="semibold")
+
+        pltfile = os.path.join(args.outdir, f"{fsc_lbl}_means.png")
+        plt.savefig(pltfile, dpi=1200, bbox_inches="tight")
         plt.clf()
 
         print(f"`{fsc_lbl}` plots saved!\n")

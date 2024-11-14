@@ -1,13 +1,13 @@
 # CryoBench: Diverse and challenging datasets for the heterogeneity problem in cryo-EM
 
-## Documentation:
+## Documentation
 
 The latest documentation for CryoBench is available at our [homepage](https://cryobench.cs.princeton.edu/) and also at
 our [manual](https://ez-lab.gitbook.io/cryobench).
 
 For any feedback, questions, or bugs, please file a Github issue, start a Github discussion, or email.
 
-## Installation:
+## Installation
 To run the metrics, you have to install `cryodrgn`.
 `cryodrgn` may be installed via `pip`, and we recommend installing `cryodrgn` in a clean conda environment.
 

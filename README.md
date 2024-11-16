@@ -1,12 +1,13 @@
 # CryoBench: Diverse and challenging datasets for the heterogeneity problem in cryo-EM
 
-## Documentation:
+## Documentation
 
-The latest documentation for CryoBench is available [homepage](https://cryobench.cs.princeton.edu/).
+The latest documentation for CryoBench is available at our [homepage](https://cryobench.cs.princeton.edu/) and also at
+our [manual](https://ez-lab.gitbook.io/cryobench).
 
 For any feedback, questions, or bugs, please file a Github issue, start a Github discussion, or email.
 
-## Installation:
+## Installation
 To run the metrics, you have to install `cryodrgn`.
 `cryodrgn` may be installed via `pip`, and we recommend installing `cryodrgn` in a clean conda environment.
 
@@ -19,7 +20,7 @@ To run the metrics, you have to install `cryodrgn`.
 
 More installation instructions are found in the [documentation](https://ez-lab.gitbook.io/cryodrgn/installation).
 
-Datasets are available for download at Zenodo.  
+Datasets are available for download at Zenodo.
 
 1. Conf-het: [https://zenodo.org/records/11629428](https://zenodo.org/records/11629428).
 2. Comp-het: [https://zenodo.org/records/12528292](https://zenodo.org/records/12528292).
@@ -30,13 +31,13 @@ Look at the repo [cryosim](https://github.com/ml-struct-bio/CryoBench/tree/main/
 
 ## Metrics
 
-### 1. Per-Conformation FSC
-Look at the repo [metrics/per_conf_fsc](https://github.com/ml-struct-bio/CryoBench/tree/main/metrics/per_conf_fsc) and [metrics/per_conf_fsc/Ribosembly](https://github.com/ml-struct-bio/CryoBench/tree/main/metrics/per_conf_fsc_Ribosembly).
+### 1. Per-image FSCs
+Look at the repo [metrics/fsc](https://github.com/ml-struct-bio/CryoBench/tree/main/metrics/fsc)
 
 ### 2. UMAP visualization
 Look at the repo [metrics/visualization](https://github.com/ml-struct-bio/CryoBench/tree/main/metrics/visualization)
 
-	
+
 ## References:
 
 Jeon, Minkyu, et al. "CryoBench: Diverse and challenging datasets for the heterogeneity problem in cryo-EM." arXiv preprint arXiv:2408.05526 (2024) [paper](https://arxiv.org/abs/2408.05526).

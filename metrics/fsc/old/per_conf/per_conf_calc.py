@@ -1,5 +1,9 @@
 """Calculate FSCs between conformations matched across a volume model's latent space.
 
+This script is an alternative to the method-specific FSC calculation scripts found in
+this folder; it can automatically detect the method used to generate
+the output folder given.
+
 Example usage
 -------------
 $ python metrics/fsc/old/per_conf/per_conf_calc results/cryodrgn \

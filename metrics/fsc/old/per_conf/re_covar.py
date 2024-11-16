@@ -1,3 +1,12 @@
+"""Calculate FSCs across RECOVAR model conformations.
+
+Example usage
+-------------
+$ python metrics/fsc/old/per_conf/re_covar.py results/recovar/001/ \
+            -o cryobench-outputs/recovar/ --gt-dir IgG-1D/vols/128_org/ \
+            --mask IgG-1D/init-mask/mask.mrc --num-imgs 1000 --num-vols 100
+
+"""
 import os
 import sys
 import argparse

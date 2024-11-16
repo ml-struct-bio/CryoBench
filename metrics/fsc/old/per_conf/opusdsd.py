@@ -5,13 +5,16 @@ www.nature.com/articles/s41592-023-02031-6 for its publication.
 
 Example usage
 -------------
-$ python metrics/fsc/opusdsd.py results/opusdsd --epoch 19 --Apix 3.0 -o output \
-                                --gt-dir ./gt_vols --mask ./mask.mrc --num-imgs 1000
+$ python metrics/fsc/old/per_conf/opusdsd.py opusdsd-outputs/001_base/ \
+            --epoch 19 -o opusdsd-outputs/001_base/cryobench.10/ \
+            --gt-dir IgG-1D/vols/128_org/ --mask IgG-1D/init_mask/mask.mrc \
+            --num-imgs 1000 --num-vols 100 --Apix=3.0
 
 # We sometimes need to pad the opusDSD volumes to a larger box size
-$ python metrics/fsc/opusdsd.py results/opusdsd --epoch 19 --Apix 3.0 -o output \
-                                --gt-dir ./gt_vols --mask ./mask.mrc --num-imgs 1000 \
-                                -D 256
+$ python metrics/fsc/old/per_conf/opusdsd.py opusdsd-outputs/001_base/ \
+            --epoch 19 -o opusdsd-outputs/001_base/cryobench.10/ \
+            --gt-dir IgG-1D/vols/128_org/ --mask IgG-1D/init_mask/mask.mrc \
+            --num-imgs 1000 --num-vols 100 --Apix=3.0 -D 256
 
 """
 import os

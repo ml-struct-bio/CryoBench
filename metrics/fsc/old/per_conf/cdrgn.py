@@ -2,21 +2,21 @@
 
 Example usage
 -------------
-$ python metrics/fsc/cdrgn.py results/cryodrgn --epoch 19 --Apix 3.0 \
+$ python metrics/fsc/old/per_conf/cdrgn.py results/cryodrgn --epoch 19 --Apix 3.0 \
                               -o output --gt-dir ./gt_vols --mask ./mask.mrc
 
 # Also align output volumes to grund truth volumes with ChimeraX before computing FSCs
-$ python metrics/fsc/cdrgn.py results/cryodrgn --epoch 19 --Apix 3.0 \
+$ python metrics/fsc/old/per_conf/cdrgn.py results/cryodrgn --epoch 19 --Apix 3.0 \
                               -o output --gt-dir ./gt_vols --mask ./mask.mrc
 
 """
 import os
 import sys
 import argparse
-import subprocess
 import logging
 import numpy as np
 import cryodrgn.utils
+from cryodrgn import mrc
 
 sys.path.append(
     os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
@@ -59,17 +59,21 @@ def main(args: argparse.Namespace) -> None:
 
     # Generate volumes at these cryoDRGN latent space coordinates using the model tool
     out_zfile = os.path.join(args.outdir, "zfile.txt")
+    generator = volumes.get_volume_generator(cfg_file, weights_fl)
     logger.info(out_zfile)
-    cmd = f"CUDA_VISIBLE_DEVICES={args.cuda_device}; cryodrgn eval_vol {weights_fl} "
-    cmd += f"-c {cfg_file} --zfile {out_zfile} -o {voldir} --Apix {args.Apix} "
 
-    logger.info(cmd)
     if os.path.exists(out_zfile) and not args.overwrite:
         logger.info("Z file exists, skipping...")
     else:
         if not args.dry_run:
             np.savetxt(out_zfile, nearest_z_array)
-            subprocess.check_call(cmd, shell=True)
+
+            for i, zval in enumerate(nearest_z_array):
+                gen_file = os.path.join(voldir, f"vol_{i:03d}.mrc")
+                if os.path.exists(gen_file) and not args.overwrite:
+                    continue
+
+                mrc.write(gen_file, generator(zval).astype(np.float32))
 
     # Align output conformation volumes to ground truth volumes using ChimeraX
     if args.align_vols:

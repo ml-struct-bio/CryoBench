@@ -20,16 +20,13 @@ import os
 import argparse
 import subprocess
 import pickle
-import yaml
 from glob import glob
 from time import time
 import logging
-from typing import Callable
 import numpy as np
-import torch
 from sklearn.metrics import auc
 from utils import volumes
-from cryodrgn import mrc, models, utils
+from cryodrgn import mrc, utils
 
 logging.basicConfig(
     level=logging.INFO,
@@ -100,22 +97,6 @@ def parse_args() -> argparse.Namespace:
     )
 
     return parser.parse_args()
-
-
-def get_volume_generator(
-    config_path: str, checkpoint_path: str
-) -> Callable[[torch.Tensor], np.ndarray]:
-    """Create a latent space volume generator using a saved cryoDRGN model."""
-    with open(config_path, "r") as f:
-        cfg = yaml.safe_load(f)
-
-    norm = [float(x) for x in cfg["dataset_args"]["norm"]]
-    model, lattice = models.HetOnlyVAE.load(cfg, checkpoint_path, device="cuda:0")
-    model.eval()
-
-    return lambda z: model.decoder.eval_volume(
-        lattice.coords, lattice.D, lattice.extent, norm, z
-    )
 
 
 def align_volumes(
@@ -189,7 +170,7 @@ def main(args: argparse.Namespace) -> None:
         )
 
     z = utils.load_pkl(z_path)
-    generator = get_volume_generator(cfg, checkpoint)
+    generator = volumes.get_volume_generator(cfg, checkpoint)
     log_interval = max(round((len(particle_idxs) // 1000), -2), 5)
     gen_paths = list()
 

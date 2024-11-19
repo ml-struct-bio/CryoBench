@@ -7,6 +7,7 @@ CryoBench methods depend on older versions of cryoDRGN that don't have these met
 import os
 import subprocess
 import time
+import yaml
 import re
 from glob import glob
 import logging
@@ -14,7 +15,7 @@ from typing import Optional, Callable, Union
 import numpy as np
 import pandas as pd
 import torch
-from cryodrgn import fft, mrc
+from cryodrgn import fft, models, mrc
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,22 @@ def numfile_sortkey(s):
     parts[1::2] = map(int, parts[1::2])
 
     return parts
+
+
+def get_volume_generator(
+    config_path: str, checkpoint_path: str
+) -> Callable[[torch.Tensor], np.ndarray]:
+    """Create a latent space volume generator using a saved cryoDRGN model."""
+    with open(config_path, "r") as f:
+        cfg = yaml.safe_load(f)
+
+    norm = [float(x) for x in cfg["dataset_args"]["norm"]]
+    model, lattice = models.HetOnlyVAE.load(cfg, checkpoint_path, device="cuda:0")
+    model.eval()
+
+    return lambda z: model.decoder.eval_volume(
+        lattice.coords, lattice.D, lattice.extent, norm, z
+    )
 
 
 def align_volumes_multi(

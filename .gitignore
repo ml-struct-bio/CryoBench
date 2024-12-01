@@ -1,0 +1,4 @@
+*.out
+__pycache__
+*egg-info
+build/

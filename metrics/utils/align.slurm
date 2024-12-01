@@ -12,4 +12,4 @@ vol=$2
 outvol=$3
 tmpfile=$4
 
-/scratch/gpfs/mj7341/chimerax-1.6.1/bin/ChimeraX --nogui --script "align.py $ref $vol -o $outvol -f $tmpfile" > $tmpfile
+chimerax --nogui --script "metrics/utils/align.py $ref $vol -o $outvol -f $tmpfile --seed 1201 " > $tmpfile

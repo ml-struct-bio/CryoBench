@@ -7,6 +7,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('dir')
 parser.add_argument('--apix', type=float)
 parser.add_argument('--org-vol', required=True)
+parser.add_argument('--flip', action='store_true')
 args = parser.parse_args()
 
 def natural_sort_key(s):
@@ -35,10 +36,12 @@ for i, file_path in enumerate(matching_files):
     destination_path = os.path.join(args.dir, "aligned", new_filename)
     ref_path = gt_dir[i]
 
-    align_cmd = f"sbatch metrics/align.slurm \
+    align_cmd = f"sbatch metrics/utils/align.slurm \
     {ref_path} \
     {os.path.join(args.dir, new_filename)} \
     {destination_path} \
     {os.path.join(args.dir, 'aligned', f'temp_{i:03d}.txt')}"
+
+
     print(align_cmd)
     subprocess.check_call(align_cmd, shell=True)

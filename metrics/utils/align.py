@@ -1,4 +1,14 @@
-import argparse, os
+"""A Python wrapper for aligning two .mrc volumes using ChimeraX command-line tools.
+
+Example usage
+-------------
+chimerax --nogui --script "metrics/utils/align.py ref.mrc vol.mrc -o out.mrc"
+chimerax --nogui --script \
+    "metrics/utils/align.py ref.mrc vol.mrc -o out.mrc -f out.txt --flip"
+
+"""
+import os
+import argparse
 from chimerax.core.commands import run
 
 parser = argparse.ArgumentParser(description="Aligns two volumes")
@@ -19,19 +29,24 @@ parser.add_argument(
     action="store_true",
     help="Run an additional ninits alignments after flipping handedness of vol",
 )
+parser.add_argument(
+    "--seed", type=int, help="random seed to use for alignment initializations"
+)
 args = parser.parse_args()
 
-run(session, "open {}".format(args.ref))
-run(session, "open {}".format(args.vol))
+# Open the two volumes in ChimeraX as `#1` and `#2`
+run(session, f"open {args.ref}")
+run(session, f"open {args.vol}")
+seed_str = f" seed {args.seed}" if args.seed is not None else ""
 
 if not args.flip:
-    run(session, "fitmap #2 inMap #1 search {}".format(args.ninits))
+    run(session, f"fitmap #2 inMap #1 search {args.ninits}{seed_str}")
     run(session, "volume resample #2 onGrid #1 modelId #3")
-    run(session, "save {} #3".format(args.o))
+    run(session, f"save {args.o} #3")
 else:
     run(session, "volume flip #2")
-    run(session, "fitmap #2 inMap #1 search {}".format(args.ninits))
-    run(session, "fitmap #3 inMap #1 search {}".format(args.ninits))
+    run(session, f"fitmap #2 inMap #1 search {args.ninits}{seed_str}")
+    run(session, f"fitmap #3 inMap #1 search {args.ninits}{seed_str}")
 
     corrs = []
     f = open(args.f, "r")
@@ -45,6 +60,6 @@ else:
         run(session, "volume resample #2 onGrid #1 modelId #4")
     else:
         run(session, "volume resample #3 onGrid #1 modelId #4")
-    run(session, "save {} #4".format(args.o))
+    run(session, f"save {args.o} #4")
 
 run(session, "exit")

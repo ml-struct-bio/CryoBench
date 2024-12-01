@@ -55,6 +55,8 @@ def align_volumes_multi(
     vol_paths: Union[str, list[str]],
     gt_paths: Union[str, list[str]],
     outdir: Optional[str] = None,
+    flip: bool = False,
+    random_seed: Optional[int] = None,
 ) -> None:
     if isinstance(vol_paths, str):
         if os.path.isdir(vol_paths):
@@ -96,22 +98,24 @@ def align_volumes_multi(
         else:
             outdir = os.path.dirname(vol_paths[0])
 
-    os.makedirs(os.path.join(outdir, "aligned"), exist_ok=True)
-    os.makedirs(os.path.join(outdir, "flipped_aligned"), exist_ok=True)
+    aligndir = "flipped_aligned" if flip else "aligned"
+    os.makedirs(os.path.join(outdir, aligndir), exist_ok=True)
+    flip_str = "--flip" if flip else ""
+    seed_str = f" --seed {random_seed}" if random_seed is not None else ""
     align_jobs = list()
 
     for i, file_path in enumerate(matching_vols):
         base_filename = os.path.splitext(os.path.basename(file_path))[0]
         new_filename = base_filename + ".mrc"
-        destination_path = os.path.join(outdir, "aligned", new_filename)
+        destination_path = os.path.join(outdir, aligndir, new_filename)
         ref_path = gt_vols[i]
-        tmp_file = os.path.join(outdir, "aligned", f"temp_{i:03d}.txt")
+        tmp_file = os.path.join(outdir, aligndir, f"temp_{i:03d}.txt")
 
         align_cmd = (
             f"sbatch -t 61 -J align_{i} -o {tmp_file} --wrap='{CHIMERAX_PATH} --nogui "
             f"--script \" {os.path.join(ROOT_DIR, 'utils', 'align.py')} {ref_path} "
             f"{os.path.join(outdir, new_filename)} -o {destination_path} "
-            f"-f {tmp_file} \" ' "
+            f"{flip_str}{seed_str} -f {tmp_file} \" ' "
         )
         if i % 20 == 0:
             print(align_cmd)

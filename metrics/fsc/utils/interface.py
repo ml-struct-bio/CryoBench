@@ -44,5 +44,12 @@ def add_calc_args() -> argparse.ArgumentParser:
     parser.add_argument("--cuda-device", default=0, type=int)
     parser.add_argument("--no-fscs", action="store_false", dest="calc_fsc_vals")
     parser.add_argument("--align-vols", action="store_true")
+    parser.add_argument("--flip-align", action="store_true")
+
+    parser.add_argument(
+        "--align-seed",
+        type=int,
+        help="random seed to use for alignment initialization selection",
+    )
 
     return parser

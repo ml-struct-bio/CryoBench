@@ -456,3 +456,6 @@ class AnalysisConfigurations(_BaseConfigurations):
     trajectory_1d: int = None
     direct_traversal_txt: str = None
     z_values_txt: str = None
+    volume_metrics: str = None
+    o: str = None
+

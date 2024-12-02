@@ -1,17 +1,48 @@
 import argparse
 import numpy as np
+import pandas as pd
 import os
 import glob, re
 import subprocess
 import utils
-from cryodrgn import mrcfile
+from cryodrgn.mrc import parse_mrc
+from cryodrgn.mrc import write as write_mrc
 import torch
 from cryodrgn import utils
 from cryodrgn import analysis
-from cryodrgn.commands_utils.fsc import calculate_fsc
-from cryodrgn import mrcfile
+from cryodrgn import fft
 import torch
 log = utils.log 
+
+def calculate_fsc(vol1, vol2, mask_file):
+    if mask_file:
+        mask = parse_mrc(mask_file)[0]
+        vol1 *= mask
+        vol2 *= mask
+
+    D = vol1.shape[0]
+    x = np.arange(-D // 2, D // 2)
+    x2, x1, x0 = np.meshgrid(x, x, x, indexing="ij")
+    coords = np.stack((x0, x1, x2), -1)
+    r = (coords**2).sum(-1) ** 0.5
+
+    assert r[D // 2, D // 2, D // 2] == 0.0
+    vol1 = fft.fftn_center(vol1)
+    vol2 = fft.fftn_center(vol2)
+
+    # logger.info(r[D//2, D//2, D//2:])
+    prev_mask = np.zeros((D, D, D), dtype=bool)
+    fsc = [1.0]
+    for i in range(1, D // 2):
+        mask = r < i
+        shell = np.where(mask & np.logical_not(prev_mask))
+        v1 = vol1[shell]
+        v2 = vol2[shell]
+        p = np.vdot(v1, v2) / (np.vdot(v1, v1) * np.vdot(v2, v2)) ** 0.5
+        fsc.append(float(p.real))
+        prev_mask = mask
+
+    return pd.DataFrame(dict(pixres=np.arange(D // 2) / D, fsc=fsc))
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -28,6 +59,7 @@ def parse_args():
     parser.add_argument('--overwrite',action='store_true')
     parser.add_argument('--dry-run',action='store_true')
     parser.add_argument('--fast',type=int, default=1)
+    parser.add_argument('--cuda-device', default=0, type=int)
     return parser
 
 def get_cutoff(fsc, t):
@@ -96,14 +128,14 @@ def main(args):
         if not args.dry_run:
             np.savetxt(out_zfile, nearest_z_array)
             subprocess.check_call(cmd, shell=True)
-    
+   
     # box size change (add padding)
     file_pattern = "*.mrc"
     mrc_files = glob.glob(os.path.join(args.o, args.method, "per_conf_fsc", "vols", file_pattern))
     sorted_mrc_files = sorted(mrc_files, key=natural_sort_key)
     
     for mrc_file in sorted_mrc_files:
-        v, header = mrcfile.parse_mrc(mrc_file)
+        v, header = parse_mrc(mrc_file)
         D = args.D
         x,y,z = v.shape
         assert D >= x
@@ -124,7 +156,7 @@ def main(args):
         xorg -= apix*k
         yorg -= apix*j
         zorg -= apix*i
-        mrcfile.write_mrc(mrc_file, new)
+        write_mrc(mrc_file, new, Apix=apix, xorg=xorg, yorg=yorg, zorg=zorg)
 
     # Compute FSC
     if not os.path.exists('{}/{}/per_conf_fsc/fsc'.format(args.o, args.method)):
@@ -142,8 +174,8 @@ def main(args):
 
         vol_file = '{}/{}/per_conf_fsc/vols/reference{}.mrc'.format(args.o, args.method, ii)
 
-        vol1 = mrcfile.parse_mrc(gt_dir[ii])[0]
-        vol2 = mrcfile.parse_mrc(vol_file)[0]
+        vol1 = parse_mrc(gt_dir[ii])[0]
+        vol2 = parse_mrc(vol_file)[0]
         if os.path.exists(out_fsc) and not args.overwrite:
             log('FSC exists, skipping...')
         else:

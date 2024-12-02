@@ -224,7 +224,7 @@ def main(args):
                 #null_z = torch.zeros(zdim).to(device)
                 zz = torch.cat([template_z, zz], dim=-1)
             if vanilla:
-                model.save_mrc(f'{args.o}/{args.prefix}'+str(i), enc=zz, Apix=args.Apix, flip=args.flip)
+                model.save_mrc(f'{args.o}/{args.prefix}'+str(i), enc=zz, Apix=args.Apix)
             else:
                 if args.downsample:
                     extent = lattice.extent * (args.downsample/(D-1))

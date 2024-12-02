@@ -21,6 +21,7 @@ def parse_args():
     parser.add_argument('--overwrite',action='store_true')
     parser.add_argument('--dry-run',action='store_true')
     parser.add_argument('--fast',type=int, default=1)
+    parser.add_argument('--cuda-device', default=0, type=int)
     return parser
 
 def get_cutoff(fsc, t):

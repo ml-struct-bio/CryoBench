@@ -138,6 +138,8 @@ def run_cryodrgn_ai() -> None:
     analyze_parser.add_argument('--z-values-txt', type=str, default=None,
                                 dest='z_values_txt')
     analyze_parser.add_argument('--volume-metrics', action='store_true')
+    analyze_parser.add_argument('-o')
+    analyze_parser.add_argument('--Apix', type=float)
 
     filter_parser = subparsers.add_parser(
         'filter', description="Interactive filtering of mapped particles.",

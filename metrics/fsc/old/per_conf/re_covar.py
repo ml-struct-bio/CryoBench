@@ -4,7 +4,7 @@ Example usage
 -------------
 $ python metrics/fsc/old/per_conf/re_covar.py results/recovar/001/ \
             -o cryobench-outputs/recovar/ --gt-dir IgG-1D/vols/128_org/ \
-            --mask IgG-1D/init-mask/mask.mrc --num-imgs 1000 --num-vols 100
+            --mask IgG-1D/init_mask/mask.mrc --num-imgs 1000 --num-vols 100
 
 """
 import os
@@ -76,21 +76,27 @@ def main(args: argparse.Namespace) -> None:
     )
 
     output.mkdir_safe(args.outdir)
-    logger.addHandler(logging.FileHandler(os.path.join(args.outdir, "run.log")))
-    logger.info(args)
-    output.compute_and_save_reweighted(
-        cryos,
-        nearest_z_array,
-        zs,
-        cov_zs,
-        noise_variance,
-        args.outdir,
-        args.Bfactor,
-        args.n_bins,
-    )
+    log_file = os.path.join(args.outdir, "run.log")
+    if os.path.exists(log_file) and not args.overwrite:
+        logger.info("run.log file exists, skipping...")
+    else:
+        logger.addHandler(logging.FileHandler(log_file))
+        logger.info(args)
 
+        output.compute_and_save_reweighted(
+            cryos,
+            nearest_z_array,
+            zs,
+            cov_zs,
+            noise_variance,
+            args.outdir,
+            args.Bfactor,
+            args.n_bins,
+        )
+
+    # Align output conformation volumes to ground truth volumes using ChimeraX
     if args.align_vols:
-        volumes.align_volumes_multi(args.outdir, args.gt_dir)
+        volumes.align_volumes_multi(args.outdir, args.gt_dir, flip=args.flip_align)
 
     if args.calc_fsc_vals:
         volumes.get_fsc_curves(

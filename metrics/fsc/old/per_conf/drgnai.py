@@ -100,7 +100,9 @@ def main(args: argparse.Namespace) -> None:
 
     # Align output conformation volumes to ground truth volumes using ChimeraX
     if args.align_vols:
-        volumes.align_volumes_multi(args.outdir, args.gt_dir)
+        volumes.align_volumes_multi(
+            args.outdir, args.gt_dir, flip=args.flip_align, random_seed=args.align_seed
+        )
 
     if args.calc_fsc_vals:
         volumes.get_fsc_curves(
@@ -112,8 +114,9 @@ def main(args: argparse.Namespace) -> None:
         )
 
         if args.align_vols:
+            aligndir = "flipped_aligned" if args.flip_align else "aligned"
             volumes.get_fsc_curves(
-                os.path.join(args.outdir, "aligned"),
+                os.path.join(args.outdir, aligndir),
                 args.gt_dir,
                 mask_file=args.mask,
                 fast=args.fast,

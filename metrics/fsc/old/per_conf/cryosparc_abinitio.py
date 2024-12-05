@@ -47,7 +47,6 @@ def main(args: argparse.Namespace) -> None:
             f"`{configs['type']=}`; this script is for ab-initio jobs (`homo_abinit`)!"
         )
 
-    outdir = str(os.path.join(args.outdir, "per_conf_fsc"))
     file_pattern = "*.mrc"
     files = [
         f for f in glob(os.path.join(args.input_dir, file_pattern)) if "mask" not in f
@@ -73,14 +72,14 @@ def main(args: argparse.Namespace) -> None:
 
     if args.calc_fsc_vals:
         volumes.get_fsc_curves(
-            outdir,
+            args.input_dir,
             args.gt_dir,
-            vol_dir=args.input_dir,
+            outdir=args.outdir,
             mask_file=args.mask,
             fast=args.fast,
             overwrite=args.overwrite,
             vol_fl_function=(
-                lambda i: f"{csparc_job}_class_{lst[i][0]:02d}_final_volume.mrc"
+                lambda i: f"{csparc_job}_class_{lst[i][0]:02d}_final_volume"
             ),
         )
 

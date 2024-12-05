@@ -95,8 +95,8 @@ def main(args: argparse.Namespace) -> None:
 
     if args.calc_fsc_vals:
         volumes.get_fsc_curves(
-            args.gt_dir,
             voldir,
+            args.gt_dir,
             mask_file=args.mask,
             fast=args.fast,
             overwrite=args.overwrite,
@@ -104,8 +104,8 @@ def main(args: argparse.Namespace) -> None:
 
         if args.align_vols:
             volumes.get_fsc_curves(
+                os.path.join(voldir, "aligned"),
                 args.gt_dir,
-                vol_dir=os.path.join(voldir, "aligned"),
                 mask_file=args.mask,
                 fast=args.fast,
                 overwrite=args.overwrite,

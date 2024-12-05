@@ -1,5 +1,9 @@
 """Visualize FSCs between conformations matched across a volume model's latent space.
 
+The CryoBench output directory used as the argument to this script should contain at
+least one folder with the prefix "fsc_" already produced by a FSC analysis script such
+as `cdrgn.py`.
+
 Example usage
 -------------
 $ python metrics/fsc/plot_fsc.py cryobench_output/

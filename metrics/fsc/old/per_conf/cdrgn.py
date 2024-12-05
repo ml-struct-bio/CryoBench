@@ -15,6 +15,7 @@ import sys
 import argparse
 import logging
 import numpy as np
+import torch
 import cryodrgn.utils
 from cryodrgn import mrc
 
@@ -73,11 +74,14 @@ def main(args: argparse.Namespace) -> None:
                 if os.path.exists(gen_file) and not args.overwrite:
                     continue
 
-                mrc.write(gen_file, generator(zval).astype(np.float32))
+                ztensor = torch.tensor(zval, device=f"cuda:{args.cuda_device}")
+                mrc.write(
+                    gen_file, generator(ztensor).astype(np.float32), Apix=args.Apix
+                )
 
     # Align output conformation volumes to ground truth volumes using ChimeraX
     if args.align_vols:
-        volumes.align_volumes_multi(voldir, args.gt_dir)
+        volumes.align_volumes_multi(voldir, args.gt_dir, flip=args.flip_align)
 
     if args.calc_fsc_vals:
         volumes.get_fsc_curves(
@@ -89,8 +93,9 @@ def main(args: argparse.Namespace) -> None:
         )
 
         if args.align_vols:
+            aligndir = "flipped_aligned" if args.flip_align else "aligned"
             volumes.get_fsc_curves(
-                os.path.join(voldir, "aligned"),
+                os.path.join(voldir, aligndir),
                 args.gt_dir,
                 mask_file=args.mask,
                 fast=args.fast,

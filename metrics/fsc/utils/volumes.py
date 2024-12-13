@@ -24,11 +24,8 @@ CHIMERAX_PATH = os.environ["CHIMERAX_PATH"]
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-def numfile_sortkey(s):
-    """Get the numeric part of a filepath that contains an integer in the file name."""
-
-    # Split the filepath according to before, after, and the numeric part itself, and
-    # then convert the numeric part to an integer object for proper numeric comparison
+def numfile_sortkey(s: str) -> list:
+    """Split a filepath into a list that can be used to sort files by numeric order."""
     parts = re.split("([0-9]+)", s)
     parts[1::2] = map(int, parts[1::2])
 
@@ -279,7 +276,9 @@ def get_fsc_curves(
             fsc_curves[ii] = get_fsc_curve(vol1, vol2, mask_file)
             if ii % 20 == 0:
                 logger.info(f"Saving FSC {ii} values to {out_fsc}")
-            fsc_curves[ii].to_csv(out_fsc, sep=" ", header=True, index=False)
+            fsc_curves[ii].round(7).clip(0, 1).to_csv(
+                out_fsc, sep=" ", header=True, index=False
+            )
 
     # Print summary statistics on max resolutions satisfying particular FSC thresholds
     fsc143 = [get_fsc_cutoff(x, 0.143) for x in fsc_curves.values()]

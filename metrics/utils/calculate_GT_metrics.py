@@ -20,7 +20,7 @@ for i in range(universe.trajectory.n_frames):
     coord2 = hinge2.center_of_mass()
     coord3 = sel2.center_of_mass()
     dihs[i] = calc_dihedrals(coord0, coord1, coord2, coord3)
-    dists[i] = np.linalg.norm((coord0, coord3))
+    dists[i] = np.linalg.norm((coord0 - coord3))
 
 dihs = np.array([angle + 2 * np.pi if angle < 0 else angle for angle in dihs])
 dihs = dihs / np.pi

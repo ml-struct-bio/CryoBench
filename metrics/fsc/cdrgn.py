@@ -5,13 +5,13 @@ Example usage
 # See zenodo.org/records/11629428 for the Conf-het dataset used in these examples
 
 $ python metrics/fsc/cdrgn.py cryodrgn_output/train_vae/001_IgG-1D/ \
-                              IgG-1D/gt_latents.pkl --gt_dir=IgG-1D/vols/128_org/ \
+                              IgG-1D/gt_latents.pkl --gt-dir=IgG-1D/vols/128_org/ \
                               -o cryobench_output/cdrgn_train-vae_001/ \
                               -n 100 --Apix 3.0
 
 # Sample more volumes and align before computing FSCs in parallel using compute cluster
 $ python metrics/fsc/cdrgn.py cryodrgn_output/abinit_het/001_IgG-1D/ \
-                              IgG-1D/gt_latents.pkl --gt_dir=IgG-1D/vols/128_org/ \
+                              IgG-1D/gt_latents.pkl --gt-dir=IgG-1D/vols/128_org/ \
                               -o cryobench_output/cdrgn_abinit-het_001/ \
                               -n 1000 --Apix 3.0 --parallel-align
 
@@ -26,7 +26,7 @@ import logging
 import numpy as np
 from sklearn.metrics import auc
 from utils import volumes
-from cryodrgn import mrc, utils
+from cryodrgn import mrcfile, utils
 
 logging.basicConfig(
     level=logging.INFO,
@@ -104,10 +104,10 @@ def align_volumes(
 ) -> None:
     """Align a volume in a .mrc file to another .mrc volume using ChimeraX."""
 
-    data, header = mrc.parse_mrc(vol_path)
+    data, header = mrcfile.parse_mrc(vol_path)
     header.update_origin(0.0, 0.0, 0.0)
     header.update_apix(apix)
-    mrc.write(vol_path, data, header)
+    mrcfile.write_mrc(vol_path, data, header)
 
     flip_str = "--flip" if flip else ""
     log_file = os.path.splitext(vol_path)[0] + ".txt"
@@ -189,7 +189,7 @@ def main(args: argparse.Namespace) -> None:
 
         gt_path = gt_paths[particle_i]
         gen_vol = generator(z[particle_i, :])
-        mrc.write(gen_paths[-1], gen_vol.astype(np.float32))
+        mrcfile.write_mrc(gen_paths[-1], gen_vol.cpu().numpy().astype(np.float32))
         if not os.path.isabs(gt_path) and args.gt_paths is not None:
             gt_path = os.path.join(os.path.dirname(args.gt_paths), gt_path)
 
@@ -202,8 +202,9 @@ def main(args: argparse.Namespace) -> None:
         volumes.align_volumes_multi(gen_paths, gt_paths)
 
     if args.calc_fsc_vals:
+        gt_paths_sel = [gt_paths[i] for i in particle_idxs]
         fsc_curves = volumes.get_fsc_curves(
-            gt_paths, gen_paths, mask_file=args.mask, outdir=args.o
+            gen_paths, gt_paths_sel, mask_file=args.mask, outdir=args.o
         )
 
         auc_vals = {

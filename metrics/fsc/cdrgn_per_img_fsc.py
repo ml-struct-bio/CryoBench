@@ -4,16 +4,16 @@ Example usage
 -------------
 # See zenodo.org/records/11629428 for the Conf-het dataset used in these examples
 
-$ python metrics/fsc/cdrgn.py cryodrgn_output/train_vae/001_IgG-1D/ \
-                              IgG-1D/gt_latents.pkl --gt_dir=IgG-1D/vols/128_org/ \
-                              -o cryobench_output/cdrgn_train-vae_001/ \
-                              -n 100 --Apix 3.0
+$ python metrics/fsc/cdrgn_per_img_fsc.py cryodrgn_output/train_vae/001_IgG-1D/ \
+                                          IgG-1D/gt_latents.pkl --gt_dir IgG-1D/vols/128_org/ \
+                                          -o cryobench_output/cdrgn_train-vae_001/ \
+                                          -n 100 --Apix 3.0
 
 # Sample more volumes and align before computing FSCs in parallel using compute cluster
-$ python metrics/fsc/cdrgn.py cryodrgn_output/abinit_het/001_IgG-1D/ \
-                              IgG-1D/gt_latents.pkl --gt_dir=IgG-1D/vols/128_org/ \
-                              -o cryobench_output/cdrgn_abinit-het_001/ \
-                              -n 1000 --Apix 3.0 --parallel-align
+$ python metrics/fsc/cdrgn_per_img_fsc.py cryodrgn_output/abinit_het/001_IgG-1D/ \
+                                          IgG-1D/gt_latents.pkl --gt_dir IgG-1D/vols/128_org/ \
+                                          -o cryobench_output/cdrgn_abinit-het_001/ \
+                                          -n 1000 --Apix 3.0 --parallel-align
 
 """
 import os
@@ -202,8 +202,9 @@ def main(args: argparse.Namespace) -> None:
         volumes.align_volumes_multi(gen_paths, gt_paths)
 
     if args.calc_fsc_vals:
+        gt_paths_sel = [gt_paths[i] for i in particle_idxs]
         fsc_curves = volumes.get_fsc_curves(
-            gt_paths, gen_paths, mask_file=args.mask, outdir=args.o
+            gt_paths_sel, gen_paths, mask_file=args.mask, outdir=args.o
         )
 
         auc_vals = {

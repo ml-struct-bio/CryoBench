@@ -24,7 +24,7 @@ Datasets are available for download at Zenodo.
 
 1. Conf-het: [https://zenodo.org/records/11629428](https://zenodo.org/records/11629428).
 2. Comp-het: [https://zenodo.org/records/12528292](https://zenodo.org/records/12528292).
-3. Spike-MD: [https://zenodo.org/records/14902250](https://zenodo.org/records/14902250).
+3. Spike-MD: [https://zenodo.org/records/14941494](https://zenodo.org/records/14941494).
 
 ## Image Formation
 Look at the repo [cryosim](https://github.com/ml-struct-bio/CryoBench/tree/main/cryosim).

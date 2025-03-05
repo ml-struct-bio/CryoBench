@@ -2,6 +2,13 @@
 This repository is built upon https://github.com/ml-struct-bio/cryosim/tree/main
 ### Dependencies:
 * cryodrgn version 3.4.0
+* ChimeraX, if generating volumes for the Spike-MD dataset
+
+### Generating volumes
+For converting a large number of atomic structures, saved as a trajectory, to cryo-EM volumes, the _pdb2mrc.py_ script can be used. For the Spike-MD dataset, the command is
+```
+  python pdb2mrc.py seed_structure.pdb sampled_pdbs.xtc 100000 --Apix 1.5 -D 256 --res 3 -c ~/chimerax-1.6.1/bin/ChimeraX -o volumes
+```
 
 ### Generating CTF parameters
 ```

@@ -41,6 +41,15 @@ Look at the repo [metrics/visualization](https://github.com/ml-struct-bio/CryoBe
 
 Please submit any bug reports, feature requests, or general usage feedback as a github issue or discussion.
 
-## References:
+## Reference:
 
 Jeon, Minkyu, et al. "CryoBench: Diverse and challenging datasets for the heterogeneity problem in cryo-EM." NeurIPS 2024 Spotlight. [paper](https://arxiv.org/abs/2408.05526).
+
+```
+@inproceedings{jeon2024cryobench,
+ author = {Jeon, Minkyu and Raghu, Rishwanth and Astore, Miro and Woollard, Geoffrey and Feathers, Ryan and Kaz, Alkin and Hanson, Sonya M. and Cossio, Pilar and Zhong, Ellen D.},
+ booktitle = {Advances in Neural Information Processing Systems},
+ title = {CryoBench: Diverse and challenging datasets for the heterogeneity problem in cryo-EM},
+ year = {2024}
+}
+```

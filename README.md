@@ -22,8 +22,8 @@ More installation instructions are found in the [documentation](https://ez-lab.g
 
 Datasets are available for download at Zenodo.
 
-1. Conf-het: [https://zenodo.org/records/11629428](https://zenodo.org/records/11629428).
-2. Comp-het: [https://zenodo.org/records/12528292](https://zenodo.org/records/12528292).
+1. Conf-het (IgG-1D, IgG-RL): [https://zenodo.org/records/11629428](https://zenodo.org/records/11629428).
+2. Comp-het (Ribosembly, Tomotwin-100): [https://zenodo.org/records/12528292](https://zenodo.org/records/12528292).
 3. Spike-MD: [https://zenodo.org/records/14941494](https://zenodo.org/records/14941494).
 
 ## Image Formation
@@ -37,11 +37,10 @@ Look at the repo [metrics/fsc](https://github.com/ml-struct-bio/CryoBench/tree/m
 ### 2. UMAP visualization
 Look at the repo [metrics/visualization](https://github.com/ml-struct-bio/CryoBench/tree/main/metrics/visualization)
 
-
-## References:
-
-Jeon, Minkyu, et al. "CryoBench: Diverse and challenging datasets for the heterogeneity problem in cryo-EM." arXiv preprint arXiv:2408.05526 (2024) [paper](https://arxiv.org/abs/2408.05526).
-
 ## Contact
 
 Please submit any bug reports, feature requests, or general usage feedback as a github issue or discussion.
+
+## References:
+
+Jeon, Minkyu, et al. "CryoBench: Diverse and challenging datasets for the heterogeneity problem in cryo-EM." NeurIPS 2024 Spotlight. [paper](https://arxiv.org/abs/2408.05526).

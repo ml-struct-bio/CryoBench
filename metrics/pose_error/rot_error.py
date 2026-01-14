@@ -15,7 +15,7 @@ from datetime import datetime as dt
 import torch
 import cryodrgn.utils
 from cryodrgn import lie_tools
-from scipy.linalg import logm
+# from scipy.linalg import logm
 
 logger = logging.getLogger(__name__)
 
@@ -44,13 +44,13 @@ def parse_args() -> argparse.ArgumentParser:
     return parser
 
 
-# will give very close result to ang_dist()
-def ang_dist_2(A, B):
-    diff_rot = np.zeros(len(A))
-    for i in range(len(diff_rot)):
-        diff_rot[i] = np.sum(logm(np.dot(A[i].T, B[i])) ** 2) ** 0.5
+# # will give very close result to ang_dist()
+# def ang_dist_2(A, B):
+#     diff_rot = np.zeros(len(A))
+#     for i in range(len(diff_rot)):
+#         diff_rot[i] = np.sum(logm(np.dot(A[i].T, B[i])) ** 2) ** 0.5
 
-    return np.rad2deg(diff_rot) / np.sqrt(2)
+#     return np.rad2deg(diff_rot) / np.sqrt(2)
 
 
 def ang_dist_oop(A, B):
@@ -145,22 +145,21 @@ def main(args: argparse.Namespace) -> None:
     if os.path.exists(train_path(f"{job}_final_particles.cs")):
         method = "cryosparc"
         particle_info = np.load(train_path(f"{job}_final_particles.cs"))
-        highest_prob = np.zeros(len(particle_info))
-        rot1 = np.zeros((len(particle_info), 3))
-        cl_idx = 0
+        N = len(particle_info)
 
-        while f"alignments_class_{cl_idx}/class_posterior" in particle_info.dtype.names:
-            new_best = (
-                particle_info[f"alignments_class_{cl_idx}/class_posterior"]
-                > highest_prob
-            )
-            highest_prob[new_best] = particle_info[
-                f"alignments_class_{cl_idx}/class_posterior"
-            ][new_best]
-            rot1[new_best] = particle_info[f"alignments_class_{cl_idx}/pose"][new_best]
-            cl_idx += 1
+        if "alignments3D_multi/class_posterior" not in particle_info.dtype.names:
+            raise KeyError("Missing 'alignments3D_multi/class_posterior' in CryoSPARC particles.")
 
-        rot1 = lie_tools.expmap(torch.tensor(rot1))
+        class_post = particle_info["alignments3D_multi/class_posterior"]  # (N, n_classes)
+        poses = particle_info["alignments3D_multi/pose"]                  # (N, n_classes, 3)
+
+        best_cls = np.argmax(class_post, axis=1)
+        best_post = np.max(class_post, axis=1)
+        best_pose = poses[np.arange(N), best_cls, :]
+
+        print(f"✅ Extracted {N} poses (from {poses.shape[1]} CryoSPARC classes)")
+
+        rot1 = lie_tools.expmap(torch.tensor(best_pose))
         rot1 = rot1.cpu().numpy()
         rot1 = np.array([x.T for x in rot1])
 
@@ -244,12 +243,19 @@ def main(args: argparse.Namespace) -> None:
             gstr = f"{err_format(gmean)}; {err_format(gmed)}"
             print(f"Class {i:<{cls_space}} | {fstr} | {gstr}")
 
-        logger.info(f"Class average Mean squared error: {np.mean(geo_means)}")
-        logger.info(f"Class average Median squared error: {np.mean(geo_meds)}")
-        w_mean = np.sum(np.array(geo_means) * np.array(counts)) / len(labels)
-        w_med = np.sum(np.array(geo_meds) * np.array(counts)) / len(labels)
+        logger.info(f"Class average Mean squared error: {np.mean(frob_means)}")
+        logger.info(f"Class average Median squared error: {np.mean(frob_meds)}")
+        w_mean = np.sum(np.array(frob_means) * np.array(counts)) / len(labels)
+        w_med = np.sum(np.array(frob_meds) * np.array(counts)) / len(labels)
         logger.info(f"Weighted class average Mean squared error: {w_mean}")
         logger.info(f"Weighted class average Median squared error: {w_med}")
+
+        logger.info(f"Class average Mean Geodesic: {np.mean(geo_means)}")
+        logger.info(f"Class average Median Geodesic: {np.mean(geo_meds)}")
+        w_mean = np.sum(np.array(geo_means) * np.array(counts)) / len(labels)
+        w_med = np.sum(np.array(geo_meds) * np.array(counts)) / len(labels)
+        logger.info(f"Weighted class average Mean Geodesic: {w_mean}")
+        logger.info(f"Weighted class average Median Geodesic: {w_med}")
 
     else:
         r1, r2, rot, dist2 = align_rot_flip(rot1, rot2, args.N)
